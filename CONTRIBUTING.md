@@ -4,7 +4,6 @@ Be respectful, professional, and constructive in all discussions, reviews, and i
 
 ## How to Report a Bug
 
-
 When reporting a bug, include a short description of the issue, the steps to reproduce it, the expected result, and the actual result. If possible, add screenshots, console errors, browser details, and any relevant files or code snippets that help explain the problem.
 
 ## Local Development Setup

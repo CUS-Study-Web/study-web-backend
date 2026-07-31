@@ -1,3 +1,11 @@
 spring:
   application:
     name: cus
+  config:
+    import: optional:file:.env[.properties]
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789}
+    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
