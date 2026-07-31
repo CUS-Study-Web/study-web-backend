@@ -1,0 +1,72 @@
+package study_web.cus.controller.auth;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import study_web.cus.controller.AbstractBaseController;
+import study_web.cus.dto.base.SingleResponse;
+import study_web.cus.dto.base.SuccessResponse;
+import study_web.cus.dto.request.auth.LoginRequest;
+import study_web.cus.dto.request.auth.RegisterRequest;
+import study_web.cus.dto.response.auth.AuthResponse;
+import study_web.cus.exception.auth.AuthErrorCode;
+import study_web.cus.exception.auth.AuthException;
+import study_web.cus.service.auth.AuthService;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@Slf4j
+@Tag(name = "Authentication", description = "Endpoints for user authentication")
+public class AuthController extends AbstractBaseController {
+
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    @Operation(summary = "Register", description = "Register a new learner account and return access and refresh tokens")
+    public ResponseEntity<SingleResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        log.info("[POST /api/auth/register] Registering account for email: {}", request.gmail());
+        AuthResponse response = authService.register(request);
+        return successSingle(response, "Sign up successful!");
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "Login", description = "Authenticate with email and password and return access and refresh tokens")
+    public ResponseEntity<SingleResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+        log.info("[POST /api/auth/login] Logging in for email: {}", request.gmail());
+        AuthResponse response = authService.login(request);
+        return successSingle(response, "Sign in successful!");
+    }
+
+    @PostMapping("/refresh-token")
+    @Operation(summary = "Refresh Token", description = "Obtain a new access token using a valid refresh token")
+    public ResponseEntity<SingleResponse<AuthResponse>> refreshToken(
+            @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
+        log.info("[POST /api/auth/refresh-token] Refreshing access token");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REQUIRED);
+        }
+        AuthResponse response = authService.refreshToken(refreshToken);
+        return successSingle(response, "Token refreshed successfully!");
+    }
+
+    @PostMapping("/signout")
+    @Operation(summary = "Sign Out", description = "Logout the user and invalidate the refresh token")
+    public ResponseEntity<SuccessResponse> signOut(
+            @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
+        log.info("[POST /api/auth/signout] Signing out user by refresh token");
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REQUIRED);
+        }
+        authService.signOut(refreshToken);
+        return success("Sign out successfully!");
+    }
+}
