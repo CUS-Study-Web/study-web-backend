@@ -3,9 +3,23 @@ spring:
     name: cus
   config:
     import: optional:file:.env[.properties]
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
 app:
   jwt:
     secret: ${JWT_SECRET:change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789}
     access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
     refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+  otp:
+    length: ${OTP_LENGTH:6}
+    expiration-seconds: ${OTP_EXPIRATION_SECONDS:300}
+    max-attempts: ${OTP_MAX_ATTEMPTS:5}
+    cooldown-seconds: ${OTP_COOLDOWN_SECONDS:60}

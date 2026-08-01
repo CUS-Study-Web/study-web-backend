@@ -14,8 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import study_web.cus.controller.AbstractBaseController;
 import study_web.cus.dto.base.SingleResponse;
 import study_web.cus.dto.base.SuccessResponse;
+import study_web.cus.dto.request.auth.ForgetPasswordRequest;
 import study_web.cus.dto.request.auth.LoginRequest;
 import study_web.cus.dto.request.auth.RegisterRequest;
+import study_web.cus.dto.request.auth.ResetPasswordRequest;
 import study_web.cus.dto.response.auth.AuthResponse;
 import study_web.cus.exception.auth.AuthErrorCode;
 import study_web.cus.exception.auth.AuthException;
@@ -68,5 +70,21 @@ public class AuthController extends AbstractBaseController {
         }
         authService.signOut(refreshToken);
         return success("Sign out successfully!");
+    }
+
+    @PostMapping("/forget-password")
+    @Operation(summary = "Forget Password", description = "Send a password reset OTP to the user's email")
+    public ResponseEntity<SuccessResponse> forgetPassword(@Valid @RequestBody ForgetPasswordRequest request) {
+        log.info("[POST /api/auth/forget-password] Sending reset OTP for gmail: {}", request.gmail());
+        authService.forgetPassword(request);
+        return success("Password reset OTP sent to your email!");
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset Password", description = "Verify the OTP and set a new password")
+    public ResponseEntity<SuccessResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        log.info("[POST /api/auth/reset-password] Resetting password for gmail: {}", request.gmail());
+        authService.resetPassword(request);
+        return success("Password reset successfully! Please sign in with your new password.");
     }
 }
