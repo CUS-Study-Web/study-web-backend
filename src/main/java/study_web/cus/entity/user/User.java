@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import study_web.cus.entity.AbstractBaseEntity;
 import study_web.cus.enums.Gender;
-import study_web.cus.enums.Role;
 
 @Entity
 @Table(name = "users", indexes = { @Index(name = "idx_user_gmail", columnList = "gmail", unique = true) })
@@ -43,10 +42,6 @@ public class User extends AbstractBaseEntity {
 
     @Column(name = "school", length = 150)
     private String school;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false, length = 20)
-    private Role role;
 
     @Column(name = "password", nullable = false, length = 255)
     private String password;

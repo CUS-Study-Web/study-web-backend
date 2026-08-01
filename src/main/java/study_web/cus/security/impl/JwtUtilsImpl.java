@@ -18,16 +18,12 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import study_web.cus.constant.RedisConstants;
 import study_web.cus.entity.redis.RefreshToken;
-import study_web.cus.enums.Role;
 import study_web.cus.repository.auth.RefreshTokenRepository;
 import study_web.cus.security.JwtUtils;
 
 @Component
 @Slf4j
 public class JwtUtilsImpl implements JwtUtils {
-
-    private static final String CLAIM_TYPE = "token_type";
-    private static final String CLAIM_ROLE = "role";
 
     private final SecretKey secretKey;
     private final long accessTokenExpiration;
@@ -51,28 +47,24 @@ public class JwtUtilsImpl implements JwtUtils {
         log.info("JwtUtils initialized successfully with Lua script support");
     }
 
-    private String createToken(String email, long expiration, String type, Role role) {
+    private String createToken(String email, long expiration) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
-        var builder = Jwts.builder().setSubject(email).claim(CLAIM_TYPE, type).setIssuedAt(now)
-                .setExpiration(expiryDate);
-        if (role != null) {
-            builder.claim(CLAIM_ROLE, role.name());
-        }
-        return builder.signWith(secretKey, SignatureAlgorithm.HS512).compact();
+        return Jwts.builder().setSubject(email).setIssuedAt(now).setExpiration(expiryDate)
+                .signWith(secretKey, SignatureAlgorithm.HS512).compact();
     }
 
     @Override
-    public String generateAccessToken(String email, Role role) {
-        return createToken(email, accessTokenExpiration, RedisConstants.TOKEN_TYPE_ACCESS, role);
+    public String generateAccessToken(String email) {
+        return createToken(email, accessTokenExpiration);
     }
 
     @Override
     public String generateRefreshToken(String email) {
         refreshTokenRepository.deleteByEmail(email);
 
-        String refreshToken = createToken(email, refreshTokenExpiration, RedisConstants.TOKEN_TYPE_REFRESH, null);
+        String refreshToken = createToken(email, refreshTokenExpiration);
 
         RefreshToken token = RefreshToken.builder().refreshToken(refreshToken).email(email)
                 .ttl(TimeUnit.MILLISECONDS.toSeconds(refreshTokenExpiration)).build();
@@ -108,12 +100,6 @@ public class JwtUtilsImpl implements JwtUtils {
     @Override
     public String getEmailFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
-    }
-
-    @Override
-    public Role getRoleFromToken(String token) {
-        String role = getClaimFromToken(token, claims -> claims.get(CLAIM_ROLE, String.class));
-        return role != null ? Role.valueOf(role) : null;
     }
 
     @Override

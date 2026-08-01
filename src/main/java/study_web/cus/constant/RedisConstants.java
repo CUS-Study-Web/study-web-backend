@@ -8,8 +8,4 @@ public final class RedisConstants {
 
     // Key patterns
     public static final String REFRESH_TOKEN_KEY_PATTERN = "refresh_token:*";
-
-    // Token types
-    public static final String TOKEN_TYPE_ACCESS = "ACCESS_TOKEN";
-    public static final String TOKEN_TYPE_REFRESH = "REFRESH_TOKEN";
 }
