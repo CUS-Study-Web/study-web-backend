@@ -13,23 +13,23 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Slf4j
 public class RedisConfig {
 
-    @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(connectionFactory);
+  @Bean
+  public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+    RedisTemplate<String, Object> template = new RedisTemplate<>();
+    template.setConnectionFactory(connectionFactory);
 
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setValueSerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(new StringRedisSerializer());
+    template.setKeySerializer(new StringRedisSerializer());
+    template.setHashKeySerializer(new StringRedisSerializer());
+    template.setValueSerializer(new StringRedisSerializer());
+    template.setHashValueSerializer(new StringRedisSerializer());
 
-        template.afterPropertiesSet();
-        log.info("RedisTemplate configured successfully");
-        return template;
-    }
+    template.afterPropertiesSet();
+    log.info("RedisTemplate configured successfully");
+    return template;
+  }
 
-    @Bean
-    public RedisScript<Long> revokeRefreshTokenScript() {
-        return RedisScript.of(new ClassPathResource("scripts/revoke-refresh-token.lua"), Long.class);
-    }
+  @Bean
+  public RedisScript<Long> revokeRefreshTokenScript() {
+    return RedisScript.of(new ClassPathResource("scripts/revoke-refresh-token.lua"), Long.class);
+  }
 }

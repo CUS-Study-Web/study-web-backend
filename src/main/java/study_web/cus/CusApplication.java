@@ -8,8 +8,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication
 public class CusApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(CusApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(CusApplication.class, args);
+  }
 }

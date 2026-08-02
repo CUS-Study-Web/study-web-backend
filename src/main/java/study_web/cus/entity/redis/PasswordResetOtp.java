@@ -18,16 +18,13 @@ import org.springframework.data.redis.core.index.Indexed;
 @AllArgsConstructor
 public class PasswordResetOtp {
 
-    @Id
-    private String gmail;
+  @Id private String gmail;
 
-    @Indexed
-    private String otpCode;
+  @Indexed private String otpCode;
 
-    private Integer attempts;
+  private Integer attempts;
 
-    private Long createdAt;
+  private Long createdAt;
 
-    @TimeToLive
-    private Long ttl;
+  @TimeToLive private Long ttl;
 }

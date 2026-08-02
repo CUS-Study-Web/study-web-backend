@@ -7,14 +7,13 @@ import study_web.cus.dto.base.SuccessResponse;
 
 public abstract class AbstractBaseController {
 
-    @Autowired
-    protected ResponseFactory responseFactory;
+  @Autowired protected ResponseFactory responseFactory;
 
-    protected <T> ResponseEntity<SingleResponse<T>> successSingle(T data, String message) {
-        return responseFactory.successSingle(data, message);
-    }
+  protected <T> ResponseEntity<SingleResponse<T>> successSingle(T data, String message) {
+    return responseFactory.successSingle(data, message);
+  }
 
-    protected ResponseEntity<SuccessResponse> success(String message) {
-        return responseFactory.success(message);
-    }
+  protected ResponseEntity<SuccessResponse> success(String message) {
+    return responseFactory.success(message);
+  }
 }

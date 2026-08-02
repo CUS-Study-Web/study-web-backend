@@ -20,50 +20,51 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtils jwtUtils;
+  private final JwtUtils jwtUtils;
 
-    private String userJwt;
+  private String userJwt;
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+  @Override
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
 
-        try {
-            String jwt = extractJwtFromRequest(request);
-            if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
-                String email = jwtUtils.getEmailFromToken(jwt);
-                this.userJwt = jwt;
+    try {
+      String jwt = extractJwtFromRequest(request);
+      if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
+        String email = jwtUtils.getEmailFromToken(jwt);
+        this.userJwt = jwt;
 
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email,
-                        null, Collections.emptyList());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        UsernamePasswordAuthenticationToken authentication =
+            new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Set authentication for email: {}", email);
-            }
-        } catch (Exception e) {
-            log.warn("Authentication binding failed: {}", e.getMessage());
-            request.setAttribute("auth_error", e.getMessage());
-        }
-
-        filterChain.doFilter(request, response);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        log.debug("Set authentication for email: {}", email);
+      }
+    } catch (Exception e) {
+      log.warn("Authentication binding failed: {}", e.getMessage());
+      request.setAttribute("auth_error", e.getMessage());
     }
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/ws");
-    }
+    filterChain.doFilter(request, response);
+  }
 
-    private String extractJwtFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
+  @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String path = request.getRequestURI();
+    return path.startsWith("/ws");
+  }
 
-    public String getUserJwt() {
-        return this.userJwt;
+  private String extractJwtFromRequest(HttpServletRequest request) {
+    String bearerToken = request.getHeader("Authorization");
+    if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+      return bearerToken.substring(7);
     }
+    return null;
+  }
+
+  public String getUserJwt() {
+    return this.userJwt;
+  }
 }

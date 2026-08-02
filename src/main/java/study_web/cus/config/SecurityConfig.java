@@ -22,26 +22,41 @@ import study_web.cus.security.RestAccessDeniedHandler;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final RestAccessDeniedHandler restAccessDeniedHandler;
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+  private final RestAccessDeniedHandler restAccessDeniedHandler;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                        .accessDeniedHandler(restAccessDeniedHandler))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**", "/api/public/**").permitAll()
-                        .requestMatchers("/api-docs/**", "/v3/api-docs", "/v3/api-docs/**", "/docs", "/scalar/**", "/scalar.html").permitAll()
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.csrf(AbstractHttpConfigurer::disable)
+        .sessionManagement(
+            session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(
+            exception ->
+                exception
+                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                    .accessDeniedHandler(restAccessDeniedHandler))
+        .authorizeHttpRequests(
+            auth ->
+                auth.requestMatchers("/api/auth/**", "/api/public/**")
+                    .permitAll()
+                    .requestMatchers(
+                        "/api-docs/**",
+                        "/v3/api-docs",
+                        "/v3/api-docs/**",
+                        "/docs",
+                        "/scalar/**",
+                        "/scalar.html")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+    return http.build();
+  }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 }

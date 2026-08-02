@@ -8,5 +8,5 @@ import study_web.cus.entity.user.User;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface UserMapper {
 
-    UserResponse toUserResponse(User user);
+  UserResponse toUserResponse(User user);
 }

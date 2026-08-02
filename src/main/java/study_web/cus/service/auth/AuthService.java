@@ -8,15 +8,15 @@ import study_web.cus.dto.response.auth.AuthResponse;
 
 public interface AuthService {
 
-    AuthResponse register(RegisterRequest request);
+  AuthResponse register(RegisterRequest request);
 
-    AuthResponse login(LoginRequest request);
+  AuthResponse login(LoginRequest request);
 
-    AuthResponse refreshToken(String refreshToken);
+  AuthResponse refreshToken(String refreshToken);
 
-    void signOut(String refreshToken);
+  void signOut(String refreshToken);
 
-    void forgetPassword(ForgetPasswordRequest request);
+  void forgetPassword(ForgetPasswordRequest request);
 
-    void resetPassword(ResetPasswordRequest request);
+  void resetPassword(ResetPasswordRequest request);
 }

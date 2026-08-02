@@ -1,6 +1,5 @@
 package study_web.cus.security;
 
-import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -11,23 +10,30 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 import study_web.cus.dto.base.ErrorResponse;
 import study_web.cus.exception.system.SystemErrorCode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response,
-            AccessDeniedException accessDeniedException) throws IOException {
+  @Override
+  public void handle(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      AccessDeniedException accessDeniedException)
+      throws IOException {
 
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        ErrorResponse errorResponse = new ErrorResponse(HttpServletResponse.SC_FORBIDDEN,
-                SystemErrorCode.FORBIDDEN.message(), SystemErrorCode.FORBIDDEN.code());
+    ErrorResponse errorResponse =
+        new ErrorResponse(
+            HttpServletResponse.SC_FORBIDDEN,
+            SystemErrorCode.FORBIDDEN.message(),
+            SystemErrorCode.FORBIDDEN.code());
 
-        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
-    }
+    response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
+  }
 }

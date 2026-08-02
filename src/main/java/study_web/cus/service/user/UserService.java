@@ -7,9 +7,9 @@ import study_web.cus.entity.user.User;
 
 public interface UserService {
 
-    User createUser(RegisterRequest request);
+  User createUser(RegisterRequest request);
 
-    UserResponse getCurrentUser(String email);
+  UserResponse getCurrentUser(String email);
 
-    void changePassword(String email, ChangePasswordRequest request);
+  void changePassword(String email, ChangePasswordRequest request);
 }

@@ -7,7 +7,7 @@ import study_web.cus.entity.user.User;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    boolean existsByGmail(String gmail);
+  boolean existsByGmail(String gmail);
 
-    Optional<User> findByGmail(String gmail);
+  Optional<User> findByGmail(String gmail);
 }

@@ -5,5 +5,4 @@ import org.springframework.stereotype.Repository;
 import study_web.cus.entity.redis.PasswordResetOtp;
 
 @Repository
-public interface PasswordResetTokenRepository extends CrudRepository<PasswordResetOtp, String> {
-}
+public interface PasswordResetTokenRepository extends CrudRepository<PasswordResetOtp, String> {}

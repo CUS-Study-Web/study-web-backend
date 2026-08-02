@@ -20,34 +20,36 @@ import study_web.cus.service.email.EmailService;
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private static final String PASSWORD_RESET_TEMPLATE = "static/email/password-reset.html";
+  private static final String PASSWORD_RESET_TEMPLATE = "static/email/password-reset.html";
 
-    private final JavaMailSender mailSender;
+  private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.from:}")
-    private String mailFrom;
+  @Value("${spring.mail.from:}")
+  private String mailFrom;
 
-    @Override
-    @Async
-    public void sendPasswordResetOtp(String toEmail, String otpCode, long expirationMinutes) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
-            helper.setTo(toEmail);
-            if (StringUtils.hasText(mailFrom)) {
-                helper.setFrom(mailFrom);
-            }
-            helper.setSubject("CUS - Mã OTP đặt lại mật khẩu");
+  @Override
+  @Async
+  public void sendPasswordResetOtp(String toEmail, String otpCode, long expirationMinutes) {
+    try {
+      MimeMessage message = mailSender.createMimeMessage();
+      MimeMessageHelper helper = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
+      helper.setTo(toEmail);
+      if (StringUtils.hasText(mailFrom)) {
+        helper.setFrom(mailFrom);
+      }
+      helper.setSubject("CUS - Mã OTP đặt lại mật khẩu");
 
-            String html = new ClassPathResource(PASSWORD_RESET_TEMPLATE).getContentAsString(StandardCharsets.UTF_8)
-                    .replace("{{otp}}", otpCode)
-                    .replace("{{expiryMinutes}}", String.valueOf(expirationMinutes));
-            helper.setText(html, true);
+      String html =
+          new ClassPathResource(PASSWORD_RESET_TEMPLATE)
+              .getContentAsString(StandardCharsets.UTF_8)
+              .replace("{{otp}}", otpCode)
+              .replace("{{expiryMinutes}}", String.valueOf(expirationMinutes));
+      helper.setText(html, true);
 
-            mailSender.send(message);
-            log.info("Sent password reset OTP email to: {}", toEmail);
-        } catch (MessagingException | IOException e) {
-            log.error("Failed to send password reset OTP email to: {}", toEmail, e);
-        }
+      mailSender.send(message);
+      log.info("Sent password reset OTP email to: {}", toEmail);
+    } catch (MessagingException | IOException e) {
+      log.error("Failed to send password reset OTP email to: {}", toEmail, e);
     }
+  }
 }

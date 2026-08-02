@@ -8,9 +8,9 @@ import study_web.cus.entity.redis.RefreshToken;
 @Repository
 public interface RefreshTokenRepository extends CrudRepository<RefreshToken, String> {
 
-    Optional<RefreshToken> findByEmail(String email);
+  Optional<RefreshToken> findByEmail(String email);
 
-    void deleteByEmail(String email);
+  void deleteByEmail(String email);
 
-    boolean existsByEmail(String email);
+  boolean existsByEmail(String email);
 }

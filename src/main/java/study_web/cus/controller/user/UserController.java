@@ -26,21 +26,23 @@ import study_web.cus.service.user.UserService;
 @Tag(name = "User", description = "Endpoints for the authenticated user")
 public class UserController extends AbstractBaseController {
 
-    private final UserService userService;
+  private final UserService userService;
 
-    @GetMapping("/me")
-    @Operation(summary = "Get Current User", description = "Return the authenticated user's profile")
-    public ResponseEntity<SingleResponse<UserResponse>> me(@AuthenticationPrincipal String email) {
-        log.info("[GET /api/user/me] Fetching profile for email: {}", email);
-        return successSingle(userService.getCurrentUser(email), "OK");
-    }
+  @GetMapping("/me")
+  @Operation(summary = "Get Current User", description = "Return the authenticated user's profile")
+  public ResponseEntity<SingleResponse<UserResponse>> me(@AuthenticationPrincipal String email) {
+    log.info("[GET /api/user/me] Fetching profile for email: {}", email);
+    return successSingle(userService.getCurrentUser(email), "OK");
+  }
 
-    @PostMapping("/change-password")
-    @Operation(summary = "Change Password", description = "Set a new password for the authenticated user")
-    public ResponseEntity<SuccessResponse> changePassword(@AuthenticationPrincipal String email,
-            @Valid @RequestBody ChangePasswordRequest request) {
-        log.info("[POST /api/user/change-password] Changing password for email: {}", email);
-        userService.changePassword(email, request);
-        return success("Password changed successfully!");
-    }
+  @PostMapping("/change-password")
+  @Operation(
+      summary = "Change Password",
+      description = "Set a new password for the authenticated user")
+  public ResponseEntity<SuccessResponse> changePassword(
+      @AuthenticationPrincipal String email, @Valid @RequestBody ChangePasswordRequest request) {
+    log.info("[POST /api/user/change-password] Changing password for email: {}", email);
+    userService.changePassword(email, request);
+    return success("Password changed successfully!");
+  }
 }
