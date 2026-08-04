@@ -16,8 +16,6 @@ services:
     container_name: studyweb-redis
     ports:
       - "${REDIS_PORT}:6379"
-    volumes:
-      - redis_data:/data
     command: redis-server --appendonly yes
 
 volumes:
