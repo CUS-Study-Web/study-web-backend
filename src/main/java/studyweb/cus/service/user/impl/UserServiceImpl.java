@@ -10,6 +10,8 @@ import study_web.cus.dto.response.auth.UserResponse;
 import study_web.cus.entity.user.User;
 import study_web.cus.exception.auth.AuthErrorCode;
 import study_web.cus.exception.auth.AuthException;
+import study_web.cus.exception.user.UserErrorCode;
+import study_web.cus.exception.user.UserException;
 import study_web.cus.mapper.user.UserMapper;
 import study_web.cus.repository.user.UserRepository;
 import study_web.cus.security.JwtUtils;
@@ -55,7 +57,7 @@ public class UserServiceImpl implements UserService {
     User user =
         userRepository
             .findByGmail(email)
-            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
     return userMapper.toUserResponse(user);
   }
 
@@ -68,7 +70,7 @@ public class UserServiceImpl implements UserService {
     User user =
         userRepository
             .findByGmail(email)
-            .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
 
     user.setPassword(passwordEncoder.encode(request.newPassword()));
     userRepository.save(user);
