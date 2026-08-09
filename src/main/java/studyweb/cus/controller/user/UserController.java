@@ -17,6 +17,8 @@ import study_web.cus.dto.base.SingleResponse;
 import study_web.cus.dto.base.SuccessResponse;
 import study_web.cus.dto.request.auth.ChangePasswordRequest;
 import study_web.cus.dto.response.auth.UserResponse;
+import study_web.cus.exception.user.UserErrorCode;
+import study_web.cus.exception.user.UserException;
 import study_web.cus.service.user.UserService;
 
 @RestController
@@ -31,6 +33,10 @@ public class UserController extends AbstractBaseController {
   @GetMapping("/me")
   @Operation(summary = "Get Current User", description = "Return the authenticated user's profile")
   public ResponseEntity<SingleResponse<UserResponse>> me(@AuthenticationPrincipal String email) {
+    if (email == null) {
+      log.warn("[GET /api/user/me] No authentication found");
+      throw new UserException(UserErrorCode.USER_NOT_AUTHENTICATED);
+    }
     log.info("[GET /api/user/me] Fetching profile for email: {}", email);
     return successSingle(userService.getCurrentUser(email), "OK");
   }
@@ -41,6 +47,10 @@ public class UserController extends AbstractBaseController {
       description = "Set a new password for the authenticated user")
   public ResponseEntity<SuccessResponse> changePassword(
       @AuthenticationPrincipal String email, @Valid @RequestBody ChangePasswordRequest request) {
+    if (email == null) {
+      log.warn("[POST /api/user/change-password] No authentication found");
+      throw new UserException(UserErrorCode.USER_NOT_AUTHENTICATED);
+    }
     log.info("[POST /api/user/change-password] Changing password for email: {}", email);
     userService.changePassword(email, request);
     return success("Password changed successfully!");

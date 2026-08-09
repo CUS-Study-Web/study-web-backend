@@ -22,6 +22,8 @@ import study_web.cus.entity.user.User;
 import study_web.cus.enums.Gender;
 import study_web.cus.exception.auth.AuthErrorCode;
 import study_web.cus.exception.auth.AuthException;
+import study_web.cus.exception.user.UserErrorCode;
+import study_web.cus.exception.user.UserException;
 import study_web.cus.mapper.user.UserMapper;
 import study_web.cus.repository.user.UserRepository;
 import study_web.cus.security.JwtUtils;
@@ -135,11 +137,11 @@ class UserServiceTest {
     when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.empty());
 
     assertThatThrownBy(() -> userService.getCurrentUser(GMAIL))
-        .isInstanceOf(AuthException.class)
+        .isInstanceOf(UserException.class)
         .satisfies(
             ex ->
-                assertThat(((AuthException) ex).getCode())
-                    .isEqualTo(AuthErrorCode.USER_NOT_FOUND.code()));
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
   }
 
   @Test
@@ -158,11 +160,11 @@ class UserServiceTest {
 
     assertThatThrownBy(
             () -> userService.changePassword(GMAIL, new ChangePasswordRequest("password1")))
-        .isInstanceOf(AuthException.class)
+        .isInstanceOf(UserException.class)
         .satisfies(
             ex ->
-                assertThat(((AuthException) ex).getCode())
-                    .isEqualTo(AuthErrorCode.USER_NOT_FOUND.code()));
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
   }
 
   @Test
