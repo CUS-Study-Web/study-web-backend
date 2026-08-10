@@ -1,4 +1,4 @@
-package study_web.cus;
+package studyweb.cus;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,9 +1,9 @@
-package study_web.cus.controller;
+package studyweb.cus.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import study_web.cus.dto.base.SingleResponse;
-import study_web.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.SuccessResponse;
 
 @Component
 public class ResponseFactory {

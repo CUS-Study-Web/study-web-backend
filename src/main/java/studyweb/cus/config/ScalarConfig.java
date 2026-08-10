@@ -1,4 +1,4 @@
-package study_web.cus.config;
+package studyweb.cus.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;

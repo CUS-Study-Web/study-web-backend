@@ -1,9 +1,9 @@
-package study_web.cus.service.user;
+package studyweb.cus.service.user;
 
-import study_web.cus.dto.request.auth.ChangePasswordRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.entity.user.User;
+import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.entity.user.User;
 
 public interface UserService {
 

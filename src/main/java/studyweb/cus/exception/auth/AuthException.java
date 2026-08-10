@@ -1,7 +1,7 @@
-package study_web.cus.exception.auth;
+package studyweb.cus.exception.auth;
 
 import lombok.Getter;
-import study_web.cus.exception.BaseException;
+import studyweb.cus.exception.BaseException;
 
 @Getter
 public class AuthException extends BaseException {

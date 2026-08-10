@@ -1,4 +1,4 @@
-package study_web.cus.entity;
+package studyweb.cus.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;

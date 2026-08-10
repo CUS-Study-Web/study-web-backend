@@ -1,4 +1,4 @@
-package study_web.cus.security;
+package studyweb.cus.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -8,8 +8,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
-import study_web.cus.dto.base.ErrorResponse;
-import study_web.cus.exception.system.SystemErrorCode;
+import studyweb.cus.dto.base.ErrorResponse;
+import studyweb.cus.exception.system.SystemErrorCode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component

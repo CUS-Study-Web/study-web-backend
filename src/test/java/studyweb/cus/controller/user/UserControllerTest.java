@@ -1,4 +1,4 @@
-package study_web.cus.controller.user;
+package studyweb.cus.controller.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,16 +17,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import study_web.cus.controller.AbstractBaseController;
-import study_web.cus.controller.ResponseFactory;
-import study_web.cus.dto.base.SingleResponse;
-import study_web.cus.dto.base.SuccessResponse;
-import study_web.cus.dto.request.auth.ChangePasswordRequest;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.enums.Gender;
-import study_web.cus.exception.user.UserErrorCode;
-import study_web.cus.exception.user.UserException;
-import study_web.cus.service.user.UserService;
+import studyweb.cus.controller.AbstractBaseController;
+import studyweb.cus.controller.ResponseFactory;
+import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.enums.Gender;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
+import studyweb.cus.service.user.UserService;
 
 @ExtendWith(MockitoExtension.class)
 class UserControllerTest {

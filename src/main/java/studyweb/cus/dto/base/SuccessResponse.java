@@ -1,4 +1,4 @@
-package study_web.cus.dto.base;
+package studyweb.cus.dto.base;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 

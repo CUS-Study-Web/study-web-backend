@@ -1,7 +1,7 @@
 # Folder Structure
 
 ```
-src/main/java/study_web/cus/
+src/main/java/studyweb/cus/
 ├── config/        → @Configuration, @Bean definitions (security, DB, etc.)
 ├── constant/      → Static final constants (API paths, error codes, etc.)
 ├── controller/    → REST endpoints (@RestController), request validation, response shaping
@@ -22,5 +22,5 @@ src/main/resources/
 ├── application.yml       → App config (DB, env-specific properties)
 ├── db/migration/         → Flyway SQL migration scripts (V1__, V2__, ...)
 
-src/test/java/study_web/cus/  → Unit & integration tests mirroring main packages
+src/test/java/studyweb/cus/  → Unit & integration tests mirroring main packages
 ```

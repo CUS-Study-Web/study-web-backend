@@ -1,4 +1,4 @@
-package study_web.cus.exception;
+package studyweb.cus.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

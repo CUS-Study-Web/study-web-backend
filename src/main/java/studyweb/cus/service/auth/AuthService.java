@@ -1,10 +1,10 @@
-package study_web.cus.service.auth;
+package studyweb.cus.service.auth;
 
-import study_web.cus.dto.request.auth.ForgetPasswordRequest;
-import study_web.cus.dto.request.auth.LoginRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.request.auth.ResetPasswordRequest;
-import study_web.cus.dto.response.auth.AuthResponse;
+import studyweb.cus.dto.request.auth.ForgetPasswordRequest;
+import studyweb.cus.dto.request.auth.LoginRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.auth.ResetPasswordRequest;
+import studyweb.cus.dto.response.auth.AuthResponse;
 
 public interface AuthService {
 
