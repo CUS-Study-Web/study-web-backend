@@ -77,16 +77,16 @@ class EntityInheritanceTest {
   }
 
   @Test
-  @DisplayName("AuditAbstractEntity must inherit from AbstractBaseEntity")
-  void testAuditAbstractEntityInheritsAbstractBaseEntity() {
-    assertThat(AbstractBaseEntity.class.isAssignableFrom(AuditAbstractEntity.class))
-        .as("AuditAbstractEntity should inherit from AbstractBaseEntity")
+  @DisplayName("AbstractAuditEntity must inherit from AbstractBaseEntity")
+  void testAbstractAuditEntityInheritsAbstractBaseEntity() {
+    assertThat(AbstractBaseEntity.class.isAssignableFrom(AbstractAuditEntity.class))
+        .as("AbstractAuditEntity should inherit from AbstractBaseEntity")
         .isTrue();
   }
 
   @Test
-  @DisplayName("Soft-deletable entities must inherit from AuditAbstractEntity")
-  void testSoftDeletableEntitiesInheritAuditAbstractEntity() {
+  @DisplayName("Soft-deletable entities must inherit from AbstractAuditEntity")
+  void testSoftDeletableEntitiesInheritAbstractAuditEntity() {
     List<Class<?>> auditEntityClasses =
         List.of(
             Course.class,
@@ -98,8 +98,8 @@ class EntityInheritanceTest {
             MonthlySystemStat.class);
 
     for (Class<?> clazz : auditEntityClasses) {
-      assertThat(AuditAbstractEntity.class.isAssignableFrom(clazz))
-          .as("Class %s should inherit from AuditAbstractEntity", clazz.getSimpleName())
+      assertThat(AbstractAuditEntity.class.isAssignableFrom(clazz))
+          .as("Class %s should inherit from AbstractAuditEntity", clazz.getSimpleName())
           .isTrue();
     }
   }
@@ -140,8 +140,8 @@ class EntityInheritanceTest {
 
   @Test
   @DisplayName(
-      "AuditAbstractEntity fields id, createdAt, updatedAt, deletedAt are accessible on inheriting entities")
-  void testAuditAbstractEntityFieldsAccessibility() {
+      "AbstractAuditEntity fields id, createdAt, updatedAt, deletedAt are accessible on inheriting entities")
+  void testAbstractAuditEntityFieldsAccessibility() {
     UUID testId = UUID.randomUUID();
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime deletedTime = now.plusDays(1);

@@ -14,7 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AuditAbstractEntity;
+import studyweb.cus.entity.AbstractAuditEntity;
 import studyweb.cus.enums.CorrectAnswer;
 
 @Entity
@@ -26,7 +26,7 @@ import studyweb.cus.enums.CorrectAnswer;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnswerKey extends AuditAbstractEntity {
+public class AnswerKey extends AbstractAuditEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_id", nullable = false)

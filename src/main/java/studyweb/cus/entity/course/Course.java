@@ -8,7 +8,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AuditAbstractEntity;
+import studyweb.cus.entity.AbstractAuditEntity;
 
 @Entity
 @Table(name = "courses")
@@ -17,7 +17,7 @@ import studyweb.cus.entity.AuditAbstractEntity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Course extends AuditAbstractEntity {
+public class Course extends AbstractAuditEntity {
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;

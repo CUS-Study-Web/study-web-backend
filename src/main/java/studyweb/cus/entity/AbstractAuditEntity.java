@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @MappedSuperclass
-public class AuditAbstractEntity extends AbstractBaseEntity {
+public class AbstractAuditEntity extends AbstractBaseEntity {
 
   @Column(name = "deleted_at")
   private LocalDateTime deletedAt;

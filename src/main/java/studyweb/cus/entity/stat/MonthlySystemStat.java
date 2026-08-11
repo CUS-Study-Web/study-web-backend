@@ -9,7 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AuditAbstractEntity;
+import studyweb.cus.entity.AbstractAuditEntity;
 
 @Entity
 @Table(
@@ -24,7 +24,7 @@ import studyweb.cus.entity.AuditAbstractEntity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MonthlySystemStat extends AuditAbstractEntity {
+public class MonthlySystemStat extends AbstractAuditEntity {
 
   @Column(name = "month", nullable = false)
   private Integer month;
