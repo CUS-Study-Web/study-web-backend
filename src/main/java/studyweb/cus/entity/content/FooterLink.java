@@ -21,7 +21,9 @@ import lombok.Setter;
 import studyweb.cus.enums.FooterCategory;
 
 @Entity
-@Table(name = "footer_links", indexes = { @Index(name = "idx_footer_links_footer", columnList = "footer_id") })
+@Table(
+    name = "footer_links",
+    indexes = {@Index(name = "idx_footer_links_footer", columnList = "footer_id")})
 @Getter
 @Setter
 @NoArgsConstructor

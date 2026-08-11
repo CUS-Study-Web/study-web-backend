@@ -8,7 +8,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,7 +20,9 @@ import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 
 @Entity
-@Table(name = "users", indexes = { @Index(name = "idx_user_gmail", columnList = "gmail", unique = true) })
+@Table(
+    name = "users",
+    indexes = {@Index(name = "idx_user_gmail", columnList = "gmail", unique = true)})
 @Getter
 @Setter
 @NoArgsConstructor
