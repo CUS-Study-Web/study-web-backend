@@ -8,13 +8,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 
 @Entity
 @Table(
@@ -25,7 +24,7 @@ import studyweb.cus.entity.AbstractBaseEntity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Subject extends AbstractBaseEntity {
+public class Subject extends AuditAbstractEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "course_id", nullable = false)
@@ -45,7 +44,4 @@ public class Subject extends AbstractBaseEntity {
   @Column(name = "duration_hour", precision = 5, scale = 2)
   @Builder.Default
   private BigDecimal durationHour = BigDecimal.ZERO;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }

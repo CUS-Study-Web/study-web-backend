@@ -15,7 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
@@ -33,7 +33,7 @@ import studyweb.cus.enums.AssessmentType;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Assessment extends AbstractBaseEntity {
+public class Assessment extends AuditAbstractEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "course_id")
@@ -89,7 +89,4 @@ public class Assessment extends AbstractBaseEntity {
 
   @Column(name = "published_at")
   private LocalDateTime publishedAt;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }

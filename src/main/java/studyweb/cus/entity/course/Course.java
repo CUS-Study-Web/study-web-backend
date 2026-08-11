@@ -3,13 +3,12 @@ package studyweb.cus.entity.course;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 
 @Entity
 @Table(name = "courses")
@@ -18,7 +17,7 @@ import studyweb.cus.entity.AbstractBaseEntity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Course extends AbstractBaseEntity {
+public class Course extends AuditAbstractEntity {
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;
@@ -34,7 +33,4 @@ public class Course extends AbstractBaseEntity {
 
   @Column(name = "thumbnail_url", length = 500)
   private String thumbnailUrl;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }

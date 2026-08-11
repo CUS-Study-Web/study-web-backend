@@ -9,13 +9,12 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 import studyweb.cus.enums.CorrectAnswer;
 
 @Entity
@@ -27,7 +26,7 @@ import studyweb.cus.enums.CorrectAnswer;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnswerKey extends AbstractBaseEntity {
+public class AnswerKey extends AuditAbstractEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "exam_id", nullable = false)
@@ -43,7 +42,4 @@ public class AnswerKey extends AbstractBaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "correct_answer", nullable = false, length = 10)
   private CorrectAnswer correctAnswer;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }

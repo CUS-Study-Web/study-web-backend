@@ -9,13 +9,12 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 import studyweb.cus.enums.AccessTier;
 
 @Entity
@@ -27,7 +26,7 @@ import studyweb.cus.enums.AccessTier;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Lesson extends AbstractBaseEntity {
+public class Lesson extends AuditAbstractEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "subject_id", nullable = false)
@@ -51,7 +50,4 @@ public class Lesson extends AbstractBaseEntity {
   @Column(name = "access", nullable = false, length = 20)
   @Builder.Default
   private AccessTier access = AccessTier.PUBLIC;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }

@@ -4,13 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import studyweb.cus.entity.AbstractBaseEntity;
+import studyweb.cus.entity.AuditAbstractEntity;
 
 @Entity
 @Table(
@@ -25,7 +24,7 @@ import studyweb.cus.entity.AbstractBaseEntity;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MonthlySystemStat extends AbstractBaseEntity {
+public class MonthlySystemStat extends AuditAbstractEntity {
 
   @Column(name = "month", nullable = false)
   private Integer month;
@@ -48,7 +47,4 @@ public class MonthlySystemStat extends AbstractBaseEntity {
   @Column(name = "login_count", nullable = false)
   @Builder.Default
   private Integer loginCount = 0;
-
-  @Column(name = "deleted_at")
-  private LocalDateTime deletedAt;
 }
