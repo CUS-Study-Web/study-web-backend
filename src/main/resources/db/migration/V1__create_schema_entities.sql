@@ -116,7 +116,9 @@ CREATE TABLE assessment_attempts (
     num_correct INT NOT NULL DEFAULT 0,
     num_wrong INT NOT NULL DEFAULT 0,
     duration_min INT NOT NULL DEFAULT 0,
-    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_assessment_attempts_user ON assessment_attempts(user_id);
 CREATE INDEX idx_assessment_attempts_exam ON assessment_attempts(exam_id);
@@ -209,7 +211,9 @@ CREATE TABLE achievement_scores (
     id UUID PRIMARY KEY,
     exam_subject_id UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
     achievement_id UUID NOT NULL REFERENCES leaderboard(id) ON DELETE CASCADE,
-    score INT NOT NULL DEFAULT 0
+    score INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_achievement_scores_leaderboard ON achievement_scores(achievement_id);
 
@@ -243,7 +247,8 @@ CREATE TABLE activity_logs (
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     action_type VARCHAR(100) NOT NULL,
     description VARCHAR(500),
-    created_at TIMESTAMP NOT NULL
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_activity_logs_user ON activity_logs(user_id);
 
@@ -295,6 +300,7 @@ CREATE TABLE homepage_content (
     student1_avatar VARCHAR(500),
     student_stats_desc TEXT,
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
 
@@ -315,6 +321,7 @@ CREATE TABLE footer_content (
     privacy_url VARCHAR(500),
     terms_url VARCHAR(500),
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
 
@@ -325,7 +332,9 @@ CREATE TABLE footer_links (
     category VARCHAR(20) NOT NULL DEFAULT 'PROGRAM',
     label VARCHAR(150) NOT NULL,
     url VARCHAR(500) NOT NULL,
-    sort_order INT NOT NULL DEFAULT 0
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_footer_links_footer ON footer_links(footer_id);
 
@@ -343,6 +352,7 @@ CREATE TABLE pricing_page_content (
     vip_pkg_desc TEXT,
     vip_btn_text VARCHAR(100),
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
 
@@ -361,3 +371,4 @@ CREATE TABLE vip_features (
     updated_at TIMESTAMP NOT NULL
 );
 CREATE INDEX idx_vip_features_setting ON vip_features(setting_id);
+
