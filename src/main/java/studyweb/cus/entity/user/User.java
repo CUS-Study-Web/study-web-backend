@@ -7,6 +7,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,11 +16,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
 
 @Entity
-@Table(
-    name = "users",
-    indexes = {@Index(name = "idx_user_gmail", columnList = "gmail", unique = true)})
+@Table(name = "users", indexes = { @Index(name = "idx_user_gmail", columnList = "gmail", unique = true) })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,4 +50,25 @@ public class User extends AbstractBaseEntity {
 
   @Column(name = "password", nullable = false, length = 255)
   private String password;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "role", nullable = false, length = 20)
+  @Builder.Default
+  private UserRole role = UserRole.LEARNER;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "tier", nullable = false, length = 20)
+  @Builder.Default
+  private UserTier tier = UserTier.NORMAL;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  @Builder.Default
+  private UserStatus status = UserStatus.ACTIVE;
+
+  @Column(name = "join_date")
+  private LocalDateTime joinDate;
+
+  @Column(name = "last_login")
+  private LocalDateTime lastLogin;
 }
