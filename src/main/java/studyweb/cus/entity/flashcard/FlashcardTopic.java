@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
-import studyweb.cus.entity.AbstractBaseEntity;
 import studyweb.cus.entity.user.User;
 
 @Entity
