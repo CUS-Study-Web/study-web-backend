@@ -131,7 +131,8 @@ CREATE TABLE flashcard_topics (
     description TEXT,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
-    updated_by UUID REFERENCES users(id) ON DELETE SET NULL
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    deleted_at TIMESTAMP 
 );
 
 -- 10. Flashcards

@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import studyweb.cus.entity.AbstractAuditEntity;
 import studyweb.cus.entity.AbstractBaseEntity;
 import studyweb.cus.entity.user.User;
 
@@ -21,7 +22,7 @@ import studyweb.cus.entity.user.User;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FlashcardTopic extends AbstractBaseEntity {
+public class FlashcardTopic extends AbstractAuditEntity {
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;
