@@ -47,7 +47,8 @@ public class CourseServiceImpl implements CourseService {
   @Transactional(readOnly = true)
   public CourseListResponse listCourses(Pageable pageable) {
     Page<Course> page = courseRepository.findByDeletedAtIsNull(pageable);
-    List<CourseSummaryResponse> courses = page.getContent().stream().map(courseMapper::toCourseSummary).toList();
+    List<CourseSummaryResponse> courses =
+        page.getContent().stream().map(courseMapper::toCourseSummary).toList();
     log.info(
         "Listed {} courses (page {}, size {})", courses.size(), page.getNumber(), page.getSize());
     return CourseListResponse.of(page, courses);
@@ -62,7 +63,8 @@ public class CourseServiceImpl implements CourseService {
     // ponytail: progress module not implemented, always null for learners
     Integer learningProgress = null;
 
-    List<SubjectSummaryResponse> summaries = subjects.stream().map(courseMapper::toSubjectSummary).toList();
+    List<SubjectSummaryResponse> summaries =
+        subjects.stream().map(courseMapper::toSubjectSummary).toList();
     long totalSubjects = subjects.size();
     log.info("Fetched course detail {} with {} subject(s)", course.getId(), totalSubjects);
     return CourseDetailResponse.of(totalSubjects, learningProgress, summaries);
@@ -71,13 +73,14 @@ public class CourseServiceImpl implements CourseService {
   @Override
   @Transactional
   public CourseSummaryResponse createCourse(CourseRequest request) {
-    Course course = Course.builder()
-        .title(request.title())
-        .subtitle(request.subtitle())
-        .badgeTitle(request.badgeTitle())
-        .description(request.description())
-        .thumbnailUrl(request.thumbnailUrl())
-        .build();
+    Course course =
+        Course.builder()
+            .title(request.title())
+            .subtitle(request.subtitle())
+            .badgeTitle(request.badgeTitle())
+            .description(request.description())
+            .thumbnailUrl(request.thumbnailUrl())
+            .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
     return courseMapper.toCourseSummary(saved);
@@ -108,12 +111,13 @@ public class CourseServiceImpl implements CourseService {
   @Transactional
   public SubjectSummaryResponse createSubject(UUID courseId, SubjectRequest request) {
     Course course = requireCourse(courseId);
-    Subject subject = Subject.builder()
-        .course(course)
-        .title(request.title())
-        .maxScores(request.maxScores())
-        .durationHour(defaultOr(request.durationHour(), BigDecimal.ZERO))
-        .build();
+    Subject subject =
+        Subject.builder()
+            .course(course)
+            .title(request.title())
+            .maxScores(request.maxScores())
+            .durationHour(defaultOr(request.durationHour(), BigDecimal.ZERO))
+            .build();
     Subject saved = subjectRepository.save(subject);
     log.info("Created subject {} for course {}", saved.getId(), courseId);
     return courseMapper.toSubjectSummary(saved);
@@ -151,9 +155,11 @@ public class CourseServiceImpl implements CourseService {
     requireSubject(courseId, subjectId);
 
     List<AccessTier> visibleTiers = visibleTiers(email);
-    Page<Lesson> page = lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-        subjectId, visibleTiers, pageable);
-    List<LessonSummaryResponse> lessons = page.getContent().stream().map(courseMapper::toLessonSummary).toList();
+    Page<Lesson> page =
+        lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
+            subjectId, visibleTiers, pageable);
+    List<LessonSummaryResponse> lessons =
+        page.getContent().stream().map(courseMapper::toLessonSummary).toList();
     log.info(
         "Listed {} lessons for subject {} (user: {}, tiers {})",
         lessons.size(),
@@ -169,14 +175,15 @@ public class CourseServiceImpl implements CourseService {
     requireCourse(courseId);
     Subject subject = requireSubject(courseId, subjectId);
 
-    Lesson lesson = Lesson.builder()
-        .subject(subject)
-        .orderNum(defaultOr(request.orderNum(), nextLessonOrder(subjectId)))
-        .title(request.title())
-        .youtubeUrl(request.youtubeUrl())
-        .durationMin(request.durationMin())
-        .access(defaultOr(request.access(), AccessTier.PUBLIC))
-        .build();
+    Lesson lesson =
+        Lesson.builder()
+            .subject(subject)
+            .orderNum(defaultOr(request.orderNum(), nextLessonOrder(subjectId)))
+            .title(request.title())
+            .youtubeUrl(request.youtubeUrl())
+            .durationMin(request.durationMin())
+            .access(defaultOr(request.access(), AccessTier.PUBLIC))
+            .build();
     Lesson saved = lessonRepository.save(lesson);
 
     subject.setNumLessons(
@@ -248,9 +255,10 @@ public class CourseServiceImpl implements CourseService {
     return userRepository
         .findByGmail(email)
         .map(
-            user -> user.getTier() == UserTier.VIP
-                ? List.of(AccessTier.PUBLIC, AccessTier.VIP)
-                : List.of(AccessTier.PUBLIC))
+            user ->
+                user.getTier() == UserTier.VIP
+                    ? List.of(AccessTier.PUBLIC, AccessTier.VIP)
+                    : List.of(AccessTier.PUBLIC))
         .orElse(List.of(AccessTier.PUBLIC));
   }
 
