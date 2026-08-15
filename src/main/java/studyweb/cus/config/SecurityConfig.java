@@ -3,6 +3,7 @@ package studyweb.cus.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -39,6 +40,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers("/api/auth/**", "/api/public/**")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
                     .permitAll()
                     .requestMatchers(
                         "/api-docs/**",
