@@ -1,4 +1,4 @@
-package study_web.cus.service.email;
+package studyweb.cus.service.email;
 
 public interface EmailService {
 

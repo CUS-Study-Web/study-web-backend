@@ -1,7 +1,7 @@
-package study_web.cus.exception.user;
+package studyweb.cus.exception.user;
 
 import lombok.Getter;
-import study_web.cus.exception.BaseException;
+import studyweb.cus.exception.BaseException;
 
 @Getter
 public class UserException extends BaseException {

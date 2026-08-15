@@ -1,4 +1,4 @@
-package study_web.cus.entity.redis;
+package studyweb.cus.entity.redis;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

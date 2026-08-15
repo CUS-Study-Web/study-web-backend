@@ -1,10 +1,10 @@
-package study_web.cus.exception.system;
+package studyweb.cus.exception.system;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import org.springframework.http.HttpStatus;
-import study_web.cus.exception.BaseErrorCode;
+import studyweb.cus.exception.BaseErrorCode;
 
 @Getter
 @Accessors(fluent = true)

@@ -1,7 +1,7 @@
-package study_web.cus.dto.request.auth;
+package studyweb.cus.dto.request.auth;
 
 import java.time.LocalDate;
-import study_web.cus.enums.Gender;
+import studyweb.cus.enums.Gender;
 
 public record RegisterRequest(
     String gmail,

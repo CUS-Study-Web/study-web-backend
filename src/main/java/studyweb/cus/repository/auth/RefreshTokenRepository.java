@@ -1,9 +1,9 @@
-package study_web.cus.repository.auth;
+package studyweb.cus.repository.auth;
 
 import java.util.Optional;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
-import study_web.cus.entity.redis.RefreshToken;
+import studyweb.cus.entity.redis.RefreshToken;
 
 @Repository
 public interface RefreshTokenRepository extends CrudRepository<RefreshToken, String> {

@@ -1,4 +1,4 @@
-package study_web.cus.config;
+package studyweb.cus.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -12,9 +12,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import study_web.cus.security.JwtAuthenticationEntryPoint;
-import study_web.cus.security.JwtAuthenticationFilter;
-import study_web.cus.security.RestAccessDeniedHandler;
+import studyweb.cus.security.JwtAuthenticationEntryPoint;
+import studyweb.cus.security.JwtAuthenticationFilter;
+import studyweb.cus.security.RestAccessDeniedHandler;
 
 @Configuration
 @EnableWebSecurity

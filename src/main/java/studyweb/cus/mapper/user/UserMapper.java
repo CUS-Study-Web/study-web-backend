@@ -1,9 +1,9 @@
-package study_web.cus.mapper.user;
+package studyweb.cus.mapper.user;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.entity.user.User;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.entity.user.User;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface UserMapper {

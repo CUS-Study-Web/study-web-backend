@@ -1,4 +1,4 @@
-package study_web.cus.dto.request.auth;
+package studyweb.cus.dto.request.auth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

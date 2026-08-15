@@ -1,9 +1,9 @@
-package study_web.cus.controller;
+package studyweb.cus.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import study_web.cus.dto.base.SingleResponse;
-import study_web.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.SuccessResponse;
 
 public abstract class AbstractBaseController {
 

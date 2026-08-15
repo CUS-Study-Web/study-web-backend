@@ -1,7 +1,7 @@
 # Read Me First
 The following was discovered as part of building this project:
 
-* The original package name 'study-web.cus' is invalid and this project uses 'study_web.cus' instead.
+* The original package name 'study-web.cus' is invalid and this project uses 'studyweb.cus' instead.
 
 # Getting Started
 

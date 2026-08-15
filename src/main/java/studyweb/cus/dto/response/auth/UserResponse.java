@@ -1,8 +1,8 @@
-package study_web.cus.dto.response.auth;
+package studyweb.cus.dto.response.auth;
 
 import java.time.LocalDate;
 import java.util.UUID;
-import study_web.cus.enums.Gender;
+import studyweb.cus.enums.Gender;
 
 public record UserResponse(
     UUID id,

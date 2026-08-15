@@ -1,4 +1,4 @@
-package study_web.cus.constant;
+package studyweb.cus.constant;
 
 public final class RedisConstants {
 

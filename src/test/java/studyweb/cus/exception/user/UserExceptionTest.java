@@ -1,4 +1,4 @@
-package study_web.cus.exception.user;
+package studyweb.cus.exception.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

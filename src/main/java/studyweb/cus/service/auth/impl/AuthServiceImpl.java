@@ -1,4 +1,4 @@
-package study_web.cus.service.auth.impl;
+package studyweb.cus.service.auth.impl;
 
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
@@ -7,23 +7,23 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import study_web.cus.dto.request.auth.ForgetPasswordRequest;
-import study_web.cus.dto.request.auth.LoginRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.request.auth.ResetPasswordRequest;
-import study_web.cus.dto.response.auth.AuthResponse;
-import study_web.cus.entity.redis.PasswordResetOtp;
-import study_web.cus.entity.user.User;
-import study_web.cus.exception.auth.AuthErrorCode;
-import study_web.cus.exception.auth.AuthException;
-import study_web.cus.mapper.user.UserMapper;
-import study_web.cus.repository.auth.PasswordResetTokenRepository;
-import study_web.cus.repository.auth.RefreshTokenRepository;
-import study_web.cus.repository.user.UserRepository;
-import study_web.cus.security.JwtUtils;
-import study_web.cus.service.auth.AuthService;
-import study_web.cus.service.email.EmailService;
-import study_web.cus.service.user.UserService;
+import studyweb.cus.dto.request.auth.ForgetPasswordRequest;
+import studyweb.cus.dto.request.auth.LoginRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.auth.ResetPasswordRequest;
+import studyweb.cus.dto.response.auth.AuthResponse;
+import studyweb.cus.entity.redis.PasswordResetOtp;
+import studyweb.cus.entity.user.User;
+import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.mapper.user.UserMapper;
+import studyweb.cus.repository.auth.PasswordResetTokenRepository;
+import studyweb.cus.repository.auth.RefreshTokenRepository;
+import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.auth.AuthService;
+import studyweb.cus.service.email.EmailService;
+import studyweb.cus.service.user.UserService;
 
 @Service
 @RequiredArgsConstructor

@@ -1,4 +1,4 @@
-package study_web.cus.service.email.impl;
+package studyweb.cus.service.email.impl;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -13,7 +13,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import study_web.cus.service.email.EmailService;
+import studyweb.cus.service.email.EmailService;
 
 @Service
 @RequiredArgsConstructor

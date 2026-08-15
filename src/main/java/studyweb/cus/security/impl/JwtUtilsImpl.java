@@ -1,4 +1,4 @@
-package study_web.cus.security.impl;
+package studyweb.cus.security.impl;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -16,10 +16,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
-import study_web.cus.constant.RedisConstants;
-import study_web.cus.entity.redis.RefreshToken;
-import study_web.cus.repository.auth.RefreshTokenRepository;
-import study_web.cus.security.JwtUtils;
+import studyweb.cus.constant.RedisConstants;
+import studyweb.cus.entity.redis.RefreshToken;
+import studyweb.cus.repository.auth.RefreshTokenRepository;
+import studyweb.cus.security.JwtUtils;
 
 @Component
 @Slf4j

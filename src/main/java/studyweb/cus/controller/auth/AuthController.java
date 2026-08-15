@@ -1,4 +1,4 @@
-package study_web.cus.controller.auth;
+package studyweb.cus.controller.auth;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,17 +11,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import study_web.cus.controller.AbstractBaseController;
-import study_web.cus.dto.base.SingleResponse;
-import study_web.cus.dto.base.SuccessResponse;
-import study_web.cus.dto.request.auth.ForgetPasswordRequest;
-import study_web.cus.dto.request.auth.LoginRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.request.auth.ResetPasswordRequest;
-import study_web.cus.dto.response.auth.AuthResponse;
-import study_web.cus.exception.auth.AuthErrorCode;
-import study_web.cus.exception.auth.AuthException;
-import study_web.cus.service.auth.AuthService;
+import studyweb.cus.controller.AbstractBaseController;
+import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.request.auth.ForgetPasswordRequest;
+import studyweb.cus.dto.request.auth.LoginRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.auth.ResetPasswordRequest;
+import studyweb.cus.dto.response.auth.AuthResponse;
+import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.service.auth.AuthService;
 
 @RestController
 @RequestMapping("/api/auth")

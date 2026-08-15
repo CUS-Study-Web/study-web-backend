@@ -1,21 +1,21 @@
-package study_web.cus.service.user.impl;
+package studyweb.cus.service.user.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import study_web.cus.dto.request.auth.ChangePasswordRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.entity.user.User;
-import study_web.cus.exception.auth.AuthErrorCode;
-import study_web.cus.exception.auth.AuthException;
-import study_web.cus.exception.user.UserErrorCode;
-import study_web.cus.exception.user.UserException;
-import study_web.cus.mapper.user.UserMapper;
-import study_web.cus.repository.user.UserRepository;
-import study_web.cus.security.JwtUtils;
-import study_web.cus.service.user.UserService;
+import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.entity.user.User;
+import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
+import studyweb.cus.mapper.user.UserMapper;
+import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.user.UserService;
 
 @Service
 @RequiredArgsConstructor

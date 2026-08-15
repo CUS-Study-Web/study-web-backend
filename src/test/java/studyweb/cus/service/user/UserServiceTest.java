@@ -1,4 +1,4 @@
-package study_web.cus.service.user;
+package studyweb.cus.service.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -15,19 +15,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import study_web.cus.dto.request.auth.ChangePasswordRequest;
-import study_web.cus.dto.request.auth.RegisterRequest;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.entity.user.User;
-import study_web.cus.enums.Gender;
-import study_web.cus.exception.auth.AuthErrorCode;
-import study_web.cus.exception.auth.AuthException;
-import study_web.cus.exception.user.UserErrorCode;
-import study_web.cus.exception.user.UserException;
-import study_web.cus.mapper.user.UserMapper;
-import study_web.cus.repository.user.UserRepository;
-import study_web.cus.security.JwtUtils;
-import study_web.cus.service.user.impl.UserServiceImpl;
+import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.Gender;
+import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
+import studyweb.cus.mapper.user.UserMapper;
+import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.user.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {

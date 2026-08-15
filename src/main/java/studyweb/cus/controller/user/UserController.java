@@ -1,4 +1,4 @@
-package study_web.cus.controller.user;
+package studyweb.cus.controller.user;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import study_web.cus.controller.AbstractBaseController;
-import study_web.cus.dto.base.SingleResponse;
-import study_web.cus.dto.base.SuccessResponse;
-import study_web.cus.dto.request.auth.ChangePasswordRequest;
-import study_web.cus.dto.response.auth.UserResponse;
-import study_web.cus.exception.user.UserErrorCode;
-import study_web.cus.exception.user.UserException;
-import study_web.cus.service.user.UserService;
+import studyweb.cus.controller.AbstractBaseController;
+import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
+import studyweb.cus.service.user.UserService;
 
 @RestController
 @RequestMapping("/api/user")

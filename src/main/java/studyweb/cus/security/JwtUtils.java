@@ -1,4 +1,4 @@
-package study_web.cus.security;
+package studyweb.cus.security;
 
 public interface JwtUtils {
 

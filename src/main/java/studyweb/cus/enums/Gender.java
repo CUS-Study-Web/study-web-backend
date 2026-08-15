@@ -1,4 +1,4 @@
-package study_web.cus.enums;
+package studyweb.cus.enums;
 
 public enum Gender {
   MALE,

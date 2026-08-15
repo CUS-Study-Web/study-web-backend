@@ -1,4 +1,4 @@
-package study_web.cus.exception;
+package studyweb.cus.exception;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,8 +17,8 @@ import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import study_web.cus.dto.base.ErrorResponse;
-import study_web.cus.exception.system.SystemErrorCode;
+import studyweb.cus.dto.base.ErrorResponse;
+import studyweb.cus.exception.system.SystemErrorCode;
 
 @RestControllerAdvice
 @Slf4j
