@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
@@ -31,6 +33,7 @@ import studyweb.cus.repository.course.LessonRepository;
 import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.CourseService;
+import studyweb.cus.service.file.FileService;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +45,7 @@ public class CourseServiceImpl implements CourseService {
   private final LessonRepository lessonRepository;
   private final UserRepository userRepository;
   private final CourseMapper courseMapper;
+  private final FileService fileService;
 
   @Override
   @Transactional(readOnly = true)
@@ -228,6 +232,12 @@ public class CourseServiceImpl implements CourseService {
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     log.info("Soft-deleted lesson {} of subject {}", lessonId, subjectId);
+  }
+
+  @Override
+  public List<UploadDocumentResult> uploadDocuments(List<MultipartFile> files) {
+    log.info("Uploading {} course document(s)", files.size());
+    return fileService.uploadMultipleDocuments(files);
   }
 
   private Course requireCourse(UUID id) {

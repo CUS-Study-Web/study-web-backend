@@ -42,6 +42,7 @@ import studyweb.cus.repository.course.LessonRepository;
 import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.impl.CourseServiceImpl;
+import studyweb.cus.service.file.FileService;
 
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
@@ -51,6 +52,7 @@ class CourseServiceTest {
   @Mock private LessonRepository lessonRepository;
   @Mock private UserRepository userRepository;
   @Mock private CourseMapper courseMapper;
+  @Mock private FileService fileService;
 
   @InjectMocks private CourseServiceImpl courseService;
 

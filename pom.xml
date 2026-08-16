@@ -146,6 +146,12 @@
 			<artifactId>mapstruct</artifactId>
 			<version>${mapstruct.version}</version>
 		</dependency>
+		<!-- ponytail: io.minio:minio not in Spring Boot BOM, pinned explicitly -->
+		<dependency>
+			<groupId>io.minio</groupId>
+			<artifactId>minio</artifactId>
+			<version>8.5.17</version>
+		</dependency>
 	</dependencies>
 
 	<build>
