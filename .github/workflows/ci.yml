@@ -12,30 +12,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  format-check:
-    name: Format & Import Check
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: "25"
-          distribution: "temurin"
-          cache: maven
-
-      - name: Grant execute permission for mvnw
-        run: |
-          sudo apt-get install -y dos2unix
-          dos2unix mvnw
-          chmod +x mvnw
-
-
   build-and-test:
     name: Build & Run Unit Tests
     needs: format-check
