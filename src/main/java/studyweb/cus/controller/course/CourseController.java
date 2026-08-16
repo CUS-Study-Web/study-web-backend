@@ -20,10 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
@@ -38,8 +35,6 @@ import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
-import studyweb.cus.exception.file.FileErrorCode;
-import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.course.CourseService;
 
 @RestController
@@ -69,8 +64,7 @@ public class CourseController extends AbstractBaseController {
       throw new CourseException(CourseErrorCode.CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL);
     }
     log.info("[POST /api/courses] Creating course '{}'", request.title());
-    return successSingle(
-        courseService.createCourse(request), "Course created successfully!");
+    return successSingle(courseService.createCourse(request), "Course created successfully!");
   }
 
   @GetMapping("/{id}")
@@ -85,12 +79,10 @@ public class CourseController extends AbstractBaseController {
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Update Course", description = "Update an existing course (admin only)")
   public ResponseEntity<SingleResponse<CourseSummaryResponse>> updateCourse(
-      @PathVariable UUID id,
-      @Valid @ModelAttribute CourseRequest request) {
+      @PathVariable UUID id, @Valid @ModelAttribute CourseRequest request) {
 
     log.info("[PATCH /api/courses/{}] Updating course", id);
-    return successSingle(
-        courseService.updateCourse(id, request), "Course updated successfully!");
+    return successSingle(courseService.updateCourse(id, request), "Course updated successfully!");
   }
 
   @DeleteMapping("/{id}")
@@ -125,7 +117,9 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}")
   @PreAuthorize("hasRole('ADMIN')")
-  @Operation(summary = "Delete Subject", description = "Soft-delete a subject of a course (admin only)")
+  @Operation(
+      summary = "Delete Subject",
+      description = "Soft-delete a subject of a course (admin only)")
   public ResponseEntity<SuccessResponse> deleteSubject(
       @PathVariable UUID id, @PathVariable UUID subjectId) {
     log.info("[DELETE /api/courses/{}/subjects/{}] Deleting subject", id, subjectId);
@@ -134,7 +128,9 @@ public class CourseController extends AbstractBaseController {
   }
 
   @GetMapping("/{id}/subjects/{subjectId}/lessons")
-  @Operation(summary = "List Lessons", description = "List lessons of a subject; VIP lessons are hidden from non-VIP users")
+  @Operation(
+      summary = "List Lessons",
+      description = "List lessons of a subject; VIP lessons are hidden from non-VIP users")
   public ResponseEntity<SingleResponse<LessonListResponse>> listLessons(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -148,7 +144,9 @@ public class CourseController extends AbstractBaseController {
 
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Create Lesson", description = "Create a lesson for a subject (assistant only)")
+  @Operation(
+      summary = "Create Lesson",
+      description = "Create a lesson for a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse>> createLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -164,7 +162,9 @@ public class CourseController extends AbstractBaseController {
 
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Update Lesson", description = "Update a lesson of a subject (assistant only)")
+  @Operation(
+      summary = "Update Lesson",
+      description = "Update a lesson of a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse>> updateLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -179,7 +179,9 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Delete Lesson", description = "Soft-delete a lesson of a subject (assistant only)")
+  @Operation(
+      summary = "Delete Lesson",
+      description = "Soft-delete a lesson of a subject (assistant only)")
   public ResponseEntity<SuccessResponse> deleteLesson(
       @PathVariable UUID id, @PathVariable UUID subjectId, @PathVariable UUID lessonId) {
     log.info(

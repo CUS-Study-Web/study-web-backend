@@ -107,9 +107,7 @@ class CourseControllerTest {
   void courseDetail_delegatesToService() {
     CourseDetailResponse detail =
         CourseDetailResponse.of(
-            2,
-            null,
-            List.of(new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3)));
+            2, null, List.of(new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3)));
     when(courseService.getCourseDetail(COURSE_ID, "learner@studyweb.edu")).thenReturn(detail);
 
     ResponseEntity<SingleResponse<CourseDetailResponse>> response =

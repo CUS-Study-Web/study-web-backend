@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -86,7 +85,7 @@ public class FileServiceImpl implements FileService {
     try (InputStream inputStream = file.getInputStream()) {
       minioClient.putObject(
           PutObjectArgs.builder().bucket(minioProperties.getBucket()).object(objectName).stream(
-              inputStream, file.getSize(), -1)
+                  inputStream, file.getSize(), -1)
               .contentType(
                   file.getContentType() == null
                       ? "application/octet-stream"

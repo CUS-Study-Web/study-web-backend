@@ -10,9 +10,7 @@ import java.time.LocalDate;
 import studyweb.cus.enums.Gender;
 
 public record RegisterRequest(
-    @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        String gmail,
+    @NotBlank(message = "Email is required") @Email(message = "Invalid email format") String gmail,
     @NotBlank(message = "Name is required")
         @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
         String name,

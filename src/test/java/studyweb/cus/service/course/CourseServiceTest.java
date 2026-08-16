@@ -140,7 +140,8 @@ class CourseServiceTest {
 
     CourseSummaryResponse result =
         courseService.createCourse(
-            courseRequest(new MockMultipartFile("thumbnail", "t.png", "image/png", new byte[] {1})));
+            courseRequest(
+                new MockMultipartFile("thumbnail", "t.png", "image/png", new byte[] {1})));
 
     assertThat(result).isEqualTo(summary);
     verify(courseRepository).save(any(Course.class));
@@ -168,7 +169,7 @@ class CourseServiceTest {
     verify(fileService).uploadAvatarFile(thumbnail);
   }
 
-@Test
+  @Test
   void updateCourse_withThumbnail_uploadsAndPersistsUrl() {
     Course course = course();
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));

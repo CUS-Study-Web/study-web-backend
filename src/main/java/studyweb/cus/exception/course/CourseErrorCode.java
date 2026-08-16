@@ -16,8 +16,8 @@ public enum CourseErrorCode implements BaseErrorCode {
   COURSE_TITLE_EXISTS("COURSE_004", "A course with this title already exists", HttpStatus.CONFLICT),
   SUBJECT_TITLE_EXISTS(
       "COURSE_005", "A subject with this title already exists", HttpStatus.CONFLICT),
-  CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL("COURSE_006", "Thumbnal of new course can not be empty",
-      HttpStatus.BAD_REQUEST);
+  CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL(
+      "COURSE_006", "Thumbnal of new course can not be empty", HttpStatus.BAD_REQUEST);
 
   private final String code;
   private final String message;
