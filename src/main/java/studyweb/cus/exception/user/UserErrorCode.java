@@ -11,7 +11,8 @@ import studyweb.cus.exception.BaseErrorCode;
 @RequiredArgsConstructor
 public enum UserErrorCode implements BaseErrorCode {
   USER_NOT_FOUND("USER_001", "User not found", HttpStatus.NOT_FOUND),
-  USER_NOT_AUTHENTICATED("USER_002", "User is not authenticated", HttpStatus.UNAUTHORIZED);
+  USER_NOT_AUTHENTICATED("USER_002", "User is not authenticated", HttpStatus.UNAUTHORIZED),
+  INVALID_USER_INPUT("USER_003", "User input wrong format request", HttpStatus.BAD_REQUEST);
 
   private final String code;
   private final String message;
