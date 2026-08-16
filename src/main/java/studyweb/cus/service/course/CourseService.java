@@ -1,10 +1,8 @@
 package studyweb.cus.service.course;
 
-import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
-import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
@@ -41,6 +39,4 @@ public interface CourseService {
       UUID courseId, UUID subjectId, UUID lessonId, LessonRequest request);
 
   void deleteLesson(UUID courseId, UUID subjectId, UUID lessonId);
-
-  List<UploadDocumentResult> uploadDocuments(List<MultipartFile> files);
 }

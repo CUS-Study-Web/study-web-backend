@@ -1,8 +1,10 @@
 package studyweb.cus.controller.course;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -18,13 +20,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockMultipartFile;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
+import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
+import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.exception.course.CourseErrorCode;
+import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.service.course.CourseService;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,14 +54,21 @@ class CourseControllerTest {
     return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url");
   }
 
+  private CourseRequest request() {
+    return new CourseRequest(
+        "Java",
+        "sub",
+        "badge",
+        "desc",
+        new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] {1}));
+  }
+
   @Test
   void listCourses_delegatesToService() {
     when(courseService.listCourses(any(Pageable.class)))
-        .thenReturn(
-            new studyweb.cus.dto.response.course.CourseListResponse(
-                0, 10, 1, 1, List.of(summary()), 1));
+        .thenReturn(new CourseListResponse(0, 10, 1, 1, List.of(summary()), 1));
 
-    ResponseEntity<SingleResponse<studyweb.cus.dto.response.course.CourseListResponse>> response =
+    ResponseEntity<SingleResponse<CourseListResponse>> response =
         courseController.listCourses(PageRequest.of(0, 10));
 
     assertThat(response.getStatusCode().value()).isEqualTo(200);
@@ -65,7 +79,7 @@ class CourseControllerTest {
 
   @Test
   void createCourse_delegatesToService() {
-    CourseRequest request = new CourseRequest("Java", "sub", "badge", "desc", "url");
+    CourseRequest request = request();
     when(courseService.createCourse(request)).thenReturn(summary());
 
     ResponseEntity<SingleResponse<CourseSummaryResponse>> response =
@@ -76,14 +90,26 @@ class CourseControllerTest {
   }
 
   @Test
+  void createCourse_emptyThumbnailThrowsCourseException() {
+    CourseRequest request = new CourseRequest("Java", "sub", "badge", "desc", null);
+
+    assertThatThrownBy(() -> courseController.createCourse(request))
+        .isInstanceOf(CourseException.class)
+        .satisfies(
+            ex ->
+                assertThat(((CourseException) ex).getCode())
+                    .isEqualTo(CourseErrorCode.CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL.code()));
+
+    verify(courseService, never()).createCourse(any());
+  }
+
+  @Test
   void courseDetail_delegatesToService() {
     CourseDetailResponse detail =
         CourseDetailResponse.of(
             2,
             null,
-            List.of(
-                new studyweb.cus.dto.response.course.SubjectSummaryResponse(
-                    UUID.randomUUID(), "Basics", null, 3)));
+            List.of(new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3)));
     when(courseService.getCourseDetail(COURSE_ID, "learner@studyweb.edu")).thenReturn(detail);
 
     ResponseEntity<SingleResponse<CourseDetailResponse>> response =
@@ -114,7 +140,7 @@ class CourseControllerTest {
 
   @Test
   void updateCourse_delegatesToService() {
-    CourseRequest request = new CourseRequest("Java", "sub", "badge", "desc", "url");
+    CourseRequest request = request();
     when(courseService.updateCourse(COURSE_ID, request)).thenReturn(summary());
 
     ResponseEntity<SingleResponse<CourseSummaryResponse>> response =

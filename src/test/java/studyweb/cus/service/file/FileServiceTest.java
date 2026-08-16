@@ -5,9 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.http.Method;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,8 @@ import studyweb.cus.service.file.impl.FileServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class FileServiceTest {
 
+  private static final String SIGNED_URL = "https://minio1.webtui.vn:9000/bucket-vmt/signed?sig";
+
   @Mock private MinioClient minioClient;
 
   private final MinioProperties properties = new MinioProperties();
@@ -34,13 +39,18 @@ class FileServiceTest {
 
   @BeforeEach
   void setUp() {
-    properties.setEndpoint("https://minio1.webtui.vn:9001");
+    properties.setEndpoint("https://minio1.webtui.vn:9000");
     properties.setBucket("bucket-vmt");
     fileService = new FileServiceImpl(minioClient, properties);
   }
 
   private void stubPutObject() throws Exception {
     doReturn(null).when(minioClient).putObject(any(PutObjectArgs.class));
+  }
+
+  private void stubPresignedUrl() throws Exception {
+    when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
+        .thenReturn(SIGNED_URL);
   }
 
   private MockMultipartFile file(String name, String contentType, int... content) {
@@ -52,31 +62,38 @@ class FileServiceTest {
   }
 
   @Test
-  void uploadDocumentFileReturnsSizeAndPublicUrl() throws Exception {
+  void uploadDocumentFileReturnsSizeAndPresignedUrl() throws Exception {
     stubPutObject();
+    stubPresignedUrl();
 
     UploadDocumentResult result =
         fileService.uploadDocumentFile(file("lesson.pdf", "application/pdf", 1, 2, 3));
 
     assertThat(result.fileSize()).isEqualTo(3L);
-    assertThat(result.fileUrl())
-        .startsWith("https://minio1.webtui.vn:9001/bucket-vmt/documents/")
-        .endsWith(".pdf");
+    assertThat(result.fileUrl()).isEqualTo(SIGNED_URL);
 
     ArgumentCaptor<PutObjectArgs> captor = ArgumentCaptor.forClass(PutObjectArgs.class);
     verify(minioClient).putObject(captor.capture());
     assertThat(captor.getValue().bucket()).isEqualTo("bucket-vmt");
     assertThat(captor.getValue().object()).startsWith("documents/").endsWith(".pdf");
     assertThat(captor.getValue().objectSize()).isEqualTo(3L);
+
+    ArgumentCaptor<GetPresignedObjectUrlArgs> urlCaptor =
+        ArgumentCaptor.forClass(GetPresignedObjectUrlArgs.class);
+    verify(minioClient).getPresignedObjectUrl(urlCaptor.capture());
+    assertThat(urlCaptor.getValue().method()).isEqualTo(Method.GET);
+    assertThat(urlCaptor.getValue().bucket()).isEqualTo("bucket-vmt");
+    assertThat(urlCaptor.getValue().object()).startsWith("documents/").endsWith(".pdf");
   }
 
   @Test
   void uploadAvatarFileUsesAvatarFolderAndImageExtensions() throws Exception {
     stubPutObject();
+    stubPresignedUrl();
 
     UploadDocumentResult result = fileService.uploadAvatarFile(file("avatar.png", "image/png", 9));
 
-    assertThat(result.fileUrl()).startsWith("https://minio1.webtui.vn:9001/bucket-vmt/avatars/");
+    assertThat(result.fileUrl()).isEqualTo(SIGNED_URL);
 
     assertThatThrownBy(() -> fileService.uploadAvatarFile(file("avatar.pdf", "application/pdf", 1)))
         .isInstanceOf(FileException.class)
@@ -109,16 +126,17 @@ class FileServiceTest {
   @Test
   void uploadMultipleDocumentsUploadsAllFiles() throws Exception {
     stubPutObject();
+    stubPresignedUrl();
 
     List<UploadDocumentResult> results =
         fileService.uploadMultipleDocuments(
             List.of(file("a.pdf", "application/pdf", 1), file("b.docx", "application/docx", 2)));
 
     assertThat(results).hasSize(2);
-    assertThat(results)
-        .allMatch(
-            r -> r.fileUrl().startsWith("https://minio1.webtui.vn:9001/bucket-vmt/documents/"));
+    assertThat(results).allMatch(r -> r.fileUrl().equals(SIGNED_URL));
     verify(minioClient, org.mockito.Mockito.times(2)).putObject(any(PutObjectArgs.class));
+    verify(minioClient, org.mockito.Mockito.times(2))
+        .getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class));
   }
 
   @Test

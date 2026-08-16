@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -20,6 +21,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
+import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
@@ -96,7 +100,11 @@ class CourseServiceTest {
   }
 
   private CourseRequest courseRequest() {
-    return new CourseRequest("Java for Beginners", "sub", "badge", "desc", "url");
+    return courseRequest(null);
+  }
+
+  private CourseRequest courseRequest(MultipartFile thumbnail) {
+    return new CourseRequest("Java for Beginners", "sub", "badge", "desc", thumbnail);
   }
 
   // ---- Course ----
@@ -127,24 +135,54 @@ class CourseServiceTest {
 
     when(courseRepository.save(any(Course.class))).thenReturn(course);
     when(courseMapper.toCourseSummary(course)).thenReturn(summary);
+    when(fileService.uploadAvatarFile(any(MultipartFile.class)))
+        .thenReturn(new UploadDocumentResult(0L, "url"));
 
-    CourseSummaryResponse result = courseService.createCourse(courseRequest());
+    CourseSummaryResponse result =
+        courseService.createCourse(
+            courseRequest(new MockMultipartFile("thumbnail", "t.png", "image/png", new byte[] {1})));
 
     assertThat(result).isEqualTo(summary);
     verify(courseRepository).save(any(Course.class));
   }
 
   @Test
-  void updateCourse_appliesRequestFields() {
+  void createCourse_withThumbnail_uploadsAndPersistsUrl() {
+    UploadDocumentResult uploaded =
+        new UploadDocumentResult(5L, "https://minio1.webtui.vn:9001/bucket-vmt/avatars/abc.png");
+    when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
+    when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(courseMapper.toCourseSummary(any(Course.class)))
+        .thenReturn(
+            new CourseSummaryResponse(
+                courseId, "Java for Beginners", "sub", "badge", "desc", uploaded.fileUrl()));
+
+    MockMultipartFile thumbnail =
+        new MockMultipartFile("thumbnail", "thumb.png", "image/png", new byte[] {1});
+
+    courseService.createCourse(courseRequest(thumbnail));
+
+    ArgumentCaptor<Course> captor = ArgumentCaptor.forClass(Course.class);
+    verify(courseRepository).save(captor.capture());
+    assertThat(captor.getValue().getThumbnailUrl()).isEqualTo(uploaded.fileUrl());
+    verify(fileService).uploadAvatarFile(thumbnail);
+  }
+
+@Test
+  void updateCourse_withThumbnail_uploadsAndPersistsUrl() {
     Course course = course();
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    UploadDocumentResult uploaded =
+        new UploadDocumentResult(5L, "https://minio1.webtui.vn:9001/bucket-vmt/avatars/abc.png");
+    when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
 
-    courseService.updateCourse(courseId, courseRequest());
+    MockMultipartFile thumbnail =
+        new MockMultipartFile("thumbnail", "thumb.png", "image/png", new byte[] {1});
 
-    assertThat(course.getTitle()).isEqualTo("Java for Beginners");
-    assertThat(course.getSubtitle()).isEqualTo("sub");
-    assertThat(course.getBadgeTitle()).isEqualTo("badge");
-    assertThat(course.getThumbnailUrl()).isEqualTo("url");
+    courseService.updateCourse(courseId, courseRequest(thumbnail));
+
+    assertThat(course.getThumbnailUrl()).isEqualTo(uploaded.fileUrl());
+    verify(fileService).uploadAvatarFile(thumbnail);
   }
 
   @Test
