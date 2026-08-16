@@ -146,11 +146,16 @@
 			<artifactId>mapstruct</artifactId>
 			<version>${mapstruct.version}</version>
 		</dependency>
-		<!-- ponytail: io.minio:minio not in Spring Boot BOM, pinned explicitly -->
+		<!-- ponytail: AWS SDK not in Spring Boot BOM, pinned explicitly -->
 		<dependency>
-			<groupId>io.minio</groupId>
-			<artifactId>minio</artifactId>
-			<version>8.5.17</version>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.50.2</version>
+		</dependency>
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>url-connection-client</artifactId>
+			<version>2.50.2</version>
 		</dependency>
 	</dependencies>
 

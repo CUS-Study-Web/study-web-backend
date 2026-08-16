@@ -3,14 +3,10 @@ package studyweb.cus.service.file;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import io.minio.http.Method;
+import java.net.URI;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +16,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import studyweb.cus.config.MinioProperties;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
+import studyweb.cus.config.S3Properties;
 import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
@@ -31,9 +35,10 @@ class FileServiceTest {
 
   private static final String SIGNED_URL = "https://minio1.webtui.vn:9000/bucket-vmt/signed?sig";
 
-  @Mock private MinioClient minioClient;
+  @Mock private S3Client s3Client;
+  @Mock private S3Presigner s3Presigner;
 
-  private final MinioProperties properties = new MinioProperties();
+  private final S3Properties properties = new S3Properties();
 
   private FileServiceImpl fileService;
 
@@ -41,16 +46,18 @@ class FileServiceTest {
   void setUp() {
     properties.setEndpoint("https://minio1.webtui.vn:9000");
     properties.setBucket("bucket-vmt");
-    fileService = new FileServiceImpl(minioClient, properties);
+    fileService = new FileServiceImpl(s3Client, s3Presigner, properties);
   }
 
-  private void stubPutObject() throws Exception {
-    doReturn(null).when(minioClient).putObject(any(PutObjectArgs.class));
+  private void stubPutObject() {
+    when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+        .thenReturn(PutObjectResponse.builder().build());
   }
 
   private void stubPresignedUrl() throws Exception {
-    when(minioClient.getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class)))
-        .thenReturn(SIGNED_URL);
+    PresignedGetObjectRequest presigned = org.mockito.Mockito.mock(PresignedGetObjectRequest.class);
+    when(presigned.url()).thenReturn(URI.create(SIGNED_URL).toURL());
+    when(s3Presigner.presignGetObject(any(GetObjectPresignRequest.class))).thenReturn(presigned);
   }
 
   private MockMultipartFile file(String name, String contentType, int... content) {
@@ -72,18 +79,20 @@ class FileServiceTest {
     assertThat(result.fileSize()).isEqualTo(3L);
     assertThat(result.fileUrl()).isEqualTo(SIGNED_URL);
 
-    ArgumentCaptor<PutObjectArgs> captor = ArgumentCaptor.forClass(PutObjectArgs.class);
-    verify(minioClient).putObject(captor.capture());
+    ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
+    ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
+    verify(s3Client).putObject(captor.capture(), bodyCaptor.capture());
     assertThat(captor.getValue().bucket()).isEqualTo("bucket-vmt");
-    assertThat(captor.getValue().object()).startsWith("documents/").endsWith(".pdf");
-    assertThat(captor.getValue().objectSize()).isEqualTo(3L);
+    assertThat(captor.getValue().key()).startsWith("documents/").endsWith(".pdf");
+    assertThat(captor.getValue().contentType()).isEqualTo("application/pdf");
+    assertThat(bodyCaptor.getValue().contentLength()).isEqualTo(3L);
 
-    ArgumentCaptor<GetPresignedObjectUrlArgs> urlCaptor =
-        ArgumentCaptor.forClass(GetPresignedObjectUrlArgs.class);
-    verify(minioClient).getPresignedObjectUrl(urlCaptor.capture());
-    assertThat(urlCaptor.getValue().method()).isEqualTo(Method.GET);
-    assertThat(urlCaptor.getValue().bucket()).isEqualTo("bucket-vmt");
-    assertThat(urlCaptor.getValue().object()).startsWith("documents/").endsWith(".pdf");
+    ArgumentCaptor<GetObjectPresignRequest> urlCaptor =
+        ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+    verify(s3Presigner).presignGetObject(urlCaptor.capture());
+    GetObjectRequest getRequest = urlCaptor.getValue().getObjectRequest();
+    assertThat(getRequest.bucket()).isEqualTo("bucket-vmt");
+    assertThat(getRequest.key()).startsWith("documents/").endsWith(".pdf");
   }
 
   @Test
@@ -134,14 +143,16 @@ class FileServiceTest {
 
     assertThat(results).hasSize(2);
     assertThat(results).allMatch(r -> r.fileUrl().equals(SIGNED_URL));
-    verify(minioClient, org.mockito.Mockito.times(2)).putObject(any(PutObjectArgs.class));
-    verify(minioClient, org.mockito.Mockito.times(2))
-        .getPresignedObjectUrl(any(GetPresignedObjectUrlArgs.class));
+    verify(s3Client, org.mockito.Mockito.times(2))
+        .putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    verify(s3Presigner, org.mockito.Mockito.times(2))
+        .presignGetObject(any(GetObjectPresignRequest.class));
   }
 
   @Test
   void uploadMultipleDocumentsMixedFailsOnInvalidFile() throws Exception {
     stubPutObject();
+    stubPresignedUrl();
 
     assertThatThrownBy(
             () ->
