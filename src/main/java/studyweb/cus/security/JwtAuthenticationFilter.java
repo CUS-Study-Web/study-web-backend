@@ -39,14 +39,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
         String email = jwtUtils.getEmailFromToken(jwt);
         User user = userRepository.findByGmail(email).orElse(null);
-        // ponytail: one DB hit per request, cache by email if throughput matters
         if (user != null && user.getStatus() == UserStatus.ACTIVE) {
           this.userJwt = jwt;
-          List<SimpleGrantedAuthority> authorities =
-              List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+          List<SimpleGrantedAuthority> authorities = List
+              .of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
-          UsernamePasswordAuthenticationToken authentication =
-              new UsernamePasswordAuthenticationToken(email, null, authorities);
+          UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email, null,
+              authorities);
           authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
           SecurityContextHolder.getContext().setAuthentication(authentication);
