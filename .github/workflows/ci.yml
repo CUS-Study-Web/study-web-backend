@@ -2,9 +2,9 @@ name: Study Web Backend CI flow
 
 on:
   push:
-    branches: ["staging"]
+    branches: ["staging", "main"]
   pull_request:
-    branches: ["staging"]
+    branches: ["staging", "main"]
 
 env:
   REGISTRY: ghcr.io
@@ -14,7 +14,7 @@ env:
 jobs:
   build-and-test:
     name: Build & Run Unit Tests
-    needs: format-check
+    if: ${{ github.event.workflow_run.head_branch == 'staging' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -55,8 +55,6 @@ jobs:
     name: Build and Push Docker Image to GitHub Container Registry
     needs: build-and-test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main')
-
     permissions:
       contents: read
       packages: write
@@ -91,7 +89,19 @@ jobs:
       - name: Format image name to lowercase
         run: echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
-      - name: Build and push
+      - name: Build and push for staging
+        if: ${{ github.event.workflow_run.head_branch == 'staging' }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:staging
+
+      - name: Build and push for main
+        if: ${{ github.event.workflow_run.head_branch == 'main' }}
         uses: docker/build-push-action@v5
         with:
           context: .
