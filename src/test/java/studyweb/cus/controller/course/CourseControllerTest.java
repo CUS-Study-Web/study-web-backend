@@ -1,150 +1,207 @@
 package studyweb.cus.controller.course;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
-import studyweb.cus.controller.AbstractBaseController;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import studyweb.cus.controller.ResponseFactory;
-import studyweb.cus.dto.base.SingleResponse;
-import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
-import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
-import studyweb.cus.exception.course.CourseErrorCode;
-import studyweb.cus.exception.course.CourseException;
+import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(CourseController.class)
+@Import(ResponseFactory.class)
 class CourseControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();
 
-  @Mock private CourseService courseService;
+  @Autowired private WebApplicationContext wac;
 
-  @InjectMocks private CourseController courseController;
+  private MockMvc mockMvc;
+
+  @MockitoBean private CourseService courseService;
+
+  @MockitoBean private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+  @TestConfiguration
+  @EnableMethodSecurity
+  static class SliceSecurityConfig {
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+      http.csrf(AbstractHttpConfigurer::disable)
+          .authorizeHttpRequests(
+              auth ->
+                  auth.requestMatchers("/api/auth/**")
+                      .permitAll()
+                      .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
+                      .permitAll()
+                      .anyRequest()
+                      .authenticated())
+          .httpBasic(Customizer.withDefaults());
+      return http.build();
+    }
+  }
 
   @BeforeEach
-  void setUp() throws Exception {
-    Field field = AbstractBaseController.class.getDeclaredField("responseFactory");
-    field.setAccessible(true);
-    field.set(courseController, new ResponseFactory());
+  void setUp() {
+    mockMvc = MockMvcBuilders.webAppContextSetup(wac).apply(springSecurity()).build();
   }
 
   private CourseSummaryResponse summary() {
     return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url");
   }
 
-  private CourseRequest request() {
-    return new CourseRequest(
-        "Java",
-        "sub",
-        "badge",
-        "desc",
-        new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] {1}));
+  private MockMultipartFile thumbnail() {
+    return new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] {1});
   }
 
   @Test
-  void listCourses_delegatesToService() {
+  void listCourses_isPublicAndReturnsData() throws Exception {
     when(courseService.listCourses(any(Pageable.class)))
-        .thenReturn(new CourseListResponse(0, 10, 1, 1, List.of(summary()), 1));
+        .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
 
-    ResponseEntity<SingleResponse<CourseListResponse>> response =
-        courseController.listCourses(PageRequest.of(0, 10));
+    mockMvc
+        .perform(get("/api/courses"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Courses fetched successfully!"))
+        .andExpect(jsonPath("$.data").isArray())
+        .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()))
+        .andExpect(jsonPath("$.paging.page").value(0))
+        .andExpect(jsonPath("$.paging.limit").value(10))
+        .andExpect(jsonPath("$.paging.total").value(1))
+        .andExpect(jsonPath("$.paging.totalPages").value(1));
 
-    assertThat(response.getStatusCode().value()).isEqualTo(200);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().data().courses()).containsExactly(summary());
-    verify(courseService).listCourses(PageRequest.of(0, 10));
+    verify(courseService).listCourses(any(Pageable.class));
   }
 
   @Test
-  void createCourse_delegatesToService() {
-    CourseRequest request = request();
-    when(courseService.createCourse(request)).thenReturn(summary());
-
-    ResponseEntity<SingleResponse<CourseSummaryResponse>> response =
-        courseController.createCourse(request);
-
-    assertThat(response.getBody().data()).isEqualTo(summary());
-    verify(courseService).createCourse(request);
-  }
-
-  @Test
-  void createCourse_emptyThumbnailThrowsCourseException() {
-    CourseRequest request = new CourseRequest("Java", "sub", "badge", "desc", null);
-
-    assertThatThrownBy(() -> courseController.createCourse(request))
-        .isInstanceOf(CourseException.class)
-        .satisfies(
-            ex ->
-                assertThat(((CourseException) ex).getCode())
-                    .isEqualTo(CourseErrorCode.CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL.code()));
-
-    verify(courseService, never()).createCourse(any());
-  }
-
-  @Test
-  void courseDetail_delegatesToService() {
+  void courseDetail_guestIsAllowed() throws Exception {
     CourseDetailResponse detail =
         CourseDetailResponse.of(
             2, null, List.of(new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3)));
-    when(courseService.getCourseDetail(COURSE_ID, "learner@studyweb.edu")).thenReturn(detail);
+    when(courseService.getCourseDetail(eq(COURSE_ID), any())).thenReturn(detail);
 
-    ResponseEntity<SingleResponse<CourseDetailResponse>> response =
-        courseController.courseDetail(COURSE_ID, "learner@studyweb.edu");
+    mockMvc
+        .perform(get("/api/courses/{id}", COURSE_ID))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.totalSubjects").value(2));
 
-    assertThat(response.getBody().data().totalSubjects()).isEqualTo(2);
-    verify(courseService).getCourseDetail(COURSE_ID, "learner@studyweb.edu");
+    verify(courseService).getCourseDetail(eq(COURSE_ID), any());
   }
 
   @Test
-  void courseDetail_guestPassesNullEmail() {
-    CourseDetailResponse detail = CourseDetailResponse.of(1, null, List.of());
-    when(courseService.getCourseDetail(COURSE_ID, null)).thenReturn(detail);
-
-    courseController.courseDetail(COURSE_ID, null);
-
-    verify(courseService).getCourseDetail(eq(COURSE_ID), eq(null));
+  void createCourse_unauthenticatedIsRejected() throws Exception {
+    mockMvc
+        .perform(multipart("/api/courses").file(thumbnail()).param("title", "Java"))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
-  void deleteCourse_returnsSuccessMessage() {
-    ResponseEntity<SuccessResponse> response = courseController.deleteCourse(COURSE_ID);
+  @WithMockUser(roles = "USER")
+  void createCourse_nonAdminForbidden() throws Exception {
+    mockMvc
+        .perform(multipart("/api/courses").file(thumbnail()).param("title", "Java"))
+        .andExpect(status().isForbidden());
+  }
 
-    assertThat(response.getStatusCode().value()).isEqualTo(200);
-    assertThat(response.getBody().message()).isEqualTo("Course deleted successfully!");
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void createCourse_adminAllowed() throws Exception {
+    when(courseService.createCourse(any(CourseRequest.class))).thenReturn(summary());
+
+    mockMvc
+        .perform(multipart("/api/courses").file(thumbnail()).param("title", "Java"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.id").value(COURSE_ID.toString()));
+
+    verify(courseService).createCourse(any(CourseRequest.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void createCourse_missingThumbnailBadRequest() throws Exception {
+    mockMvc
+        .perform(multipart("/api/courses").param("title", "Java"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errorCode").value("COURSE_006"));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void createCourse_missingTitleBadRequest() throws Exception {
+    mockMvc
+        .perform(multipart("/api/courses").file(thumbnail()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errorCode").value("SYS_002"));
+  }
+
+  @Test
+  @WithMockUser
+  void createCourse_putMethodNotAllowed() throws Exception {
+    mockMvc
+        .perform(put("/api/courses"))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(jsonPath("$.statusCode").value(405));
+  }
+
+  @Test
+  @WithMockUser
+  void courseDetail_postMethodNotAllowed() throws Exception {
+    mockMvc.perform(post("/api/courses/{id}", COURSE_ID)).andExpect(status().isMethodNotAllowed());
+  }
+
+  @Test
+  @WithMockUser(roles = "USER")
+  void deleteCourse_nonAdminForbidden() throws Exception {
+    mockMvc.perform(delete("/api/courses/{id}", COURSE_ID)).andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void deleteCourse_adminAllowed() throws Exception {
+    mockMvc
+        .perform(delete("/api/courses/{id}", COURSE_ID))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Course deleted successfully!"));
+
     verify(courseService).deleteCourse(COURSE_ID);
-  }
-
-  @Test
-  void updateCourse_delegatesToService() {
-    CourseRequest request = request();
-    when(courseService.updateCourse(COURSE_ID, request)).thenReturn(summary());
-
-    ResponseEntity<SingleResponse<CourseSummaryResponse>> response =
-        courseController.updateCourse(COURSE_ID, request);
-
-    assertThat(response.getBody().data().id()).isEqualTo(COURSE_ID);
-    verify(courseService).updateCourse(COURSE_ID, request);
   }
 }

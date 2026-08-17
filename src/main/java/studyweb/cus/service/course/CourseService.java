@@ -1,20 +1,19 @@
 package studyweb.cus.service.course;
 
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
-import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
-import studyweb.cus.dto.response.course.LessonListResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 
 public interface CourseService {
 
-  CourseListResponse listCourses(Pageable pageable);
+  Page<CourseSummaryResponse> listCourses(Pageable pageable);
 
   CourseDetailResponse getCourseDetail(UUID id, String email);
 
@@ -30,7 +29,7 @@ public interface CourseService {
 
   void deleteSubject(UUID courseId, UUID subjectId);
 
-  LessonListResponse listLessons(UUID courseId, UUID subjectId, Pageable pageable, String email);
+  Page<LessonSummaryResponse> listLessons(UUID courseId, UUID subjectId, Pageable pageable, String email);
 
   LessonSummaryResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
 

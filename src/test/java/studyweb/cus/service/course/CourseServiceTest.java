@@ -27,9 +27,7 @@ import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
-import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
-import studyweb.cus.dto.response.course.LessonListResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.entity.course.Course;
@@ -119,12 +117,12 @@ class CourseServiceTest {
     when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
     when(courseMapper.toCourseSummary(course)).thenReturn(summary);
 
-    CourseListResponse response = courseService.listCourses(PageRequest.of(0, 10));
+    Page<CourseSummaryResponse> response = courseService.listCourses(PageRequest.of(0, 10));
 
-    assertThat(response.courses()).containsExactly(summary);
-    assertThat(response.total()).isEqualTo(1);
-    assertThat(response.page()).isZero();
-    assertThat(response.size()).isEqualTo(10);
+    assertThat(response.getContent()).containsExactly(summary);
+    assertThat(response.getTotalElements()).isEqualTo(1);
+    assertThat(response.getNumber()).isZero();
+    assertThat(response.getSize()).isEqualTo(10);
   }
 
   @Test
@@ -150,7 +148,7 @@ class CourseServiceTest {
   @Test
   void createCourse_withThumbnail_uploadsAndPersistsUrl() {
     UploadDocumentResult uploaded =
-        new UploadDocumentResult(5L, "https://minio1.webtui.vn:9001/bucket-vmt/avatars/abc.png");
+        new UploadDocumentResult(5L, "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
     when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
     when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
     when(courseMapper.toCourseSummary(any(Course.class)))
@@ -174,7 +172,7 @@ class CourseServiceTest {
     Course course = course();
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
     UploadDocumentResult uploaded =
-        new UploadDocumentResult(5L, "https://minio1.webtui.vn:9001/bucket-vmt/avatars/abc.png");
+        new UploadDocumentResult(5L, "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
     when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
 
     MockMultipartFile thumbnail =
@@ -339,11 +337,11 @@ class CourseServiceTest {
     when(courseMapper.toLessonSummary(lesson))
         .thenReturn(new LessonSummaryResponse(lessonId, "Variables", 15, null));
 
-    LessonListResponse response =
+    Page<LessonSummaryResponse> response =
         courseService.listLessons(
             courseId, subjectId, PageRequest.of(0, 10), "learner@studyweb.edu");
 
-    assertThat(response.totalLessons()).isEqualTo(1);
+    assertThat(response.getTotalElements()).isEqualTo(1);
     verify(lessonRepository)
         .findBySubjectIdAndDeletedAtIsNullAndAccessIn(
             eq(subjectId), eq(List.of(AccessTier.PUBLIC)), any(Pageable.class));

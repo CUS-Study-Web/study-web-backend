@@ -14,9 +14,7 @@ import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
-import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
-import studyweb.cus.dto.response.course.LessonListResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.entity.course.Course;
@@ -48,13 +46,13 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   @Transactional(readOnly = true)
-  public CourseListResponse listCourses(Pageable pageable) {
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable) {
     Page<Course> page = courseRepository.findByDeletedAtIsNull(pageable);
-    List<CourseSummaryResponse> courses =
-        page.getContent().stream().map(courseMapper::toCourseSummary).toList();
+    Page<CourseSummaryResponse> result = page.map(courseMapper::toCourseSummary);
     log.info(
-        "Listed {} courses (page {}, size {})", courses.size(), page.getNumber(), page.getSize());
-    return CourseListResponse.of(page, courses);
+        "Listed {} courses (page {}, size {})",
+        result.getNumberOfElements(), page.getNumber(), page.getSize());
+    return result;
   }
 
   @Override
@@ -152,7 +150,7 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   @Transactional(readOnly = true)
-  public LessonListResponse listLessons(
+  public Page<LessonSummaryResponse> listLessons(
       UUID courseId, UUID subjectId, Pageable pageable, String email) {
     requireCourse(courseId);
     requireSubject(courseId, subjectId);
@@ -161,15 +159,14 @@ public class CourseServiceImpl implements CourseService {
     Page<Lesson> page =
         lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
             subjectId, visibleTiers, pageable);
-    List<LessonSummaryResponse> lessons =
-        page.getContent().stream().map(courseMapper::toLessonSummary).toList();
+    Page<LessonSummaryResponse> result = page.map(courseMapper::toLessonSummary);
     log.info(
         "Listed {} lessons for subject {} (user: {}, tiers {})",
-        lessons.size(),
+        result.getNumberOfElements(),
         subjectId,
         email,
         visibleTiers);
-    return LessonListResponse.of(page, lessons);
+    return result;
   }
 
   @Override

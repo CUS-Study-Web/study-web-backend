@@ -22,15 +22,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
+import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
-import studyweb.cus.dto.response.course.CourseListResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
-import studyweb.cus.dto.response.course.LessonListResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.exception.course.CourseErrorCode;
@@ -48,11 +47,11 @@ public class CourseController extends AbstractBaseController {
 
   @GetMapping
   @Operation(summary = "List Courses", description = "List all courses with pagination")
-  public ResponseEntity<SingleResponse<CourseListResponse>> listCourses(
+  public ResponseEntity<PageResponse<CourseSummaryResponse>> listCourses(
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses] Page {}, size {}", pageable.getPageNumber(), pageable.getPageSize());
-    return successSingle(courseService.listCourses(pageable), "Courses fetched successfully!");
+    return paging(courseService.listCourses(pageable), "Courses fetched successfully!");
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -131,14 +130,14 @@ public class CourseController extends AbstractBaseController {
   @Operation(
       summary = "List Lessons",
       description = "List lessons of a subject; VIP lessons are hidden from non-VIP users")
-  public ResponseEntity<SingleResponse<LessonListResponse>> listLessons(
+  public ResponseEntity<PageResponse<LessonSummaryResponse>> listLessons(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @PageableDefault(size = 10) Pageable pageable,
       @AuthenticationPrincipal String email) {
     log.info(
         "[GET /api/courses/{}/subjects/{}/lessons] Listing lessons for {}", id, subjectId, email);
-    return successSingle(
+    return paging(
         courseService.listLessons(id, subjectId, pageable, email), "Lessons fetched successfully!");
   }
 
