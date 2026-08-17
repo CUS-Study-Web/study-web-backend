@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -14,12 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -32,8 +32,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
@@ -41,19 +39,20 @@ import studyweb.cus.enums.Gender;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.user.UserService;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(
+    controllers = UserController.class,
+    excludeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
 class UserControllerTest {
 
   private static final String GMAIL = "learner@studyweb.edu";
 
-  @Autowired private WebApplicationContext wac;
-
-  private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
   @MockitoBean private UserService userService;
-
-  @MockitoBean private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @TestConfiguration
   @EnableMethodSecurity
@@ -66,11 +65,6 @@ class UserControllerTest {
           .httpBasic(Customizer.withDefaults());
       return http.build();
     }
-  }
-
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders.webAppContextSetup(wac).apply(springSecurity()).build();
   }
 
   private UserResponse userResponse() {

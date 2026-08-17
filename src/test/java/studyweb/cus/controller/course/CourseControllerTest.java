@@ -4,7 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -15,12 +14,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -35,8 +35,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.response.course.CourseDetailResponse;
@@ -45,19 +43,20 @@ import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 
-@WebMvcTest(CourseController.class)
+@WebMvcTest(
+    controllers = CourseController.class,
+    excludeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
 class CourseControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();
 
-  @Autowired private WebApplicationContext wac;
-
-  private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
   @MockitoBean private CourseService courseService;
-
-  @MockitoBean private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @TestConfiguration
   @EnableMethodSecurity
@@ -76,11 +75,6 @@ class CourseControllerTest {
           .httpBasic(Customizer.withDefaults());
       return http.build();
     }
-  }
-
-  @BeforeEach
-  void setUp() {
-    mockMvc = MockMvcBuilders.webAppContextSetup(wac).apply(springSecurity()).build();
   }
 
   private CourseSummaryResponse summary() {
