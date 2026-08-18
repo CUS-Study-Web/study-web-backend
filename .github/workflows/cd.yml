@@ -168,7 +168,7 @@ jobs:
           if [ "$DEPLOY_BRANCH" = "staging" ]; then
             CONTAINER="studyweb-backend-staging"
           elif [ "$DEPLOY_BRANCH" = "main" ]; then
-            CONTAINER="studyweb-backend-prod"
+            CONTAINER="studyweb-backend"
           else
             echo "Unsupported branch: $DEPLOY_BRANCH"
             exit 1
