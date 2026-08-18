@@ -15,7 +15,6 @@ jobs:
   build-and-test:
     name: Build & Run Unit Tests
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.head_branch == 'staging'}}
     permissions:
       contents: read
       checks: write
