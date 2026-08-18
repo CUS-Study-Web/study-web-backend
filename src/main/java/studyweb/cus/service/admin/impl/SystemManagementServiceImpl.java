@@ -1,13 +1,16 @@
 package studyweb.cus.service.admin.impl;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
@@ -15,7 +18,11 @@ import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
@@ -32,6 +39,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final UserCourseProgressRepository userCourseProgressRepository;
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final SystemManagementMapper systemManagementMapper;
+  private final PasswordEncoder passwordEncoder;
+
+  @Value("${DEFAULT_PASSWORD}")
+  private String defaultPassword;
 
   @Override
   @Transactional(readOnly = true)
@@ -101,6 +112,33 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request) {
-    throw new UnsupportedOperationException("createVipAccount not implemented yet");
+    if (defaultPassword == null || defaultPassword.isBlank()) {
+      throw new SystemException(
+          SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!");
+    }
+
+    User user =
+        userRepository
+            .findByGmail(request.gmail())
+            .map(
+                existing -> {
+                  existing.setName(request.name());
+                  existing.setTier(UserTier.VIP);
+                  return userRepository.save(existing);
+                })
+            .orElseGet(
+                () ->
+                    userRepository.save(
+                        User.builder()
+                            .name(request.name())
+                            .gmail(request.gmail())
+                            .tier(UserTier.VIP)
+                            .role(UserRole.LEARNER)
+                            .status(UserStatus.ACTIVE)
+                            .password(passwordEncoder.encode(defaultPassword))
+                            .joinDate(LocalDateTime.now())
+                            .build()));
+
+    return systemManagementMapper.toLearnerSummary(user, null, 0.0);
   }
 }
