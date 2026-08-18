@@ -20,7 +20,9 @@ public enum AssessmentErrorCode implements BaseErrorCode {
   UNSUPPORTED_FILE_TYPE(
       "ASSESSMENT_005", "Unsupported file type", HttpStatus.BAD_REQUEST),
   ATTEMPT_NOT_FOUND(
-      "ASSESSMENT_006", "Assessment attempt not found or access denied", HttpStatus.NOT_FOUND);
+      "ASSESSMENT_006", "Assessment attempt not found or access denied", HttpStatus.NOT_FOUND),
+  VIP_ONLY(
+      "ASSESSMENT_007", "This assessment is for VIP members only", HttpStatus.FORBIDDEN);
 
   private final String code;
   private final String message;

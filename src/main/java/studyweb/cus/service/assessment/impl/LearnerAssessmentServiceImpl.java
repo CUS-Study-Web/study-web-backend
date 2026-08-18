@@ -24,6 +24,8 @@ import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AccessTier;
+import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
 import studyweb.cus.exception.course.CourseErrorCode;
@@ -52,9 +54,11 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
 
   @Override
   @Transactional(readOnly = true)
-  public AssessmentStartResponse getAssessmentForTaking(UUID courseId, UUID assessmentId) {
+  public AssessmentStartResponse getAssessmentForTaking(UUID courseId, UUID assessmentId, String userEmail) {
     requireCourse(courseId);
     Assessment assessment = requireAssessment(assessmentId);
+    User user = requireUser(userEmail);
+    checkVipAccess(assessment, user);
     log.info("Learner started assessment {}", assessmentId);
     return mapper.toStartResponse(assessment);
   }
@@ -66,6 +70,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     requireCourse(courseId);
     Assessment assessment = requireAssessment(assessmentId);
     User user = requireUser(userEmail);
+    checkVipAccess(assessment, user);
 
     List<AnswerKey> correctKeys =
         answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
@@ -256,5 +261,11 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     return userRepository
         .findByGmail(email)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+  }
+
+  private void checkVipAccess(Assessment assessment, User user) {
+    if (assessment.getAccess() == AccessTier.VIP && user.getTier() != UserTier.VIP) {
+      throw new AssessmentException(AssessmentErrorCode.VIP_ONLY);
+    }
   }
 }
