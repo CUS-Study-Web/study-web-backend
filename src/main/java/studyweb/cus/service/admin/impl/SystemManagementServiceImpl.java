@@ -15,6 +15,9 @@ import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
@@ -78,13 +81,21 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public void banLearner(UUID id) {
-    throw new UnsupportedOperationException("banLearner not implemented yet");
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.BANNED);
   }
 
   @Override
   @Transactional
   public void unbanLearner(UUID id) {
-    throw new UnsupportedOperationException("unbanLearner not implemented yet");
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.ACTIVE);
   }
 
   @Override
