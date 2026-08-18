@@ -104,7 +104,9 @@ jobs:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
           printf "%s" "$BACKEND_ENV_CONTENT" > gitops-manifests/backend.env
-
+      - name: Check infra
+        run: |
+          make infra
       - name: Deploy Backend
         working-directory: gitops-manifests
         run: |
