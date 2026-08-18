@@ -76,11 +76,11 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
         answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
     List<AnswerDetailResponse> details = gradeAnswers(correctKeys, request.answers());
 
-    int numCorrect = (int) details.stream().filter(AnswerDetailResponse::isCorrect).count();
+    int numCorrect = (int) details.stream().filter(d -> d.selectedAnswer() != null && d.selectedAnswer() == d.correctAnswer()).count();
     int numWrong = assessment.getNumQuestions() - numCorrect;
     BigDecimal score = calculateScore(numCorrect, assessment.getNumQuestions(), assessment.getMaxScore());
 
-    AssessmentAttempt savedAttempt = buildAndSaveAttempt(assessment, user, assessmentId, score, numCorrect, numWrong, request, details);
+    AssessmentAttempt savedAttempt = buildAndSaveAttempt(assessment, user, assessmentId, request, details);
 
     log.info(
         "User {} submitted assessment {} (attempt {}) with score {}",
@@ -89,10 +89,10 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     return new AssessmentSubmitResponse(
         savedAttempt.getId(),
         savedAttempt.getAttemptNumber(),
-        savedAttempt.getNumCorrect(),
-        savedAttempt.getNumWrong(),
+        numCorrect,
+        numWrong,
         assessment.getNumQuestions(),
-        savedAttempt.getScore(),
+        score,
         savedAttempt.getCompletedAt(),
         details);
   }
@@ -108,12 +108,36 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     Page<AssessmentAttempt> page = attemptRepository.findByUserIdAndExamIdOrderByAttemptNumberDesc(
         user.getId(), assessmentId, pageable);
 
+    List<AnswerKey> correctKeys =
+        answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
+
     log.info(
         "Listed {} attempts for user {} on assessment {}",
         page.getNumberOfElements(),
         userEmail,
         assessmentId);
-    return page.map(mapper::toAttemptResponse);
+
+    return page.map(attempt -> {
+      int numCorrect = (int) attempt.getDetails().stream().filter(d -> {
+        CorrectAnswer correct = correctKeys.stream()
+            .filter(k -> k.getQuestionNumber().equals(d.getQuestionNumber()))
+            .map(AnswerKey::getCorrectAnswer)
+            .findFirst().orElse(null);
+        return d.getSelectedAnswer() != null && d.getSelectedAnswer() == correct;
+      }).count();
+      
+      Assessment exam = attempt.getExam();
+      BigDecimal score = calculateScore(numCorrect, exam.getNumQuestions(), exam.getMaxScore());
+      
+      return new AssessmentAttemptResponse(
+          attempt.getId(),
+          attempt.getAttemptNumber(),
+          numCorrect,
+          exam.getNumQuestions(),
+          score.doubleValue(),
+          attempt.getDurationMin(),
+          attempt.getCompletedAt());
+    });
   }
 
   @Override
@@ -134,23 +158,34 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
       throw new AssessmentException(AssessmentErrorCode.ATTEMPT_NOT_FOUND);
     }
 
+    List<AnswerKey> correctKeys =
+        answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
+
     List<AnswerDetailResponse> details = attempt.getDetails().stream()
-        .map(
-            d -> new AnswerDetailResponse(
-                d.getQuestionNumber(),
-                d.getSelectedAnswer(),
-                d.getCorrectAnswer(),
-                d.getIsCorrect()))
+        .map(d -> {
+          CorrectAnswer correct = correctKeys.stream()
+              .filter(k -> k.getQuestionNumber().equals(d.getQuestionNumber()))
+              .map(AnswerKey::getCorrectAnswer)
+              .findFirst().orElse(null);
+          return new AnswerDetailResponse(
+              d.getQuestionNumber(),
+              d.getSelectedAnswer(),
+              correct);
+        })
         .toList();
+
+    int numCorrect = (int) details.stream().filter(d -> d.selectedAnswer() != null && d.selectedAnswer() == d.correctAnswer()).count();
+    int numWrong = assessment.getNumQuestions() - numCorrect;
+    BigDecimal score = calculateScore(numCorrect, assessment.getNumQuestions(), assessment.getMaxScore());
 
     log.info("Fetched detail for attempt {} of user {}", attemptId, userEmail);
     return new AssessmentSubmitResponse(
         attempt.getId(),
         attempt.getAttemptNumber(),
-        attempt.getNumCorrect(),
-        attempt.getNumWrong(),
+        numCorrect,
+        numWrong,
         assessment.getNumQuestions(),
-        attempt.getScore(),
+        score,
         attempt.getCompletedAt(),
         details);
   }
@@ -167,8 +202,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
               int qNum = key.getQuestionNumber();
               CorrectAnswer selected = findSelectedAnswer(studentAnswers, qNum);
               CorrectAnswer correct = key.getCorrectAnswer();
-              boolean isCorrect = selected != null && selected == correct;
-              return new AnswerDetailResponse(qNum, selected, correct, isCorrect);
+              return new AnswerDetailResponse(qNum, selected, correct);
             })
         .toList();
   }
@@ -180,9 +214,6 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
       Assessment assessment,
       User user,
       UUID assessmentId,
-      BigDecimal score,
-      int numCorrect,
-      int numWrong,
       AssessmentSubmitRequest request,
       List<AnswerDetailResponse> details) {
     int attemptNumber = attemptRepository.countByUserIdAndExamId(user.getId(), assessmentId) + 1;
@@ -191,9 +222,6 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
             .user(user)
             .exam(assessment)
             .attemptNumber(attemptNumber)
-            .score(score)
-            .numCorrect(numCorrect)
-            .numWrong(numWrong)
             .durationMin(request.durationMin() != null ? request.durationMin() : 0)
             .completedAt(LocalDateTime.now())
             .build();
@@ -205,8 +233,6 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
                         .attempt(attempt)
                         .questionNumber(d.questionNumber())
                         .selectedAnswer(d.selectedAnswer())
-                        .correctAnswer(d.correctAnswer())
-                        .isCorrect(d.isCorrect())
                         .build())
             .toList();
     attempt.getDetails().addAll(attemptDetails);

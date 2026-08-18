@@ -144,17 +144,13 @@ class CourseEntityTest {
         .user(user)
         .exam(exam)
         .attemptNumber(1)
-        .score(new BigDecimal("95.50"))
-        .numCorrect(28)
-        .numWrong(2)
         .durationMin(40)
         .build();
 
     assertThat(attempt.getUser()).isEqualTo(user);
     assertThat(attempt.getExam()).isEqualTo(exam);
-    assertThat(attempt.getScore()).isEqualTo(new BigDecimal("95.50"));
-    assertThat(attempt.getNumCorrect()).isEqualTo(28);
-    assertThat(attempt.getNumWrong()).isEqualTo(2);
+    assertThat(attempt.getAttemptNumber()).isEqualTo(1);
+    assertThat(attempt.getDurationMin()).isEqualTo(40);
   }
 
   @Test

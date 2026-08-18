@@ -113,14 +113,11 @@ class LearnerAssessmentServiceTest {
     return new AssessmentSubmitRequest(15, answers);
   }
 
-  private AssessmentAttempt savedAttempt(Assessment assessment, User user, BigDecimal score) {
+  private AssessmentAttempt savedAttempt(Assessment assessment, User user) {
     AssessmentAttempt attempt = AssessmentAttempt.builder()
         .user(user)
         .exam(assessment)
         .attemptNumber(1)
-        .score(score)
-        .numCorrect(3)
-        .numWrong(1)
         .durationMin(15)
         .build();
     attempt.setId(attemptId);
@@ -205,7 +202,7 @@ class LearnerAssessmentServiceTest {
     assertThat(result.totalQuestions()).isEqualTo(4);
     assertThat(result.score()).isEqualByComparingTo(new BigDecimal("10.00"));
     assertThat(result.details()).hasSize(4);
-    assertThat(result.details()).allMatch(d -> d.isCorrect());
+    assertThat(result.details()).allMatch(d -> d.selectedAnswer() == d.correctAnswer());
   }
 
   @Test
@@ -236,7 +233,7 @@ class LearnerAssessmentServiceTest {
     assertThat(result.numCorrect()).isZero();
     assertThat(result.numWrong()).isEqualTo(4);
     assertThat(result.score()).isEqualByComparingTo(BigDecimal.ZERO);
-    assertThat(result.details()).noneMatch(d -> d.isCorrect());
+    assertThat(result.details()).noneMatch(d -> d.selectedAnswer() != null && d.selectedAnswer() == d.correctAnswer());
   }
 
   @Test
@@ -438,11 +435,18 @@ class LearnerAssessmentServiceTest {
   @Test
   void listAttempts_returnsPagedResults() {
     User user = user();
-    Assessment assessment = assessment(40, 10);
-    AssessmentAttempt attempt = savedAttempt(assessment, user, new BigDecimal("7.50"));
+    Assessment assessment = assessment(4, 10);
+    AssessmentAttempt attempt = savedAttempt(assessment, user);
+    AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(1).selectedAnswer(CorrectAnswer.A).build();
+    AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(2).selectedAnswer(CorrectAnswer.B).build();
+    AssessmentAttemptDetail detail3 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(3).selectedAnswer(CorrectAnswer.C).build();
+    AssessmentAttemptDetail detail4 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(4).selectedAnswer(CorrectAnswer.A).build();
+    attempt.getDetails().addAll(List.of(detail1, detail2, detail3, detail4));
+    
     Page<AssessmentAttempt> page = new PageImpl<>(List.of(attempt), PageRequest.of(0, 10), 1);
+    // 3 correct (A, B, C), 1 wrong (A instead of D). Score: 7.50
     AssessmentAttemptResponse expected = new AssessmentAttemptResponse(
-        attemptId, 1, 3, 40, 7.5, 15, attempt.getCompletedAt());
+        attemptId, 1, 3, 4, 7.50, 15, attempt.getCompletedAt());
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -450,7 +454,8 @@ class LearnerAssessmentServiceTest {
     when(attemptRepository.findByUserIdAndExamIdOrderByAttemptNumberDesc(eq(userId), eq(assessmentId),
         any(Pageable.class)))
         .thenReturn(page);
-    when(mapper.toAttemptResponse(attempt)).thenReturn(expected);
+    when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
+        .thenReturn(sampleAnswerKeys());
 
     Page<AssessmentAttemptResponse> result = service.listAttempts(courseId, assessmentId, userEmail,
         PageRequest.of(0, 10));
@@ -487,26 +492,27 @@ class LearnerAssessmentServiceTest {
   void getAttemptDetail_returnsDetailsWithCorrectAnswers() {
     Assessment assessment = assessment(4, 10);
     User user = user();
-    AssessmentAttempt attempt = savedAttempt(assessment, user, new BigDecimal("7.50"));
+    AssessmentAttempt attempt = savedAttempt(assessment, user);
     AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder()
-        .attempt(attempt).questionNumber(1).selectedAnswer(CorrectAnswer.A)
-        .correctAnswer(CorrectAnswer.A).isCorrect(true).build();
+        .attempt(attempt).questionNumber(1).selectedAnswer(CorrectAnswer.A).build();
     AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder()
-        .attempt(attempt).questionNumber(2).selectedAnswer(CorrectAnswer.C)
-        .correctAnswer(CorrectAnswer.B).isCorrect(false).build();
+        .attempt(attempt).questionNumber(2).selectedAnswer(CorrectAnswer.C).build();
     attempt.getDetails().addAll(List.of(detail1, detail2));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
+    when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
+        .thenReturn(sampleAnswerKeys());
 
     AssessmentSubmitResponse result = service.getAttemptDetail(courseId, assessmentId, attemptId, userEmail);
 
     assertThat(result.details()).hasSize(2);
-    assertThat(result.details().get(0).isCorrect()).isTrue();
-    assertThat(result.details().get(1).isCorrect()).isFalse();
+    assertThat(result.details().get(0).selectedAnswer()).isEqualTo(result.details().get(0).correctAnswer());
+    assertThat(result.details().get(1).selectedAnswer()).isNotEqualTo(result.details().get(1).correctAnswer());
     assertThat(result.details().get(1).correctAnswer()).isEqualTo(CorrectAnswer.B);
+    assertThat(result.score()).isEqualByComparingTo(new BigDecimal("2.50")); // 1/4 * 10
   }
 
   @Test
@@ -529,7 +535,7 @@ class LearnerAssessmentServiceTest {
     User owner = new User();
     owner.setId(UUID.randomUUID()); // different user
     owner.setGmail("other@studyweb.edu");
-    AssessmentAttempt attempt = savedAttempt(assessment, owner, BigDecimal.TEN);
+    AssessmentAttempt attempt = savedAttempt(assessment, owner);
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -549,7 +555,7 @@ class LearnerAssessmentServiceTest {
     User user = user();
     Assessment differentAssessment = new Assessment();
     differentAssessment.setId(UUID.randomUUID()); // different assessment
-    AssessmentAttempt attempt = savedAttempt(differentAssessment, user, BigDecimal.TEN);
+    AssessmentAttempt attempt = savedAttempt(differentAssessment, user);
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
