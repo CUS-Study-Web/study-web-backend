@@ -18,6 +18,8 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/backend
   GITOPS_REPO: CUS-Study-Web/study-web-gitops
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  
+
 jobs:
   build-and-push-ghcr:
       name: Build and Push Docker Image to GitHub Container Registry
@@ -81,8 +83,6 @@ jobs:
             tags: |
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
-
-jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
