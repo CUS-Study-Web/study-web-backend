@@ -35,11 +35,4 @@ public class AssessmentAttemptDetail extends AbstractBaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "selected_answer")
   private CorrectAnswer selectedAnswer;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "correct_answer", nullable = false)
-  private CorrectAnswer correctAnswer;
-
-  @Column(name = "is_correct", nullable = false)
-  private Boolean isCorrect;
 }

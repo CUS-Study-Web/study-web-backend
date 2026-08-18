@@ -46,18 +46,6 @@ public class AssessmentAttempt extends AbstractBaseEntity {
   @Builder.Default
   private Integer attemptNumber = 1;
 
-  @Column(name = "score", precision = 5, scale = 2, nullable = false)
-  @Builder.Default
-  private BigDecimal score = BigDecimal.ZERO;
-
-  @Column(name = "num_correct", nullable = false)
-  @Builder.Default
-  private Integer numCorrect = 0;
-
-  @Column(name = "num_wrong", nullable = false)
-  @Builder.Default
-  private Integer numWrong = 0;
-
   @Column(name = "duration_min", nullable = false)
   @Builder.Default
   private Integer durationMin = 0;
