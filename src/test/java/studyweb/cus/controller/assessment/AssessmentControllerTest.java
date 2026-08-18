@@ -84,7 +84,7 @@ class AssessmentControllerTest {
                     .authorizeHttpRequests(
                             auth -> auth.requestMatchers("/api/auth/**")
                                     .permitAll()
-                                    .requestMatchers(HttpMethod.GET, "/api/courses/**")
+                                    .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
                                     .permitAll()
                                     .anyRequest()
                                     .authenticated())
@@ -180,10 +180,11 @@ class AssessmentControllerTest {
                 .andExpect(status().isForbidden());
     }
 
-    // --- Tests for Public Endpoints (GETs) ---
+    // --- Tests for Authenticated GET Endpoints ---
 
     @Test
-    void getAssessmentDetail_isPublic() throws Exception {
+    @WithMockUser(roles = "LEARNER")
+    void getAssessmentDetail_authenticated() throws Exception {
         AssessmentDetailResponse detail = new AssessmentDetailResponse(
                 ASSESSMENT_ID, "Exam", AssessmentType.EXAM, AssessmentStatus.PUBLISHED,
                 40, 60, 100, AccessTier.PUBLIC, "PDF", "url", null, COURSE_ID, null, "Course", null, null, null,
@@ -197,7 +198,15 @@ class AssessmentControllerTest {
     }
 
     @Test
-    void listExams_isPublic() throws Exception {
+    void getAssessmentDetail_unauthenticated_returns401() throws Exception {
+        mockMvc
+                .perform(get("/api/courses/{courseId}/assessments/{assessmentId}", COURSE_ID, ASSESSMENT_ID))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "LEARNER")
+    void listExams_authenticated() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "Exam", AssessmentType.EXAM, AssessmentStatus.PUBLISHED,
                 40, 60, 100, AccessTier.PUBLIC, "PDF", null);
@@ -211,7 +220,8 @@ class AssessmentControllerTest {
     }
 
     @Test
-    void listHomework_isPublic() throws Exception {
+    @WithMockUser(roles = "LEARNER")
+    void listHomework_authenticated() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "HW", AssessmentType.HOMEWORK, AssessmentStatus.PUBLISHED,
                 10, null, null, null, "PDF", null);
@@ -291,5 +301,40 @@ class AssessmentControllerTest {
                         ASSESSMENT_ID, attemptId).with(authenticated()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.attemptId").value(attemptId.toString()));
+    }
+
+    // --- Tests for Unauthenticated Access (should be blocked) ---
+
+    @Test
+    void startAssessment_unauthenticated_returns401() throws Exception {
+        mockMvc
+                .perform(get("/api/courses/{courseId}/assessments/{assessmentId}/start", COURSE_ID, ASSESSMENT_ID))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void submitAssessment_unauthenticated_returns401() throws Exception {
+        AssessmentSubmitRequest req = new AssessmentSubmitRequest(60, List.of());
+        mockMvc
+                .perform(post("/api/courses/{courseId}/assessments/{assessmentId}/submit", COURSE_ID, ASSESSMENT_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void listAttempts_unauthenticated_returns401() throws Exception {
+        mockMvc
+                .perform(get("/api/courses/{courseId}/assessments/{assessmentId}/attempts", COURSE_ID, ASSESSMENT_ID))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getAttemptDetail_unauthenticated_returns401() throws Exception {
+        UUID attemptId = UUID.randomUUID();
+        mockMvc
+                .perform(get("/api/courses/{courseId}/assessments/{assessmentId}/attempts/{attemptId}",
+                        COURSE_ID, ASSESSMENT_ID, attemptId))
+                .andExpect(status().isUnauthorized());
     }
 }
