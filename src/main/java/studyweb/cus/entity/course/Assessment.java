@@ -26,7 +26,7 @@ import studyweb.cus.enums.AssessmentType;
     name = "assessments",
     indexes = {
       @Index(name = "idx_assessments_course", columnList = "course_id"),
-      @Index(name = "idx_assessments_lesson", columnList = "lesson_id")
+      @Index(name = "idx_assessments_subject", columnList = "subject_id")
     })
 @Getter
 @Setter
@@ -40,8 +40,8 @@ public class Assessment extends AbstractAuditEntity {
   private Course course;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "lesson_id")
-  private Lesson lesson;
+  @JoinColumn(name = "subject_id")
+  private Subject subject;
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;
@@ -82,10 +82,6 @@ public class Assessment extends AbstractAuditEntity {
 
   @Column(name = "explanation_url", length = 500)
   private String explanationUrl;
-
-  @Column(name = "is_draft", nullable = false)
-  @Builder.Default
-  private Boolean isDraft = true;
 
   @Column(name = "published_at")
   private LocalDateTime publishedAt;

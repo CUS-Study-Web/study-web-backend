@@ -3,12 +3,16 @@ spring:
     name: cus
   config:
     import: optional:file:.env[.properties]
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 50MB
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    from: ${MAIL_FROM:${MAIL_USERNAME:}}
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    from: ${MAIL_FROM}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
@@ -18,11 +22,21 @@ server:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789}
-    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
-    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
+    secret: ${JWT_SECRET}
+    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
   otp:
-    length: ${OTP_LENGTH:6}
-    expiration-seconds: ${OTP_EXPIRATION_SECONDS:300}
-    max-attempts: ${OTP_MAX_ATTEMPTS:5}
-    cooldown-seconds: ${OTP_COOLDOWN_SECONDS:60}
+    length: ${OTP_LENGTH}
+    expiration-seconds: ${OTP_EXPIRATION_SECONDS}
+    max-attempts: ${OTP_MAX_ATTEMPTS}
+    cooldown-seconds: ${OTP_COOLDOWN_SECONDS}
+
+s3:
+  endpoint: ${S3_URL:}
+  access-key: ${S3_ACCESS_KEY}
+  secret-key: ${S3_SECRET_KEY}
+  bucket: ${S3_BUCKET}
+  region: ${S3_REGION:ap-southeast-1}
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
