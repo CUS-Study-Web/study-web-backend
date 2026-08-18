@@ -133,11 +133,13 @@ public class AssessmentController extends AbstractBaseController {
         @PreAuthorize("hasRole('LEARNER')")
         @Operation(summary = "Start Assessment", description = "Get assessment details for taking (without answer keys)")
         public ResponseEntity<SingleResponse<AssessmentStartResponse>> startAssessment(
-                        @PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+                        @PathVariable UUID courseId, 
+                        @PathVariable UUID assessmentId,
+                        @AuthenticationPrincipal String email) {
                 log.info("[GET /api/courses/{}/assessments/{}/start] Learner starting assessment", courseId,
                                 assessmentId);
                 return successSingle(
-                                learnerAssessmentService.getAssessmentForTaking(courseId, assessmentId),
+                                learnerAssessmentService.getAssessmentForTaking(courseId, assessmentId, email),
                                 "Assessment ready!");
         }
 
