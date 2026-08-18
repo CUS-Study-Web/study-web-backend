@@ -13,8 +13,8 @@ public interface UserCourseProgressRepository extends JpaRepository<UserCoursePr
             SELECT ucp
             FROM UserCourseProgress ucp
             WHERE ucp.user.id IN :userIds
-            AND ucp.progress = (
-                SELECT MAX(sub.progress)
+            AND ucp.progressPercent = (
+                SELECT MAX(sub.progressPercent)
                 FROM UserCourseProgress sub
                 WHERE sub.user.id = ucp.user.id
             )
