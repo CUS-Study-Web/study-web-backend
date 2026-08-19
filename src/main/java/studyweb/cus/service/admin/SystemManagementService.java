@@ -16,4 +16,6 @@ public interface SystemManagementService {
   LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request);
 
   LearnerSummaryResponse updateAccount(CreateVipAccountRequest request);
+
+  void deleteLearner(UUID id);
 }
