@@ -33,7 +33,7 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentType;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
 import studyweb.cus.exception.course.CourseErrorCode;
@@ -94,7 +94,7 @@ class LearnerAssessmentServiceTest {
     return u;
   }
 
-  private AnswerKey answerKey(int questionNumber, CorrectAnswer answer) {
+  private AnswerKey answerKey(int questionNumber, AnswerChoice answer) {
     AnswerKey key = new AnswerKey();
     key.setQuestionNumber(questionNumber);
     key.setCorrectAnswer(answer);
@@ -103,10 +103,10 @@ class LearnerAssessmentServiceTest {
 
   private List<AnswerKey> sampleAnswerKeys() {
     return List.of(
-        answerKey(1, CorrectAnswer.A),
-        answerKey(2, CorrectAnswer.B),
-        answerKey(3, CorrectAnswer.C),
-        answerKey(4, CorrectAnswer.D));
+        answerKey(1, AnswerChoice.A),
+        answerKey(2, AnswerChoice.B),
+        answerKey(3, AnswerChoice.C),
+        answerKey(4, AnswerChoice.D));
   }
 
   private AssessmentSubmitRequest submitRequest(List<StudentAnswerItem> answers) {
@@ -177,10 +177,10 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
     List<StudentAnswerItem> answers = List.of(
-        new StudentAnswerItem(1, CorrectAnswer.A),
-        new StudentAnswerItem(2, CorrectAnswer.B),
-        new StudentAnswerItem(3, CorrectAnswer.C),
-        new StudentAnswerItem(4, CorrectAnswer.D));
+        new StudentAnswerItem(1, AnswerChoice.A),
+        new StudentAnswerItem(2, AnswerChoice.B),
+        new StudentAnswerItem(3, AnswerChoice.C),
+        new StudentAnswerItem(4, AnswerChoice.D));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -210,10 +210,10 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
     List<StudentAnswerItem> answers = List.of(
-        new StudentAnswerItem(1, CorrectAnswer.D),
-        new StudentAnswerItem(2, CorrectAnswer.A),
-        new StudentAnswerItem(3, CorrectAnswer.A),
-        new StudentAnswerItem(4, CorrectAnswer.A));
+        new StudentAnswerItem(1, AnswerChoice.D),
+        new StudentAnswerItem(2, AnswerChoice.A),
+        new StudentAnswerItem(3, AnswerChoice.A),
+        new StudentAnswerItem(4, AnswerChoice.A));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -241,10 +241,10 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
     List<StudentAnswerItem> answers = List.of(
-        new StudentAnswerItem(1, CorrectAnswer.A), // correct
-        new StudentAnswerItem(2, CorrectAnswer.B), // correct
-        new StudentAnswerItem(3, CorrectAnswer.A), // wrong
-        new StudentAnswerItem(4, CorrectAnswer.A)); // wrong
+        new StudentAnswerItem(1, AnswerChoice.A), // correct
+        new StudentAnswerItem(2, AnswerChoice.B), // correct
+        new StudentAnswerItem(3, AnswerChoice.A), // wrong
+        new StudentAnswerItem(4, AnswerChoice.A)); // wrong
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -317,7 +317,7 @@ class LearnerAssessmentServiceTest {
   void submitAssessment_incrementsAttemptNumber() {
     Assessment assessment = assessment(4, 10);
     User user = user();
-    List<StudentAnswerItem> answers = List.of(new StudentAnswerItem(1, CorrectAnswer.A));
+    List<StudentAnswerItem> answers = List.of(new StudentAnswerItem(1, AnswerChoice.A));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -342,8 +342,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
     List<StudentAnswerItem> answers = List.of(
-        new StudentAnswerItem(1, CorrectAnswer.A),
-        new StudentAnswerItem(2, CorrectAnswer.B));
+        new StudentAnswerItem(1, AnswerChoice.A),
+        new StudentAnswerItem(2, AnswerChoice.B));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
     when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
@@ -437,10 +437,10 @@ class LearnerAssessmentServiceTest {
     User user = user();
     Assessment assessment = assessment(4, 10);
     AssessmentAttempt attempt = savedAttempt(assessment, user);
-    AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(1).selectedAnswer(CorrectAnswer.A).build();
-    AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(2).selectedAnswer(CorrectAnswer.B).build();
-    AssessmentAttemptDetail detail3 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(3).selectedAnswer(CorrectAnswer.C).build();
-    AssessmentAttemptDetail detail4 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(4).selectedAnswer(CorrectAnswer.A).build();
+    AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+    AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(2).selectedAnswer(AnswerChoice.B).build();
+    AssessmentAttemptDetail detail3 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(3).selectedAnswer(AnswerChoice.C).build();
+    AssessmentAttemptDetail detail4 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(4).selectedAnswer(AnswerChoice.A).build();
     attempt.getDetails().addAll(List.of(detail1, detail2, detail3, detail4));
     
     Page<AssessmentAttempt> page = new PageImpl<>(List.of(attempt), PageRequest.of(0, 10), 1);
@@ -494,9 +494,9 @@ class LearnerAssessmentServiceTest {
     User user = user();
     AssessmentAttempt attempt = savedAttempt(assessment, user);
     AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder()
-        .attempt(attempt).questionNumber(1).selectedAnswer(CorrectAnswer.A).build();
+        .attempt(attempt).questionNumber(1).selectedAnswer(AnswerChoice.A).build();
     AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder()
-        .attempt(attempt).questionNumber(2).selectedAnswer(CorrectAnswer.C).build();
+        .attempt(attempt).questionNumber(2).selectedAnswer(AnswerChoice.C).build();
     attempt.getDetails().addAll(List.of(detail1, detail2));
 
     when(courseRepository.existsById(courseId)).thenReturn(true);
@@ -511,7 +511,7 @@ class LearnerAssessmentServiceTest {
     assertThat(result.details()).hasSize(2);
     assertThat(result.details().get(0).selectedAnswer()).isEqualTo(result.details().get(0).correctAnswer());
     assertThat(result.details().get(1).selectedAnswer()).isNotEqualTo(result.details().get(1).correctAnswer());
-    assertThat(result.details().get(1).correctAnswer()).isEqualTo(CorrectAnswer.B);
+    assertThat(result.details().get(1).correctAnswer()).isEqualTo(AnswerChoice.B);
     assertThat(result.score()).isEqualByComparingTo(new BigDecimal("2.50")); // 1/4 * 10
   }
 

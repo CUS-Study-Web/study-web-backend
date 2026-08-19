@@ -22,7 +22,7 @@ import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.QuestionType;
 
 @DisplayName("Course Domain Entities Test")
@@ -124,12 +124,12 @@ class CourseEntityTest {
         .exam(exam)
         .questionNumber(1)
         .questionType(QuestionType.SINGLE_CHOICE)
-        .correctAnswer(CorrectAnswer.B)
+        .correctAnswer(AnswerChoice.B)
         .build();
 
     assertThat(key.getExam()).isEqualTo(exam);
     assertThat(key.getQuestionNumber()).isEqualTo(1);
-    assertThat(key.getCorrectAnswer()).isEqualTo(CorrectAnswer.B);
+    assertThat(key.getCorrectAnswer()).isEqualTo(AnswerChoice.B);
   }
 
   @Test

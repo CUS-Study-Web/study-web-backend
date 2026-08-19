@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.enums.AssessmentType;
+import studyweb.cus.exception.assessment.AssessmentErrorCode;
+import studyweb.cus.exception.assessment.AssessmentException;
 
 public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
@@ -17,4 +19,10 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
       UUID subjectId, AssessmentType assessmentType, Pageable pageable);
 
   Optional<Assessment> findByIdAndDeletedAtIsNull(UUID id);
+
+  default Assessment requireAssessment(UUID id) {
+    return findByIdAndDeletedAtIsNull(id)
+        .orElseThrow(() -> new AssessmentException(
+            AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
+  }
 }

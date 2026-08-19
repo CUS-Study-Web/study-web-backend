@@ -40,7 +40,7 @@ import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.QuestionType;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
@@ -252,7 +252,7 @@ class AssessmentServiceTest {
     when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
 
     String answerKeysJson = "[{\"questionNumber\":1,\"correctAnswer\":\"A\"}]";
-    List<AnswerKeyItem> parsed = List.of(new AnswerKeyItem(1, CorrectAnswer.A));
+    List<AnswerKeyItem> parsed = List.of(new AnswerKeyItem(1, AnswerChoice.A));
     when(objectMapper.readValue(eq(answerKeysJson), org.mockito.ArgumentMatchers.<TypeReference<List<AnswerKeyItem>>>any())).thenReturn(parsed);
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
@@ -291,8 +291,8 @@ class AssessmentServiceTest {
     Assessment assessment = examAssessment();
     AnswerKey key1 = new AnswerKey();
     key1.setQuestionNumber(1);
-    key1.setCorrectAnswer(CorrectAnswer.A);
-    AnswerKeyResponse keyResp = new AnswerKeyResponse(1, QuestionType.SINGLE_CHOICE, CorrectAnswer.A);
+    key1.setCorrectAnswer(AnswerChoice.A);
+    AnswerKeyResponse keyResp = new AnswerKeyResponse(1, QuestionType.SINGLE_CHOICE, AnswerChoice.A);
     AssessmentDetailResponse expected = new AssessmentDetailResponse(
         assessmentId, "Midterm Exam", AssessmentType.EXAM, AssessmentStatus.DRAFT,
         40, null, 100, null, "PDF", "url", null, courseId, null, "Java Course", null, null, null,
