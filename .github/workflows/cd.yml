@@ -133,17 +133,17 @@ jobs:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
           # 1. Create the permanent directories first
-          mkdir -p ~/.config/systemd/user/git-ops/nginx
+          sudo mkdir -p ~/.config/systemd/user/git-ops/nginx
           
           # 2. Save backend.env to the permanent location
-          printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
+          sudo printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
           chmod 600 ~/.config/systemd/user/git-ops/backend.env
           
           # 3. Copy the Nginx config to the permanent location
-          cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
+          sudo cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
           
           # 4. Copy the compose files to the permanent location for Systemd to use
-          cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
+          sudo cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
 
       - name: Check infra
         working-directory: gitops-manifests
