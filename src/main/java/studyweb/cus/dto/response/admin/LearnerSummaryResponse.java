@@ -18,4 +18,5 @@ public record LearnerSummaryResponse(
     int numExams,
     String note,
     LocalDateTime vipStartDate,
-    LocalDateTime vipEndDate) {}
+    LocalDateTime vipEndDate,
+    String avatarUrl) {}
