@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -112,13 +113,12 @@ public class FileServiceImpl implements FileService {
 
   private String presignedUrl(String objectName) {
     try {
-      GetObjectRequest getObjectRequest =
-          GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectName).build();
-      GetObjectPresignRequest presignRequest =
-          GetObjectPresignRequest.builder()
-              .signatureDuration(PRESIGN_EXPIRY)
-              .getObjectRequest(getObjectRequest)
-              .build();
+      GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectName)
+          .build();
+      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+          .signatureDuration(PRESIGN_EXPIRY)
+          .getObjectRequest(getObjectRequest)
+          .build();
       PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
       return presigned.url().toString();
     } catch (Exception e) {
@@ -136,5 +136,36 @@ public class FileServiceImpl implements FileService {
       return null;
     }
     return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+  }
+
+  @Override
+  public void deleteFile(String fileUrl) {
+    if (fileUrl == null || fileUrl.isBlank()) {
+      return;
+    }
+    try {
+      String objectKey = extractKeyFromUrl(fileUrl);
+      s3Client.deleteObject(DeleteObjectRequest.builder()
+          .bucket(s3Properties.getBucket())
+          .key(objectKey)
+          .build());
+      log.info("Deleted file from S3: {}", objectKey);
+    } catch (Exception e) {
+      log.error("Failed to delete file {} from S3", fileUrl, e);
+    }
+  }
+
+  private String extractKeyFromUrl(String fileUrl) {
+    try {
+      java.net.URI uri = java.net.URI.create(fileUrl);
+      String path = uri.getPath();
+      if (path != null && path.startsWith("/")) {
+        return path.substring(1);
+      }
+      return path;
+    } catch (Exception e) {
+      log.error("Invalid URL format: {}", fileUrl);
+      throw new FileException(FileErrorCode.DELETE_FAILED);
+    }
   }
 }
