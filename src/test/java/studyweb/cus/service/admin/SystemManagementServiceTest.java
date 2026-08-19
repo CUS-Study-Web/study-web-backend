@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -595,7 +596,52 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 4. createVipAccount WebMVC Service Tests
+  // 4. deleteLearner WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service deleteLearner - Executed via WebMVC")
+  class DeleteLearnerWebMvcServiceTests {
+
+    @Test
+    @DisplayName("User found -> soft deletes by mutating status to INACTIVE and returns 200")
+    void deleteLearner_existingUser_softDeletesToInactive() throws Exception {
+      User user = User.builder().status(UserStatus.ACTIVE).build();
+      user.setId(USER_ID_1);
+      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      mockMvc
+          .perform(
+              delete("/api/system-management/{id}", USER_ID_1).accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Delete learner sucessfully."));
+
+      assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
+      verify(userRepository).findById(USER_ID_1);
+      verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName(
+        "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
+    void deleteLearner_notFound_returns404UserNotFound() throws Exception {
+      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              delete("/api/system-management/{id}", USER_ID_1).accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
+          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+
+      verify(userRepository).findById(USER_ID_1);
+      verify(userRepository, never()).delete(any());
+    }
+  }
+
+  // =========================================================================
+  // 5. createVipAccount WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service createVipAccount - Executed via WebMVC")
@@ -737,7 +783,7 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 5. updateAccount WebMVC Service Tests
+  // 6. updateAccount WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service updateAccount - Executed via WebMVC")
