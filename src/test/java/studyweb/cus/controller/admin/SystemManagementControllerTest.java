@@ -9,6 +9,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -112,7 +113,10 @@ class SystemManagementControllerTest {
         UserStatus.ACTIVE,
         UserTier.VIP,
         "Nguyễn Văn A",
-        4);
+        4,
+        "Kích hoạt VIP 1 năm",
+        LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+        LocalDateTime.of(2027, 8, 18, 23, 59, 59));
   }
 
   // =========================================================================
@@ -219,6 +223,29 @@ class SystemManagementControllerTest {
       assertThat(bound.endDate()).isEqualTo(end);
       assertThat(bound.note()).isEqualTo("Ghi chú kích hoạt");
     }
+
+    @Test
+    @DisplayName("PATCH /update-account - JSON body deserializes all fields for update")
+    void updateAccount_deserializesAllFields() throws Exception {
+      CreateVipAccountRequest request = sampleVipRequest();
+      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
+          .thenReturn(sampleLearnerResponse());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isOk());
+
+      ArgumentCaptor<CreateVipAccountRequest> captor =
+          ArgumentCaptor.forClass(CreateVipAccountRequest.class);
+      verify(systemManagementService).updateAccount(captor.capture());
+
+      CreateVipAccountRequest bound = captor.getValue();
+      assertThat(bound.name()).isEqualTo("Trần Thị B");
+      assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
+    }
   }
 
   // =========================================================================
@@ -232,8 +259,8 @@ class SystemManagementControllerTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t", "\n"})
-    @DisplayName("POST /create-vip-account - Rejects blank or empty name")
-    void createVipAccount_rejectsBlankName(String invalidName) throws Exception {
+    @DisplayName("POST & PATCH - Rejects blank or empty name")
+    void createAndUpdate_rejectsBlankName(String invalidName) throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               invalidName,
@@ -253,14 +280,25 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
           .andExpect(jsonPath("$.message").value("Name is required"));
 
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
+          .andExpect(jsonPath("$.message").value("Name is required"));
+
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t", "\n"})
-    @DisplayName("POST /create-vip-account - Rejects blank or empty gmail")
-    void createVipAccount_rejectsBlankGmail(String invalidGmail) throws Exception {
+    @DisplayName("POST & PATCH - Rejects blank or empty gmail")
+    void createAndUpdate_rejectsBlankGmail(String invalidGmail) throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
@@ -280,12 +318,23 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
           .andExpect(jsonPath("$.message").value("Email is required"));
 
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
+          .andExpect(jsonPath("$.message").value("Email is required"));
+
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
-    @DisplayName("POST /create-vip-account - Rejects null startDate")
-    void createVipAccount_rejectsNullStartDate() throws Exception {
+    @DisplayName("POST & PATCH - Rejects null startDate")
+    void createAndUpdate_rejectsNullStartDate() throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
@@ -305,12 +354,23 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
           .andExpect(jsonPath("$.message").value("Start date is required"));
 
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
+          .andExpect(jsonPath("$.message").value("Start date is required"));
+
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
-    @DisplayName("POST /create-vip-account - Rejects null endDate")
-    void createVipAccount_rejectsNullEndDate() throws Exception {
+    @DisplayName("POST & PATCH - Rejects null endDate")
+    void createAndUpdate_rejectsNullEndDate() throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
@@ -330,7 +390,18 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
           .andExpect(jsonPath("$.message").value("End date is required"));
 
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
+          .andExpect(jsonPath("$.message").value("End date is required"));
+
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
   }
 
@@ -419,6 +490,29 @@ class SystemManagementControllerTest {
 
       verify(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
     }
+
+    @Test
+    @DisplayName("PATCH /update-account - Delegates request to updateAccount and wraps payload")
+    void updateAccount_delegatesAndWrapsPayload() throws Exception {
+      CreateVipAccountRequest request = sampleVipRequest();
+      LearnerSummaryResponse updated = sampleLearnerResponse();
+
+      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
+          .thenReturn(updated);
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Account updated successfully!"))
+          .andExpect(jsonPath("$.data.id").value(LEARNER_ID.toString()))
+          .andExpect(jsonPath("$.data.gmail").value(LEARNER_EMAIL));
+
+      verify(systemManagementService).updateAccount(any(CreateVipAccountRequest.class));
+    }
   }
 
   // =========================================================================
@@ -438,6 +532,23 @@ class SystemManagementControllerTest {
 
       mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
+          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+    }
+
+    @Test
+    @DisplayName("UserException(USER_NOT_FOUND) on updateAccount -> 404 NOT_FOUND")
+    void updateAccount_userNotFound_translatesTo404() throws Exception {
+      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
+          .thenThrow(new UserException(UserErrorCode.USER_NOT_FOUND));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
@@ -469,7 +580,14 @@ class SystemManagementControllerTest {
     @DisplayName("HttpRequestMethodNotSupportedException -> 405 METHOD_NOT_ALLOWED with SYS_004")
     void methodNotSupported_translatesTo405() throws Exception {
       mockMvc
-          .perform(put("/api/system-management/create-vip-account"))
+          .perform(delete("/api/system-management/create-vip-account"))
+          .andExpect(status().isMethodNotAllowed())
+          .andExpect(jsonPath("$.statusCode").value(405))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.METHOD_NOT_ALLOWED.code()))
+          .andExpect(jsonPath("$.message").value(SystemErrorCode.METHOD_NOT_ALLOWED.message()));
+
+      mockMvc
+          .perform(put("/api/system-management/update-account"))
           .andExpect(status().isMethodNotAllowed())
           .andExpect(jsonPath("$.statusCode").value(405))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.METHOD_NOT_ALLOWED.code()))
@@ -516,11 +634,18 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isUnauthorized());
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+          .andExpect(status().isUnauthorized());
 
       verify(systemManagementService, never()).listLearners(any(), any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).unbanLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
@@ -540,11 +665,18 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isForbidden());
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+          .andExpect(status().isForbidden());
 
       verify(systemManagementService, never()).listLearners(any(), any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).unbanLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
@@ -564,11 +696,18 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isForbidden());
+      mockMvc
+          .perform(
+              patch("/api/system-management/update-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+          .andExpect(status().isForbidden());
 
       verify(systemManagementService, never()).listLearners(any(), any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).unbanLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
+      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
