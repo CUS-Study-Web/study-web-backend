@@ -31,8 +31,6 @@ import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
-import studyweb.cus.exception.course.CourseErrorCode;
-import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.assessment.LearnerAssessmentMapper;

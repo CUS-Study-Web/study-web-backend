@@ -26,15 +26,12 @@ import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.Course;
-import studyweb.cus.entity.course.Subject;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
-import studyweb.cus.exception.course.CourseErrorCode;
-import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.mapper.assessment.AssessmentMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
@@ -60,7 +57,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Transactional
   public AssessmentSummaryResponse createAssessment(
       UUID courseId, CreateAssessmentRequest request) {
-    Course course = requireCourse(courseId);
+    Course course = courseRepository.requireCourse(courseId);
 
     Assessment.AssessmentBuilder builder = Assessment.builder()
         .title(request.title())
@@ -82,7 +79,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Override
   @Transactional(readOnly = true)
   public AssessmentDetailResponse getAssessmentDetail(UUID courseId, UUID assessmentId) {
-    requireCourse(courseId);
+    courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
 
     List<AnswerKey> keys = answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
@@ -96,8 +93,8 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Transactional(readOnly = true)
   public Page<AssessmentSummaryResponse> listHomeworkBySubject(
       UUID courseId, UUID subjectId, Pageable pageable) {
-    requireCourse(courseId);
-    requireSubject(courseId, subjectId);
+    courseRepository.requireCourse(courseId);
+    subjectRepository.requireSubject(subjectId, courseId);
 
     Page<Assessment> page = assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
         subjectId, AssessmentType.HOMEWORK, pageable);
@@ -113,7 +110,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Override
   @Transactional(readOnly = true)
   public Page<AssessmentSummaryResponse> listExamsByCourse(UUID courseId, Pageable pageable) {
-    requireCourse(courseId);
+    courseRepository.requireCourse(courseId);
 
     Page<Assessment> page = assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
         courseId, AssessmentType.EXAM, pageable);
@@ -130,7 +127,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Transactional
   public AssessmentSummaryResponse updateAssessment(
       UUID courseId, UUID assessmentId, UpdateAssessmentRequest request) {
-    requireCourse(courseId);
+    courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
 
     updateCommonFields(assessment, request);
@@ -146,7 +143,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Override
   @Transactional
   public void deleteAssessment(UUID courseId, UUID assessmentId) {
-    requireCourse(courseId);
+    courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
     assessment.setDeletedAt(LocalDateTime.now());
     log.info("Soft-deleted assessment {}", assessmentId);
@@ -165,7 +162,7 @@ public class AssessmentServiceImpl implements AssessmentService {
       if (request.subjectId() == null) {
         throw new AssessmentException(AssessmentErrorCode.HOMEWORK_REQUIRES_SUBJECT);
       }
-      builder.subject(requireSubject(courseId, request.subjectId()));
+      builder.subject(subjectRepository.requireSubject(request.subjectId(), courseId));
     } else {
       builder.course(course);
       builder.durationMin(defaultOr(request.durationMin(), 0));
@@ -219,7 +216,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   private void updateTypeSpecificFields(
       Assessment assessment, UUID courseId, UpdateAssessmentRequest request) {
     if (assessment.getAssessmentType() == AssessmentType.HOMEWORK && request.subjectId() != null) {
-      assessment.setSubject(requireSubject(courseId, request.subjectId()));
+      assessment.setSubject(subjectRepository.requireSubject(request.subjectId(), courseId));
     }
     if (assessment.getAssessmentType() == AssessmentType.EXAM) {
       if (request.durationMin() != null) {
@@ -337,6 +334,5 @@ public class AssessmentServiceImpl implements AssessmentService {
       default -> throw new AssessmentException(AssessmentErrorCode.UNSUPPORTED_FILE_TYPE);
     };
   }
-
 
 }
