@@ -27,6 +27,7 @@ public interface SystemManagementMapper {
   @Mapping(target = "note", source = "user.note")
   @Mapping(target = "vipStartDate", source = "user.vipStartDate")
   @Mapping(target = "vipEndDate", source = "user.vipEndDate")
+  @Mapping(target = "avatarUrl", source = "user.avatarUrl")
   LearnerSummaryResponse toLearnerSummary(
       User user, UserCourseProgress progress, Double averageScore, int numExams);
 
