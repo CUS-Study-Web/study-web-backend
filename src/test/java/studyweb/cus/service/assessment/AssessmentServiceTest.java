@@ -17,6 +17,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -137,6 +138,53 @@ class AssessmentServiceTest {
   // ============================================================
 
   @Test
+  void createAssessment_invalidAnswerKeysJson_throwsException() throws Exception {
+    Course course = course();
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+      Assessment saved = inv.getArgument(0);
+      saved.setId(assessmentId);
+      return saved;
+    });
+
+    String invalidJson = "[{bad_json}]";
+    when(
+        objectMapper.readValue(eq(invalidJson), ArgumentMatchers.<TypeReference<List<AnswerKeyItem>>>any()))
+        .thenThrow(new com.fasterxml.jackson.core.JsonProcessingException("Parse error") {
+        });
+
+    CreateAssessmentRequest request = new CreateAssessmentRequest(
+        AssessmentType.EXAM, "Exam", 1, null, null,
+        30, 100, null, pdfFile(), invalidJson, null);
+
+    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+        .isInstanceOf(AssessmentException.class)
+        .satisfies(
+            ex -> assertThat(((AssessmentException) ex).getCode())
+                .isEqualTo(AssessmentErrorCode.INVALID_ANSWER_KEYS.code()));
+  }
+
+  @Test
+  void createAssessment_fileUploadFails_throwsException() {
+    Course course = course();
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+
+    when(fileService.uploadExamFile(any()))
+        .thenThrow(new RuntimeException("S3 Connection Timeout"));
+
+    CreateAssessmentRequest request = new CreateAssessmentRequest(
+        AssessmentType.EXAM, "Exam", 10, null, null,
+        30, 100, null, pdfFile(), null, null);
+
+    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining("S3 Connection Timeout");
+
+    verify(assessmentRepository, never()).save(any());
+  }
+
+  @Test
   void createAssessment_exam_persistsAndReturnsSummary() {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
@@ -225,7 +273,8 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_courseNotFound_throwsCourseException() {
-    when(courseRepository.requireCourse(courseId)).thenThrow(new studyweb.cus.exception.course.CourseException(studyweb.cus.exception.course.CourseErrorCode.COURSE_NOT_FOUND));
+    when(courseRepository.requireCourse(courseId)).thenThrow(new studyweb.cus.exception.course.CourseException(
+        studyweb.cus.exception.course.CourseErrorCode.COURSE_NOT_FOUND));
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
         AssessmentType.EXAM, "Test", 10, null, null,
@@ -252,7 +301,8 @@ class AssessmentServiceTest {
 
     String answerKeysJson = "[{\"questionNumber\":1,\"correctAnswer\":\"A\"}]";
     List<AnswerKeyItem> parsed = List.of(new AnswerKeyItem(1, AnswerChoice.A));
-    when(objectMapper.readValue(eq(answerKeysJson), org.mockito.ArgumentMatchers.<TypeReference<List<AnswerKeyItem>>>any())).thenReturn(parsed);
+    when(objectMapper.readValue(eq(answerKeysJson),
+        org.mockito.ArgumentMatchers.<TypeReference<List<AnswerKeyItem>>>any())).thenReturn(parsed);
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
         AssessmentType.EXAM, "Exam", 1, null, null,
@@ -313,7 +363,9 @@ class AssessmentServiceTest {
   @Test
   void getAssessmentDetail_assessmentNotFound_throwsException() {
     when(courseRepository.requireCourse(courseId)).thenReturn(course());
-    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
+    when(assessmentRepository.requireAssessment(assessmentId))
+        .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
+            studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     assertThatThrownBy(() -> service.getAssessmentDetail(courseId, assessmentId))
         .isInstanceOf(AssessmentException.class)
@@ -428,7 +480,9 @@ class AssessmentServiceTest {
   @Test
   void updateAssessment_assessmentNotFound_throwsException() {
     when(courseRepository.requireCourse(courseId)).thenReturn(course());
-    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
+    when(assessmentRepository.requireAssessment(assessmentId))
+        .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
+            studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
         "Title", null, null, null, null, null, null, null, null, null);
@@ -494,7 +548,9 @@ class AssessmentServiceTest {
   @Test
   void deleteAssessment_assessmentNotFound_throwsException() {
     when(courseRepository.requireCourse(courseId)).thenReturn(course());
-    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
+    when(assessmentRepository.requireAssessment(assessmentId))
+        .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
+            studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     assertThatThrownBy(() -> service.deleteAssessment(courseId, assessmentId))
         .isInstanceOf(AssessmentException.class)

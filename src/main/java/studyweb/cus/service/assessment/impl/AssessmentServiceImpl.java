@@ -66,14 +66,32 @@ public class AssessmentServiceImpl implements AssessmentService {
         .explanationUrl(request.explanationUrl());
 
     applyTypeSpecificFields(builder, course, courseId, request);
+
     applyFileFields(builder, request.assessmentType(), request.file());
     applyStatus(builder, request.status());
 
-    Assessment savedAssessment = assessmentRepository.save(builder.build());
-    saveAnswerKeys(savedAssessment, request.answerKeys());
+    Assessment assessmentToSave = builder.build();
 
-    log.info("Created {} '{}' (id={})", request.assessmentType(), savedAssessment.getTitle(), savedAssessment.getId());
-    return assessmentMapper.toSummary(savedAssessment);
+    try {
+      Assessment savedAssessment = assessmentRepository.save(assessmentToSave);
+      saveAnswerKeys(savedAssessment, request.answerKeys());
+
+      log.info("Created {} '{}' (id={})", request.assessmentType(), savedAssessment.getTitle(),
+          savedAssessment.getId());
+      return assessmentMapper.toSummary(savedAssessment);
+
+    } catch (Exception ex) {
+
+      if (assessmentToSave.getFileUrl() != null) {
+        log.warn("Lưu Database thất bại. Đang dọn dẹp file rác trên S3: {}", assessmentToSave.getFileUrl());
+        try {
+          fileService.deleteFile(assessmentToSave.getFileUrl());
+        } catch (Exception s3Ex) {
+          log.error("Xóa file rác S3 thất bại. Cần dọn dẹp thủ công URL: {}", assessmentToSave.getFileUrl(), s3Ex);
+        }
+      }
+      throw ex;
+    }
   }
 
   @Override
