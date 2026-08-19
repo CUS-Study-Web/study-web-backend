@@ -2,9 +2,9 @@ name: Study Web Backend CI flow
 
 on:
   push:
-    branches: ["staging"]
+    branches: ["staging", "main"]
   pull_request:
-    branches: ["staging"]
+    branches: ["staging", "main"]
 
 jobs:
   build-and-test:

@@ -13,7 +13,7 @@ on:
 concurrency:
   group: be-deploy
   cancel-in-progress: false
-
+ 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/backend
@@ -127,12 +127,23 @@ jobs:
           echo "===== LINGER ====="
           loginctl show-user "$(whoami)" -p Linger
 
-      - name: Create backend.env from secret
+      - name: Create permanent configs
+        working-directory: gitops-manifests
         env:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
-          printf "%s" "$BACKEND_ENV_CONTENT" > gitops-manifests/backend.env
-          chmod 600 gitops-manifests/backend.env
+          # 1. Create the permanent directories first
+          mkdir -p ~/.config/systemd/user/git-ops/nginx
+          
+          # 2. Save backend.env to the permanent location
+          printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
+          chmod 600 ~/.config/systemd/user/git-ops/backend.env
+          
+          # 3. Copy the Nginx config to the permanent location
+          cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
+          
+          # 4. Copy the compose files to the permanent location for Systemd to use
+          cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
 
       - name: Check infra
         working-directory: gitops-manifests
@@ -143,6 +154,7 @@ jobs:
         working-directory: gitops-manifests
         env:
           DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUNNER_TRACKING_ID: ""
         run: |
           if [ "$DEPLOY_BRANCH" = "main" ]; then
             make be-prod
