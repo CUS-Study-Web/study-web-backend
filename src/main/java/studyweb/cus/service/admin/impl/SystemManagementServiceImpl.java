@@ -141,4 +141,19 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     return systemManagementMapper.toLearnerSummary(user, null, 0.0);
   }
+
+  @Override
+  @Transactional
+  public LearnerSummaryResponse updateAccount(CreateVipAccountRequest request) {
+    User user =
+        userRepository
+            .findByGmail(request.gmail())
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    user.setName(request.name());
+    user.setTier(UserTier.VIP);
+    User updatedUser = userRepository.save(user);
+
+    return systemManagementMapper.toLearnerSummary(updatedUser, null, 0.0);
+  }
 }

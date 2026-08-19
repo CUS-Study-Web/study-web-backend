@@ -14,4 +14,6 @@ public interface SystemManagementService {
   void unbanLearner(UUID id);
 
   LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request);
+
+  LearnerSummaryResponse updateAccount(CreateVipAccountRequest request);
 }
