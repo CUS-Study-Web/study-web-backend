@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SuccessResponse;
+import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -35,9 +37,14 @@ import studyweb.cus.service.admin.SystemManagementService;
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(
     name = "System management",
-    description = "Admin endpoints for learner and assistant management")
+    description =
+        "Endpoints for admin to manage learners, assistants, VIP requests, and access logs")
 public class SystemManagementController extends AbstractBaseController {
   private final SystemManagementService systemManagementService;
+
+  // =========================================================================
+  // Learner Management Endpoints
+  // =========================================================================
 
   @GetMapping("/learners")
   @Operation(summary = "List Learners", description = "List all learners with pagination")
@@ -46,7 +53,7 @@ public class SystemManagementController extends AbstractBaseController {
       @RequestParam(required = false) UserStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
-        "[GET /api/admin/learners] search='{}', status='{}', page={}, size={}",
+        "[GET /api/system-management/learners] search='{}', page={}, size={}",
         search,
         status,
         pageable.getPageNumber(),
@@ -110,5 +117,64 @@ public class SystemManagementController extends AbstractBaseController {
         request.gmail());
     systemManagementService.updateLearnerAccount(id, request);
     return success("Update learner account succesfully!");
+  }
+
+  // =========================================================================
+  // Assistant Management Endpoints
+  // =========================================================================
+
+  @GetMapping("/assistants")
+  @Operation(
+      summary = "List Assistants",
+      description = "List all assistants with pagination, stats, and recent activities")
+  public ResponseEntity<SingleResponse<Page<AssistantSummaryResponse>>> listAssistants(
+      @RequestParam(required = false) String search,
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/system-management/assistants] search='{}', page={}, size={}",
+        search,
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return successSingle(
+        systemManagementService.listAssistants(search, pageable),
+        "Assistants fetched successfully!");
+  }
+
+  @PostMapping("/assistants")
+  @Operation(summary = "Create Assistant", description = "Create a new assistant account")
+  public ResponseEntity<SingleResponse<AssistantSummaryResponse>> createAssistant(
+      @Valid @RequestBody CreateAssistantRequest request) {
+    log.info(
+        "[POST /api/system-management/assistants] Create assistant with email: {}",
+        request.gmail());
+    return successSingle(
+        systemManagementService.createAssistant(request), "Assistant created successfully!");
+  }
+
+  @PatchMapping("/assistants/{id}/deactivate")
+  @Operation(summary = "Deactivate Assistant", description = "Deactivate assistant account")
+  public ResponseEntity<SuccessResponse> deactivateAssistant(@PathVariable UUID id) {
+    log.info(
+        "[PATCH /api/system-management/assistants/{id}/deactivate] Deactivate assistant id: {}",
+        id);
+    systemManagementService.deactivateAssistant(id);
+    return success("Deactivate assistant successfully.");
+  }
+
+  @PatchMapping("/assistants/{id}/activate")
+  @Operation(summary = "Activate Assistant", description = "Activate assistant account")
+  public ResponseEntity<SuccessResponse> activateAssistant(@PathVariable UUID id) {
+    log.info(
+        "[PATCH /api/system-management/assistants/{id}/activate] Activate assistant id: {}", id);
+    systemManagementService.activateAssistant(id);
+    return success("Activate assistant successfully.");
+  }
+
+  @DeleteMapping("/assistants/{id}")
+  @Operation(summary = "Delete Assistant", description = "Soft delete assistant account")
+  public ResponseEntity<SuccessResponse> deleteAssistant(@PathVariable UUID id) {
+    log.info("[DELETE /api/system-management/assistants/{id}] Delete assistant id: {}", id);
+    systemManagementService.deleteAssistant(id);
+    return success("Delete assistant successfully.");
   }
 }
