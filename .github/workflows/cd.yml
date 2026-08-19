@@ -143,6 +143,7 @@ jobs:
         working-directory: gitops-manifests
         env:
           DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          RUNNER_TRACKING_ID: ""
         run: |
           if [ "$DEPLOY_BRANCH" = "main" ]; then
             make be-prod
