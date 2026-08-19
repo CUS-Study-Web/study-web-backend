@@ -139,7 +139,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_exam_persistsAndReturnsSummary() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "https://s3.test/exam.pdf"));
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
@@ -161,7 +161,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_homework_requiresSubjectId() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
         AssessmentType.HOMEWORK, "HW 1", 10, null, null,
@@ -178,9 +178,8 @@ class AssessmentServiceTest {
   void createAssessment_homework_withSubject_persists() {
     Course course = course();
     Subject subject = subject();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
-    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
-        .thenReturn(Optional.of(subject));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject);
     when(fileService.uploadExerciseFile(any())).thenReturn(new UploadDocumentResult(50L, "https://s3.test/hw.pdf"));
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
@@ -203,7 +202,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_publishedStatus_setsPublishedAt() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
@@ -226,7 +225,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_courseNotFound_throwsCourseException() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.empty());
+    when(courseRepository.requireCourse(courseId)).thenThrow(new studyweb.cus.exception.course.CourseException(studyweb.cus.exception.course.CourseErrorCode.COURSE_NOT_FOUND));
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
         AssessmentType.EXAM, "Test", 10, null, null,
@@ -242,7 +241,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_withAnswerKeys_savesKeys() throws Exception {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
@@ -267,7 +266,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_unsupportedFileType_throwsException() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile unknownFile = new MockMultipartFile("file", "test.txt", "text/plain", new byte[] { 1 });
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));
 
@@ -298,8 +297,8 @@ class AssessmentServiceTest {
         40, null, 100, null, "PDF", "url", null, courseId, null, "Java Course", null, null, null,
         List.of(keyResp));
 
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(List.of(key1));
     when(assessmentMapper.toAnswerKeyResponse(key1)).thenReturn(keyResp);
@@ -313,8 +312,8 @@ class AssessmentServiceTest {
 
   @Test
   void getAssessmentDetail_assessmentNotFound_throwsException() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.empty());
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     assertThatThrownBy(() -> service.getAssessmentDetail(courseId, assessmentId))
         .isInstanceOf(AssessmentException.class)
@@ -329,9 +328,8 @@ class AssessmentServiceTest {
 
   @Test
   void listHomeworkBySubject_returnsPagedResults() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
-        .thenReturn(Optional.of(subject()));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject());
     Assessment hw = homeworkAssessment();
     Page<Assessment> page = new PageImpl<>(List.of(hw), PageRequest.of(0, 10), 1);
     when(assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
@@ -347,7 +345,7 @@ class AssessmentServiceTest {
 
   @Test
   void listExamsByCourse_returnsPagedResults() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
     Assessment exam = examAssessment();
     Page<Assessment> page = new PageImpl<>(List.of(exam), PageRequest.of(0, 10), 1);
     when(assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
@@ -362,7 +360,7 @@ class AssessmentServiceTest {
 
   @Test
   void listExamsByCourse_emptyPage_returnsEmpty() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
     Page<Assessment> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
     when(assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
         eq(courseId), eq(AssessmentType.EXAM), any(Pageable.class)))
@@ -380,8 +378,8 @@ class AssessmentServiceTest {
   @Test
   void updateAssessment_updatesTitle() {
     Assessment assessment = examAssessment();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
@@ -395,8 +393,8 @@ class AssessmentServiceTest {
   @Test
   void updateAssessment_examUpdatesDurationAndScore() {
     Assessment assessment = examAssessment();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
@@ -414,8 +412,8 @@ class AssessmentServiceTest {
     Assessment assessment = examAssessment();
     assertThat(assessment.getPublishedAt()).isNull();
 
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
@@ -429,8 +427,8 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_assessmentNotFound_throwsException() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.empty());
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
         "Title", null, null, null, null, null, null, null, null, null);
@@ -445,8 +443,8 @@ class AssessmentServiceTest {
   @Test
   void updateAssessment_withNewFile_uploadsAndUpdates() {
     Assessment assessment = examAssessment();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(200L, "https://s3.test/new-exam.pdf"));
 
@@ -464,8 +462,8 @@ class AssessmentServiceTest {
   void updateAssessment_withNullFile_doesNotUpload() {
     Assessment assessment = examAssessment();
     String originalUrl = assessment.getFileUrl();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
@@ -485,8 +483,8 @@ class AssessmentServiceTest {
   @Test
   void deleteAssessment_softDeletes() {
     Assessment assessment = examAssessment();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
 
     service.deleteAssessment(courseId, assessmentId);
 
@@ -495,8 +493,8 @@ class AssessmentServiceTest {
 
   @Test
   void deleteAssessment_assessmentNotFound_throwsException() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.empty());
+    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(assessmentRepository.requireAssessment(assessmentId)).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     assertThatThrownBy(() -> service.deleteAssessment(courseId, assessmentId))
         .isInstanceOf(AssessmentException.class)
@@ -512,7 +510,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_docxFile_detectsCorrectly() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile docxFile = new MockMultipartFile("file", "test.docx", "application/msword", new byte[] { 1 });
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
@@ -536,7 +534,7 @@ class AssessmentServiceTest {
   @Test
   void createAssessment_xlsxFile_detectsCorrectly() {
     Course course = course();
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile xlsxFile = new MockMultipartFile("file", "test.xlsx", "application/vnd.ms-excel",
         new byte[] { 1 });
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));

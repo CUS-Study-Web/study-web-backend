@@ -134,8 +134,8 @@ class LearnerAssessmentServiceTest {
     AssessmentStartResponse expected = new AssessmentStartResponse(assessmentId, "Midterm Exam", AssessmentType.EXAM,
         40, 0, AssessmentFileType.PDF, "https://s3.test/exams/midterm.pdf");
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
     when(mapper.toStartResponse(assessment)).thenReturn(expected);
 
@@ -147,7 +147,7 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAssessmentForTaking_courseNotFound_throwsCourseException() {
-    when(courseRepository.existsById(courseId)).thenReturn(false);
+    when(courseRepository.requireCourse(courseId)).thenThrow(new studyweb.cus.exception.course.CourseException(studyweb.cus.exception.course.CourseErrorCode.COURSE_NOT_FOUND));
 
     assertThatThrownBy(() -> service.getAssessmentForTaking(courseId, assessmentId, userEmail))
         .isInstanceOf(CourseException.class)
@@ -158,8 +158,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAssessmentForTaking_assessmentNotFound_throwsAssessmentException() {
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.empty());
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenThrow(new studyweb.cus.exception.assessment.AssessmentException(studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     assertThatThrownBy(() -> service.getAssessmentForTaking(courseId, assessmentId, userEmail))
         .isInstanceOf(AssessmentException.class)
@@ -182,8 +182,8 @@ class LearnerAssessmentServiceTest {
         new StudentAnswerItem(3, AnswerChoice.C),
         new StudentAnswerItem(4, AnswerChoice.D));
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -215,8 +215,8 @@ class LearnerAssessmentServiceTest {
         new StudentAnswerItem(3, AnswerChoice.A),
         new StudentAnswerItem(4, AnswerChoice.A));
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -246,8 +246,8 @@ class LearnerAssessmentServiceTest {
         new StudentAnswerItem(3, AnswerChoice.A), // wrong
         new StudentAnswerItem(4, AnswerChoice.A)); // wrong
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -272,8 +272,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -295,8 +295,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -319,8 +319,8 @@ class LearnerAssessmentServiceTest {
     User user = user();
     List<StudentAnswerItem> answers = List.of(new StudentAnswerItem(1, AnswerChoice.A));
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -345,8 +345,8 @@ class LearnerAssessmentServiceTest {
         new StudentAnswerItem(1, AnswerChoice.A),
         new StudentAnswerItem(2, AnswerChoice.B));
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -369,8 +369,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_userNotFound_throwsUserException() {
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment(4, 10)));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment(4, 10));
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.submitAssessment(courseId, assessmentId, userEmail, submitRequest(List.of())))
@@ -385,8 +385,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(4, 10);
     User user = user();
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(sampleAnswerKeys());
@@ -410,8 +410,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(0, 10);
     User user = user();
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(List.of());
@@ -448,8 +448,8 @@ class LearnerAssessmentServiceTest {
     AssessmentAttemptResponse expected = new AssessmentAttemptResponse(
         attemptId, 1, 3, 4, 7.50, 15, attempt.getCompletedAt());
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findByUserIdAndExamIdOrderByAttemptNumberDesc(eq(userId), eq(assessmentId),
         any(Pageable.class)))
@@ -470,8 +470,8 @@ class LearnerAssessmentServiceTest {
     Assessment assessment = assessment(40, 10);
     Page<AssessmentAttempt> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findByUserIdAndExamIdOrderByAttemptNumberDesc(eq(userId), eq(assessmentId),
         any(Pageable.class)))
@@ -499,8 +499,8 @@ class LearnerAssessmentServiceTest {
         .attempt(attempt).questionNumber(2).selectedAnswer(AnswerChoice.C).build();
     attempt.getDetails().addAll(List.of(detail1, detail2));
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
@@ -517,8 +517,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAttemptDetail_attemptNotFound_throwsAssessmentException() {
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment(4, 10)));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment(4, 10));
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.empty());
 
@@ -537,8 +537,8 @@ class LearnerAssessmentServiceTest {
     owner.setGmail("other@studyweb.edu");
     AssessmentAttempt attempt = savedAttempt(assessment, owner);
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
 
@@ -557,8 +557,8 @@ class LearnerAssessmentServiceTest {
     differentAssessment.setId(UUID.randomUUID()); // different assessment
     AssessmentAttempt attempt = savedAttempt(differentAssessment, user);
 
-    when(courseRepository.existsById(courseId)).thenReturn(true);
-    when(assessmentRepository.findByIdAndDeletedAtIsNull(assessmentId)).thenReturn(Optional.of(assessment));
+    when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
+    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
 
