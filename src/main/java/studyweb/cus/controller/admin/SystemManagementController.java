@@ -1,11 +1,7 @@
 package studyweb.cus.controller.admin;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -19,6 +15,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
@@ -73,9 +75,20 @@ public class SystemManagementController extends AbstractBaseController {
   public ResponseEntity<SingleResponse<LearnerSummaryResponse>> createVipAccount(
       @Valid @RequestBody CreateVipAccountRequest request) {
     log.info(
-        "[PATCH /api/system-management/create-vip-account] Create a vip account with email: {}",
+        "[POST /api/system-management/create-vip-account] Create a vip account with email: {}",
         request.gmail());
     return successSingle(
         systemManagementService.createVipAccount(request), "Learners fetched successfully!");
+  }
+
+  @PatchMapping(value = "/update-account")
+  @Operation(summary = "Update an existing account")
+  public ResponseEntity<SingleResponse<LearnerSummaryResponse>> updateAccount(
+      @Valid @RequestBody CreateVipAccountRequest request) {
+    log.info(
+        "[PATCH /api/system-management/update-account] Update account with email: {}",
+        request.gmail());
+    return successSingle(
+        systemManagementService.updateAccount(request), "Account updated successfully!");
   }
 }
