@@ -139,7 +139,12 @@ class SystemManagementServiceTest {
     @DisplayName(
         "No primary course in DB (primaryCourseByUser empty map) -> Sets primaryProgress=null, avgScore=0.0, numExams=0 without NPE")
     void listLearners_emptyPrimaryCourseList_safeNullProgress() throws Exception {
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
+      User user =
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Nguyễn Văn A")
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
+              .build();
       user.setId(USER_ID_1);
       Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
 
@@ -164,7 +169,8 @@ class SystemManagementServiceTest {
                   0,
                   null,
                   null,
-                  null));
+                  null,
+                  "https://cdn.studyweb.edu/avatars/user1.png"));
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
@@ -174,7 +180,10 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.data.content[0].mainCourse").value("N/A"))
           .andExpect(jsonPath("$.data.content[0].progress").value(0.0))
           .andExpect(jsonPath("$.data.content[0].averageScore").value(0.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(0));
+          .andExpect(jsonPath("$.data.content[0].numExams").value(0))
+          .andExpect(
+              jsonPath("$.data.content[0].avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/user1.png"));
 
       verify(systemManagementMapper).toLearnerSummary(eq(user), isNull(), eq(0.0), eq(0));
     }
@@ -212,6 +221,7 @@ class SystemManagementServiceTest {
                   0,
                   null,
                   null,
+                  null,
                   null));
 
       mockMvc
@@ -229,7 +239,12 @@ class SystemManagementServiceTest {
         "Learner with course and 2 attempts -> Computes avgScore and numExams=2 via WebMVC")
     void listLearners_fullCalculation_returns200WithCalculatedAverageAndNumExams()
         throws Exception {
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
+      User user =
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Nguyễn Văn A")
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
+              .build();
       user.setId(USER_ID_1);
       Pageable pageable = PageRequest.of(0, 10);
       Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
@@ -268,7 +283,8 @@ class SystemManagementServiceTest {
               2,
               null,
               null,
-              null);
+              null,
+              "https://cdn.studyweb.edu/avatars/user1.png");
 
       when(userRepository.searchLearners("nguyen", pageable)).thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
@@ -290,7 +306,10 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.data.content[0].id").value(USER_ID_1.toString()))
           .andExpect(jsonPath("$.data.content[0].averageScore").value(9.0))
           .andExpect(jsonPath("$.data.content[0].progress").value(80.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(2));
+          .andExpect(jsonPath("$.data.content[0].numExams").value(2))
+          .andExpect(
+              jsonPath("$.data.content[0].avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/user1.png"));
 
       verify(userRepository).searchLearners("nguyen", pageable);
       verify(userCourseProgressRepository).findPrimaryCourseByUserIds(List.of(USER_ID_1));
@@ -331,6 +350,7 @@ class SystemManagementServiceTest {
                   UserTier.NORMAL,
                   "Nguyễn Văn A",
                   0,
+                  null,
                   null,
                   null,
                   null));
@@ -410,6 +430,7 @@ class SystemManagementServiceTest {
                   1,
                   null,
                   null,
+                  null,
                   null));
 
       mockMvc
@@ -470,6 +491,7 @@ class SystemManagementServiceTest {
                   1,
                   null,
                   null,
+                  null,
                   null));
 
       when(systemManagementMapper.toLearnerSummary(eq(user2), isNull(), eq(0.0), eq(0)))
@@ -485,6 +507,7 @@ class SystemManagementServiceTest {
                   UserTier.NORMAL,
                   "Learner Two",
                   0,
+                  null,
                   null,
                   null,
                   null));
@@ -664,6 +687,7 @@ class SystemManagementServiceTest {
               .gmail("vip.learner@studyweb.edu")
               .name("Trần B (old)")
               .tier(UserTier.NORMAL)
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user_vip.png")
               .build();
       existingUser.setId(USER_ID_1);
 
@@ -684,7 +708,8 @@ class SystemManagementServiceTest {
                   0,
                   "VIP upgrade note",
                   request.startDate(),
-                  request.endDate()));
+                  request.endDate(),
+                  "https://cdn.studyweb.edu/avatars/user_vip.png"));
 
       mockMvc
           .perform(
@@ -695,7 +720,9 @@ class SystemManagementServiceTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.name").value("Trần Thị B"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"));
+          .andExpect(jsonPath("$.data.tier").value("VIP"))
+          .andExpect(
+              jsonPath("$.data.avatarUrl").value("https://cdn.studyweb.edu/avatars/user_vip.png"));
 
       assertThat(existingUser.getName()).isEqualTo("Trần Thị B");
       assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);
@@ -744,7 +771,8 @@ class SystemManagementServiceTest {
               0,
               "VIP created note",
               request.startDate(),
-              request.endDate());
+              request.endDate(),
+              null);
       when(systemManagementMapper.toLearnerSummary(any(User.class), isNull(), eq(0.0), eq(0)))
           .thenReturn(response);
 
@@ -802,7 +830,12 @@ class SystemManagementServiceTest {
               "Updated to VIP");
 
       User existingUser =
-          User.builder().gmail(GMAIL_1).name("Trần Thị B (Old)").tier(UserTier.NORMAL).build();
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Trần Thị B (Old)")
+              .tier(UserTier.NORMAL)
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user_updated.png")
+              .build();
       existingUser.setId(USER_ID_1);
 
       when(userRepository.findByGmail(GMAIL_1)).thenReturn(Optional.of(existingUser));
@@ -822,7 +855,8 @@ class SystemManagementServiceTest {
                   0,
                   "Updated to VIP",
                   request.startDate(),
-                  request.endDate()));
+                  request.endDate(),
+                  "https://cdn.studyweb.edu/avatars/user_updated.png"));
 
       mockMvc
           .perform(
@@ -834,7 +868,10 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Account updated successfully!"))
           .andExpect(jsonPath("$.data.name").value("Trần Thị B (Updated)"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"));
+          .andExpect(jsonPath("$.data.tier").value("VIP"))
+          .andExpect(
+              jsonPath("$.data.avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/user_updated.png"));
 
       assertThat(existingUser.getName()).isEqualTo("Trần Thị B (Updated)");
       assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);

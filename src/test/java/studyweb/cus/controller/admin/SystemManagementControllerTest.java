@@ -116,7 +116,8 @@ class SystemManagementControllerTest {
         4,
         "Kích hoạt VIP 1 năm",
         LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-        LocalDateTime.of(2027, 8, 18, 23, 59, 59));
+        LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+        "https://cdn.studyweb.edu/avatars/nguyenvana.png");
   }
 
   // =========================================================================
@@ -440,6 +441,9 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data.content[0].id").value(LEARNER_ID.toString()))
           .andExpect(jsonPath("$.data.content[0].name").value("Nguyễn Văn A"))
           .andExpect(jsonPath("$.data.content[0].tier").value("VIP"))
+          .andExpect(
+              jsonPath("$.data.content[0].avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/nguyenvana.png"))
           .andExpect(jsonPath("$.data.totalElements").value(1));
 
       verify(systemManagementService).listLearners(eq("target_learner"), any(Pageable.class));
