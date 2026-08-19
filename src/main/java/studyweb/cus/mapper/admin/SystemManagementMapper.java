@@ -16,13 +16,19 @@ public interface SystemManagementMapper {
 
   @Mapping(target = "id", source = "user.id")
   @Mapping(target = "gmail", source = "user.gmail")
+  @Mapping(target = "name", source = "user.name")
   @Mapping(target = "status", source = "user.status")
+  @Mapping(target = "tier", source = "user.tier")
   @Mapping(target = "mainCourse", source = "progress.course.title", defaultValue = "N/A")
   @Mapping(target = "progress", source = "progress.progressPercent", defaultValue = "0.0")
   @Mapping(target = "averageScore", source = "averageScore", qualifiedByName = "roundGpa")
   @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
+  @Mapping(target = "numExams", source = "numExams")
+  @Mapping(target = "note", source = "user.note")
+  @Mapping(target = "vipStartDate", source = "user.vipStartDate")
+  @Mapping(target = "vipEndDate", source = "user.vipEndDate")
   LearnerSummaryResponse toLearnerSummary(
-      User user, UserCourseProgress progress, Double averageScore);
+      User user, UserCourseProgress progress, Double averageScore, int numExams);
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {

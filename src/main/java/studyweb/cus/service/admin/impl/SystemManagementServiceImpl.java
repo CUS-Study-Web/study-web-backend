@@ -72,12 +72,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     return learnerPage.map(
         user -> {
           double avgScore = 0.0;
+          int numExams = 0;
           UserCourseProgress primaryProgress = primaryCourseByUser.get(user.getId());
           if (primaryProgress != null && primaryProgress.getCourse() != null) {
             String groupKey = user.getId() + ":" + primaryProgress.getCourse().getId();
             List<AssessmentAttempt> primaryCourseAttempts =
                 attemptsByUserAndCourse.getOrDefault(groupKey, List.of());
 
+            numExams = primaryCourseAttempts.size();
             avgScore =
                 primaryCourseAttempts.stream()
                     .mapToDouble(aa -> aa.getScore().doubleValue())
@@ -85,7 +87,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                     .orElse(0.0);
           }
 
-          return systemManagementMapper.toLearnerSummary(user, primaryProgress, avgScore);
+          return systemManagementMapper.toLearnerSummary(user, primaryProgress, avgScore, numExams);
         });
   }
 
@@ -124,6 +126,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                 existing -> {
                   existing.setName(request.name());
                   existing.setTier(UserTier.VIP);
+                  existing.setVipStartDate(request.startDate());
+                  existing.setVipEndDate(request.endDate());
+                  existing.setNote(request.note());
                   return userRepository.save(existing);
                 })
             .orElseGet(
@@ -137,9 +142,12 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                             .status(UserStatus.ACTIVE)
                             .password(passwordEncoder.encode(defaultPassword))
                             .joinDate(LocalDateTime.now())
+                            .vipStartDate(request.startDate())
+                            .vipEndDate(request.endDate())
+                            .note(request.note())
                             .build()));
 
-    return systemManagementMapper.toLearnerSummary(user, null, 0.0);
+    return systemManagementMapper.toLearnerSummary(user, null, 0.0, 0);
   }
 
   @Override
@@ -152,8 +160,11 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     user.setName(request.name());
     user.setTier(UserTier.VIP);
+    user.setVipStartDate(request.startDate());
+    user.setVipEndDate(request.endDate());
+    user.setNote(request.note());
     User updatedUser = userRepository.save(user);
 
-    return systemManagementMapper.toLearnerSummary(updatedUser, null, 0.0);
+    return systemManagementMapper.toLearnerSummary(updatedUser, null, 0.0, 0);
   }
 }
