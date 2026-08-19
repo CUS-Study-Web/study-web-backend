@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -66,6 +67,14 @@ public class SystemManagementController extends AbstractBaseController {
     log.info("[PATCH /api/system-management/{id}/unban] Unban a learner with id: {}", id);
     systemManagementService.unbanLearner(id);
     return success("Unban learner sucessfully.");
+  }
+
+  @DeleteMapping("/{id}")
+  @Operation(summary = "Delete a specific Learner / user")
+  public ResponseEntity<SuccessResponse> deleteLearner(@PathVariable UUID id) {
+    log.info("[DELETE /api/system-management/{id}] Delete learner with id: {}", id);
+    systemManagementService.deleteLearner(id);
+    return success("Delete learner sucessfully.");
   }
 
   @PostMapping("/create-vip-account")

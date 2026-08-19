@@ -113,6 +113,16 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
+  public void deleteLearner(UUID id) {
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.INACTIVE);
+  }
+
+  @Override
+  @Transactional
   public LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request) {
     if (defaultPassword == null || defaultPassword.isBlank()) {
       throw new SystemException(
