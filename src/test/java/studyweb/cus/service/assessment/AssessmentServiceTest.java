@@ -12,20 +12,26 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
 import studyweb.cus.dto.request.assessment.CreateAssessmentRequest;
@@ -72,6 +78,8 @@ class AssessmentServiceTest {
   private FileService fileService;
   @Mock
   private ObjectMapper objectMapper;
+  @Mock
+  private TransactionTemplate transactionTemplate;
 
   @InjectMocks
   private AssessmentServiceImpl service;
@@ -79,6 +87,14 @@ class AssessmentServiceTest {
   private final UUID courseId = UUID.randomUUID();
   private final UUID subjectId = UUID.randomUUID();
   private final UUID assessmentId = UUID.randomUUID();
+
+  @BeforeEach
+  void setUp() {
+    Mockito.lenient().when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+      TransactionCallback<?> callback = invocation.getArgument(0);
+      return callback.doInTransaction(Mockito.mock(TransactionStatus.class));
+    });
+  }
 
   // --- Factory helpers ---
 
@@ -97,6 +113,25 @@ class AssessmentServiceTest {
     return s;
   }
 
+  private Assessment createTestAssessment(AssessmentType type) {
+    Assessment a = new Assessment();
+    a.setId(UUID.randomUUID());
+    a.setTitle("Test " + type);
+    a.setAssessmentType(type);
+    a.setAccess(AccessTier.PUBLIC);
+    if (type == AssessmentType.EXAM) {
+      a.setCourse(new Course());
+      a.setFileKey("exams/exam.pdf");
+      a.setDurationMin(60);
+      a.setMaxScore(100);
+    } else {
+      a.setSubject(new Subject());
+      a.setFileKey("exercises/hw.pdf");
+      a.setNumQuestions(5);
+    }
+    return a;
+  }
+
   private Assessment examAssessment() {
     Assessment a = new Assessment();
     a.setId(assessmentId);
@@ -107,7 +142,7 @@ class AssessmentServiceTest {
     a.setStatus(AssessmentStatus.DRAFT);
     a.setCourse(course());
     a.setFileType(AssessmentFileType.PDF);
-    a.setFileUrl("https://s3.test/exam.pdf");
+    a.setFileKey("https://s3.test/exam.pdf");
     return a;
   }
 
@@ -119,7 +154,7 @@ class AssessmentServiceTest {
     a.setNumQuestions(10);
     a.setSubject(subject());
     a.setFileType(AssessmentFileType.PDF);
-    a.setFileUrl("https://s3.test/hw.pdf");
+    a.setFileKey("exercises/hw.pdf");
     return a;
   }
 
@@ -141,8 +176,8 @@ class AssessmentServiceTest {
   void createAssessment_invalidAnswerKeysJson_throwsException() throws Exception {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
@@ -163,12 +198,21 @@ class AssessmentServiceTest {
         .satisfies(
             ex -> assertThat(((AssessmentException) ex).getCode())
                 .isEqualTo(AssessmentErrorCode.INVALID_ANSWER_KEYS.code()));
+
+    verify(fileService).deleteFile(any());
+    verify(assessmentRepository).delete(any(Assessment.class));
   }
 
   @Test
   void createAssessment_fileUploadFails_throwsException() {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
+
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
+      Assessment saved = inv.getArgument(0);
+      saved.setId(assessmentId);
+      return saved;
+    });
 
     when(fileService.uploadExamFile(any()))
         .thenThrow(new RuntimeException("S3 Connection Timeout"));
@@ -181,6 +225,7 @@ class AssessmentServiceTest {
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("S3 Connection Timeout");
 
+    verify(assessmentRepository).delete(any(Assessment.class));
     verify(assessmentRepository, never()).save(any());
   }
 
@@ -188,10 +233,14 @@ class AssessmentServiceTest {
   void createAssessment_exam_persistsAndReturnsSummary() {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "https://s3.test/exam.pdf"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "https://s3.test/exam.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
+      return saved;
+    });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+      Assessment saved = inv.getArgument(0);
       return saved;
     });
     when(assessmentMapper.toSummary(any(Assessment.class))).thenReturn(summaryResponse());
@@ -203,6 +252,7 @@ class AssessmentServiceTest {
     AssessmentSummaryResponse result = service.createAssessment(courseId, request);
 
     assertThat(result.title()).isEqualTo("Midterm Exam");
+    verify(assessmentRepository).saveAndFlush(any(Assessment.class));
     verify(assessmentRepository).save(any(Assessment.class));
   }
 
@@ -228,11 +278,14 @@ class AssessmentServiceTest {
     Subject subject = subject();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject);
-    when(fileService.uploadExerciseFile(any())).thenReturn(new UploadDocumentResult(50L, "https://s3.test/hw.pdf"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExerciseFile(any())).thenReturn(new UploadDocumentResult(50L, "key", "https://s3.test/hw.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
+    });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+      return inv.getArgument(0);
     });
     when(assessmentMapper.toSummary(any(Assessment.class))).thenReturn(summaryResponse());
 
@@ -251,11 +304,14 @@ class AssessmentServiceTest {
   void createAssessment_publishedStatus_setsPublishedAt() {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
+    });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+      return inv.getArgument(0);
     });
     when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
 
@@ -291,11 +347,14 @@ class AssessmentServiceTest {
   void createAssessment_withAnswerKeys_savesKeys() throws Exception {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "url"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
+    });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+      return inv.getArgument(0);
     });
     when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
 
@@ -318,7 +377,12 @@ class AssessmentServiceTest {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile unknownFile = new MockMultipartFile("file", "test.txt", "text/plain", new byte[] { 1 });
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
+      Assessment saved = inv.getArgument(0);
+      saved.setId(assessmentId);
+      return saved;
+    });
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "key", "url"));
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
         AssessmentType.EXAM, "Exam", 10, null, null,
@@ -352,7 +416,8 @@ class AssessmentServiceTest {
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(List.of(key1));
     when(assessmentMapper.toAnswerKeyResponse(key1)).thenReturn(keyResp);
-    when(assessmentMapper.toDetail(eq(assessment), anyList())).thenReturn(expected);
+    when(fileService.generatePresignedUrl("https://s3.test/exam.pdf")).thenReturn("https://s3.test/exam.pdf");
+    when(assessmentMapper.toDetail(eq(assessment), anyList(), eq("https://s3.test/exam.pdf"))).thenReturn(expected);
 
     AssessmentDetailResponse result = service.getAssessmentDetail(courseId, assessmentId);
 
@@ -500,7 +565,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId)).thenReturn(course());
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(200L, "https://s3.test/new-exam.pdf"));
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
 
     MockMultipartFile newFile = new MockMultipartFile("file", "new-exam.pdf", "application/pdf", new byte[] { 1, 2 });
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
@@ -508,24 +573,25 @@ class AssessmentServiceTest {
 
     service.updateAssessment(courseId, assessmentId, request);
 
-    assertThat(assessment.getFileUrl()).isEqualTo("https://s3.test/new-exam.pdf");
-    verify(fileService).uploadExamFile(newFile);
+    assertThat(assessment.getFileKey()).isEqualTo("key");
+    assertThat(assessment.getFileType()).isEqualTo(AssessmentFileType.PDF);
   }
 
   @Test
-  void updateAssessment_withNullFile_doesNotUpload() {
+  void updateAssessment_noNewFile_keepsOldFile() {
     Assessment assessment = examAssessment();
-    String originalUrl = assessment.getFileUrl();
+    String originalUrl = assessment.getFileKey();
     when(courseRepository.requireCourse(courseId)).thenReturn(course());
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(
-        "New Title", null, null, null, null, null, null, null, null, null);
+        "Updated Title", null, null, null, null, null, null, null, null, null);
 
-    service.updateAssessment(courseId, assessmentId, request);
+    AssessmentSummaryResponse result = service.updateAssessment(courseId, assessmentId, request);
 
-    assertThat(assessment.getFileUrl()).isEqualTo(originalUrl);
+    assertThat(result).isNotNull();
+    assertThat(assessment.getFileKey()).isEqualTo(originalUrl);
     verify(fileService, never()).uploadExamFile(any());
     verify(fileService, never()).uploadExerciseFile(any());
   }
@@ -568,12 +634,13 @@ class AssessmentServiceTest {
     Course course = course();
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile docxFile = new MockMultipartFile("file", "test.docx", "application/msword", new byte[] { 1 });
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "key", "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
     });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
     when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
@@ -593,12 +660,13 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile xlsxFile = new MockMultipartFile("file", "test.xlsx", "application/vnd.ms-excel",
         new byte[] { 1 });
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "url"));
-    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> {
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "key", "url"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
       return saved;
     });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
     when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(

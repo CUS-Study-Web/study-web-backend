@@ -41,6 +41,7 @@ import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.assessment.LearnerAssessmentMapper;
+import studyweb.cus.service.file.FileService;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
@@ -61,6 +62,8 @@ class LearnerAssessmentServiceTest {
   private CourseRepository courseRepository;
   @Mock
   private UserRepository userRepository;
+  @Mock
+  private FileService fileService;
   @Mock
   private LearnerAssessmentMapper mapper;
 
@@ -83,7 +86,7 @@ class LearnerAssessmentServiceTest {
     a.setNumQuestions(numQuestions);
     a.setMaxScore(maxScore);
     a.setFileType(AssessmentFileType.PDF);
-    a.setFileUrl("https://s3.test/exams/midterm.pdf");
+    a.setFileKey("exams/midterm.pdf");
     return a;
   }
 
@@ -137,7 +140,8 @@ class LearnerAssessmentServiceTest {
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
-    when(mapper.toStartResponse(assessment)).thenReturn(expected);
+    when(fileService.generatePresignedUrl("exams/midterm.pdf")).thenReturn("https://s3.test/exams/midterm.pdf");
+    when(mapper.toStartResponse(assessment, "https://s3.test/exams/midterm.pdf")).thenReturn(expected);
 
     AssessmentStartResponse result = service.getAssessmentForTaking(courseId, assessmentId, userEmail);
 

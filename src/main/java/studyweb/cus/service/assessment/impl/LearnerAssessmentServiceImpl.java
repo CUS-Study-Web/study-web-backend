@@ -40,6 +40,7 @@ import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.assessment.LearnerAssessmentService;
+import studyweb.cus.service.file.FileService;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +52,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
   private final AnswerKeyRepository answerKeyRepository;
   private final CourseRepository courseRepository;
   private final UserRepository userRepository;
+  private final FileService fileService;
   private final LearnerAssessmentMapper mapper;
 
   @Override
@@ -61,7 +63,12 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     User user = requireUser(userEmail);
     checkVipAccess(assessment, user);
     log.info("Learner started assessment {}", assessmentId);
-    return mapper.toStartResponse(assessment);
+    
+    String presignedUrl = assessment.getFileKey() != null
+        ? fileService.generatePresignedUrl(assessment.getFileKey())
+        : null;
+        
+    return mapper.toStartResponse(assessment, presignedUrl);
   }
 
   @Override

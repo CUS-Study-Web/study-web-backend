@@ -101,7 +101,7 @@ class CourseEntityTest {
         .numQuestions(30)
         .maxScore(100)
         .fileType(AssessmentFileType.PDF)
-        .fileUrl("https://cdn.studyweb.edu/exam.pdf")
+        .fileKey("exams/exam.pdf")
         .access(AccessTier.PUBLIC)
         .assessmentType(AssessmentType.EXAM)
         .status(AssessmentStatus.PUBLISHED)

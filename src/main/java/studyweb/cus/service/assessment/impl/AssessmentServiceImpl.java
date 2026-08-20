@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
@@ -45,6 +46,7 @@ import studyweb.cus.service.file.FileService;
 @Slf4j
 public class AssessmentServiceImpl implements AssessmentService {
 
+  private final TransactionTemplate transactionTemplate;
   private final AssessmentRepository assessmentRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final CourseRepository courseRepository;
@@ -54,7 +56,6 @@ public class AssessmentServiceImpl implements AssessmentService {
   private final ObjectMapper objectMapper;
 
   @Override
-  @Transactional
   public AssessmentSummaryResponse createAssessment(
       UUID courseId, CreateAssessmentRequest request) {
     Course course = courseRepository.requireCourse(courseId);
@@ -67,28 +68,29 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     applyTypeSpecificFields(builder, course, courseId, request);
 
-    applyFileFields(builder, request.assessmentType(), request.file());
-    applyStatus(builder, request.status());
-
+    builder.status(AssessmentStatus.PENDING_UPLOAD);
     Assessment assessmentToSave = builder.build();
+    Assessment savedAssessment = assessmentRepository.saveAndFlush(assessmentToSave);
 
+    String uploadedFileKey = null;
     try {
-      Assessment savedAssessment = assessmentRepository.save(assessmentToSave);
-      saveAnswerKeys(savedAssessment, request.answerKeys());
+      UploadDocumentResult uploadResult = (request.assessmentType() == AssessmentType.EXAM)
+          ? fileService.uploadExamFile(request.file())
+          : fileService.uploadExerciseFile(request.file());
+      uploadedFileKey = uploadResult.fileKey();
 
-      log.info("Created {} '{}' (id={})", request.assessmentType(), savedAssessment.getTitle(),
-          savedAssessment.getId());
-      return assessmentMapper.toSummary(savedAssessment);
-
+      return finalizeAssessmentCreation(savedAssessment, uploadedFileKey, request);
     } catch (Exception ex) {
-
-      if (assessmentToSave.getFileUrl() != null) {
-        log.warn("Lưu Database thất bại. Đang dọn dẹp file rác trên S3: {}", assessmentToSave.getFileUrl());
+      if (uploadedFileKey != null) {
+        log.warn("Lỗi nghiệp vụ. Đang dọn dẹp file trên S3: {}", uploadedFileKey);
         try {
-          fileService.deleteFile(assessmentToSave.getFileUrl());
+          fileService.deleteFile(uploadedFileKey);
+          assessmentRepository.delete(savedAssessment);
         } catch (Exception s3Ex) {
-          log.error("Xóa file rác S3 thất bại. Cần dọn dẹp thủ công URL: {}", assessmentToSave.getFileUrl(), s3Ex);
+          log.error("Xóa file S3 thất bại. Nhường lại cho Cron Job xử lý: {}", uploadedFileKey, s3Ex);
         }
+      } else {
+        assessmentRepository.delete(savedAssessment);
       }
       throw ex;
     }
@@ -103,8 +105,12 @@ public class AssessmentServiceImpl implements AssessmentService {
     List<AnswerKey> keys = answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
     List<AnswerKeyResponse> keyResponses = keys.stream().map(assessmentMapper::toAnswerKeyResponse).toList();
 
+    String presignedUrl = assessment.getFileKey() != null 
+        ? fileService.generatePresignedUrl(assessment.getFileKey()) 
+        : null;
+
     log.info("Fetched assessment detail {}", assessmentId);
-    return assessmentMapper.toDetail(assessment, keyResponses);
+    return assessmentMapper.toDetail(assessment, keyResponses, presignedUrl);
   }
 
   @Override
@@ -189,28 +195,30 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
   }
 
-  /**
-   * Uploads the file to S3 and sets fileUrl + auto-detected fileType on the
-   * builder.
-   */
-  private void applyFileFields(
-      Assessment.AssessmentBuilder builder, AssessmentType type, MultipartFile file) {
-    UploadDocumentResult uploadResult = uploadAssessmentFile(type, file);
-    builder.fileUrl(uploadResult.fileUrl());
-    builder.fileType(detectFileType(file));
-  }
+  // /**
+  // * Uploads the file to S3 and sets fileUrl + auto-detected fileType on the
+  // * builder.
+  // */
+  // private void applyFileFields(
+  // Assessment.AssessmentBuilder builder, AssessmentType type, MultipartFile
+  // file) {
+  // UploadDocumentResult uploadResult = uploadAssessmentFile(type, file);
+  // builder.fileUrl(uploadResult.fileUrl());
+  // builder.fileType(detectFileType(file));
+  // }
 
-  /**
-   * Sets the assessment status; marks publishedAt when publishing for the first
-   * time.
-   */
-  private void applyStatus(Assessment.AssessmentBuilder builder, AssessmentStatus status) {
-    AssessmentStatus resolved = defaultOr(status, AssessmentStatus.DRAFT);
-    builder.status(resolved);
-    if (resolved == AssessmentStatus.PUBLISHED) {
-      builder.publishedAt(LocalDateTime.now());
-    }
-  }
+  // /**
+  // * Sets the assessment status; marks publishedAt when publishing for the first
+  // * time.
+  // */
+  // private void applyStatus(Assessment.AssessmentBuilder builder,
+  // AssessmentStatus status) {
+  // AssessmentStatus resolved = defaultOr(status, AssessmentStatus.DRAFT);
+  // builder.status(resolved);
+  // if (resolved == AssessmentStatus.PUBLISHED) {
+  // builder.publishedAt(LocalDateTime.now());
+  // }
+  // }
 
   /**
    * Updates title, numQuestions, and explanationUrl if present in the request.
@@ -258,7 +266,7 @@ public class AssessmentServiceImpl implements AssessmentService {
       return;
     }
     UploadDocumentResult uploadResult = uploadAssessmentFile(assessment.getAssessmentType(), request.file());
-    assessment.setFileUrl(uploadResult.fileUrl());
+    assessment.setFileKey(uploadResult.fileKey());
     assessment.setFileType(detectFileType(request.file()));
   }
 
@@ -353,4 +361,33 @@ public class AssessmentServiceImpl implements AssessmentService {
     };
   }
 
+  /**
+   * Finalizes the assessment creation process within a dedicated transaction.
+   * Updates the assessment with the uploaded file details, saves answer keys,
+   * sets the final status, and commits the changes to the database.
+   *
+   * @param savedAssessment the pending assessment entity previously saved
+   * @param uploadedFileUrl the URL of the file uploaded to S3
+   * @param request         the original creation request containing answer keys and status
+   * @return the summary of the finalized assessment
+   */
+  private AssessmentSummaryResponse finalizeAssessmentCreation(
+      Assessment savedAssessment, String uploadedFileKey, CreateAssessmentRequest request) {
+
+    return transactionTemplate.execute(status -> {
+      savedAssessment.setFileKey(uploadedFileKey);
+      savedAssessment.setFileType(detectFileType(request.file()));
+
+      saveAnswerKeys(savedAssessment, request.answerKeys());
+
+      AssessmentStatus resolvedStatus = defaultOr(request.status(), AssessmentStatus.DRAFT);
+      savedAssessment.setStatus(resolvedStatus);
+      if (resolvedStatus == AssessmentStatus.PUBLISHED) {
+        savedAssessment.setPublishedAt(LocalDateTime.now());
+      }
+
+      Assessment finalAssessment = assessmentRepository.save(savedAssessment);
+      return assessmentMapper.toSummary(finalAssessment);
+    });
+  }
 }
