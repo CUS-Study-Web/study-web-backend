@@ -28,6 +28,8 @@ import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.dto.response.admin.VipRequestListResponse;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.service.admin.SystemManagementService;
 
 @RestController
@@ -178,5 +180,49 @@ public class SystemManagementController extends AbstractBaseController {
     log.info("[PATCH /api/system-management/assistants/{id}] Ban assistant id: {}", id);
     systemManagementService.switchUserStatus(id, UserStatus.BANNED, UserRole.ASSISTANT);
     return success("Ban assistant successfully.");
+  }
+
+  // =========================================================================
+  // VIP Request Management Endpoints
+  // =========================================================================
+
+  @GetMapping("/vip-requests")
+  @Operation(
+      summary = "Get VIP Requests",
+      description = "List VIP upgrade requests with status filter, pagination, and waiting count")
+  public ResponseEntity<SingleResponse<VipRequestListResponse>> getVipRequests(
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false) VipRequestStatus status,
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/system-management/vip-requests] search='{}', status='{}', page={}, size={}",
+        search,
+        status,
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return successSingle(
+        systemManagementService.getVipRequests(search, status, pageable),
+        "VIP requests fetched successfully!");
+  }
+
+  @PatchMapping("/vip-requests/{id}/approve")
+  @Operation(summary = "Approve VIP Request", description = "Approve learner VIP upgrade request")
+  public ResponseEntity<SuccessResponse> approveVipRequest(@PathVariable UUID id) {
+    log.info(
+        "[PATCH /api/system-management/vip-requests/{id}/approve] Approve VIP request id: {}", id);
+    systemManagementService.approveVipRequest(id);
+    return success("VIP request approved successfully.");
+  }
+
+  @PatchMapping(value = "/vip-requests/{id}/disapprove")
+  @Operation(
+      summary = "Disapprove VIP Request",
+      description = "Disapprove learner VIP upgrade request")
+  public ResponseEntity<SuccessResponse> disapproveVipRequest(@PathVariable UUID id) {
+    log.info(
+        "[PATCH /api/system-management/vip-requests/{id}/disapprove] Disapprove VIP request id: {}",
+        id);
+    systemManagementService.disapproveVipRequest(id);
+    return success("VIP request disapproved successfully.");
   }
 }

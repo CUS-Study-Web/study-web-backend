@@ -8,8 +8,10 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestListResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.VipRequestStatus;
 
 public interface SystemManagementService {
   Page<LearnerSummaryResponse> listLearners(String search, UserStatus status, Pageable pageable);
@@ -24,4 +26,10 @@ public interface SystemManagementService {
       String search, UserStatus status, Pageable pageable);
 
   void createAssistant(CreateAssistantRequest request);
+
+  VipRequestListResponse getVipRequests(String search, VipRequestStatus status, Pageable pageable);
+
+  void approveVipRequest(UUID id);
+
+  void disapproveVipRequest(UUID id);
 }
