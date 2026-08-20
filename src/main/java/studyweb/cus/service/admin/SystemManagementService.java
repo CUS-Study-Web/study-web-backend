@@ -20,7 +20,8 @@ public interface SystemManagementService {
 
   void updateLearnerAccount(UUID id, UpdateAccountRequest request);
 
-  Page<AssistantSummaryResponse> listAssistants(String search, Pageable pageable);
+  Page<AssistantSummaryResponse> listAssistants(
+      String search, UserStatus status, Pageable pageable);
 
   AssistantSummaryResponse createAssistant(CreateAssistantRequest request);
 

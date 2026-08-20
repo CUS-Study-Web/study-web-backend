@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -13,9 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
@@ -282,8 +280,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<AssistantSummaryResponse> listAssistants(String search, Pageable pageable) {
-    Page<User> assistantPage = userRepository.searchAssistants(search, pageable);
+  public Page<AssistantSummaryResponse> listAssistants(
+      String search, UserStatus status, Pageable pageable) {
+    Page<User> assistantPage = userRepository.searchAssistants(search, status, pageable);
+
     List<UUID> assistantIds = assistantPage.map(User::getId).toList();
 
     Map<UUID, Long> examCountByAssistant =

@@ -129,14 +129,16 @@ public class SystemManagementController extends AbstractBaseController {
       description = "List all assistants with pagination, stats, and recent activities")
   public ResponseEntity<SingleResponse<Page<AssistantSummaryResponse>>> listAssistants(
       @RequestParam(required = false) String search,
+      @RequestParam(required = false) UserStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
-        "[GET /api/system-management/assistants] search='{}', page={}, size={}",
+        "[GET /api/system-management/assistants] search='{}', status='{}', page={}, size={}",
         search,
+        status,
         pageable.getPageNumber(),
         pageable.getPageSize());
     return successSingle(
-        systemManagementService.listAssistants(search, pageable),
+        systemManagementService.listAssistants(search, status, pageable),
         "Assistants fetched successfully!");
   }
 
