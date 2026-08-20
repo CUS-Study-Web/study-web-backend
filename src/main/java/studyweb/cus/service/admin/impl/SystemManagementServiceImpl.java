@@ -3,6 +3,7 @@ package studyweb.cus.service.admin.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,8 @@ import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
+import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
@@ -227,7 +230,50 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public AssistantSummaryResponse createAssistant(CreateAssistantRequest request) {
-    throw new UnsupportedOperationException("not implemented");
+    Optional<User> existingUserOpt = userRepository.findByGmail(request.gmail());
+
+    String rawPassword = request.password();
+    if (rawPassword == null || rawPassword.isBlank()) {
+      rawPassword = defaultPassword;
+    }
+    if (rawPassword == null || rawPassword.isBlank()) {
+      throw new SystemException(
+          SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!");
+    }
+    String encodedPassword = passwordEncoder.encode(rawPassword);
+
+    User user;
+    if (existingUserOpt.isPresent()) {
+      User existing = existingUserOpt.get();
+      if (existing.getStatus() == UserStatus.ACTIVE) {
+        throw new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+      }
+      if (existing.getStatus() == UserStatus.BANNED) {
+        throw new AuthException(AuthErrorCode.ACCOUNT_BANNED);
+      }
+      // INACTIVE (Soft-deleted): Reactivate existing entity, update fields, and reset credentials
+      existing.setName(request.name());
+      existing.setPhone(request.phone());
+      existing.setRole(UserRole.ASSISTANT);
+      existing.setStatus(UserStatus.ACTIVE);
+      existing.setPassword(encodedPassword);
+      user = userRepository.save(existing);
+    } else {
+      user =
+          userRepository.save(
+              User.builder()
+                  .name(request.name())
+                  .gmail(request.gmail())
+                  .phone(request.phone())
+                  .role(UserRole.ASSISTANT)
+                  .status(UserStatus.ACTIVE)
+                  .tier(UserTier.NORMAL)
+                  .password(encodedPassword)
+                  .joinDate(LocalDateTime.now())
+                  .build());
+    }
+
+    return systemManagementMapper.toAssistantSummary(user, 0, List.of());
   }
 
   @Override

@@ -24,7 +24,8 @@ public enum AuthErrorCode implements BaseErrorCode {
   OTP_MAX_ATTEMPTS_EXCEEDED(
       "AUTH_010", "Maximum OTP verification attempts exceeded", HttpStatus.TOO_MANY_REQUESTS),
   EMAIL_SEND_FAILED("AUTH_011", "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
-  USER_NOT_FOUND("AUTH_012", "User not found", HttpStatus.NOT_FOUND);
+  USER_NOT_FOUND("AUTH_012", "User not found", HttpStatus.NOT_FOUND),
+  ACCOUNT_BANNED("AUTH_013", "Account is banned. Please unban first.", HttpStatus.FORBIDDEN);
 
   private final String code;
   private final String message;
