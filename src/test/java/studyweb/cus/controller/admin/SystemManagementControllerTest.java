@@ -243,7 +243,7 @@ class SystemManagementControllerTest {
     void assistantPathEndpoints_bindPathVariableToUuid() throws Exception {
       doNothing().when(systemManagementService).deactivateAssistant(ASSISTANT_ID);
       doNothing().when(systemManagementService).activateAssistant(ASSISTANT_ID);
-      doNothing().when(systemManagementService).deleteAssistant(ASSISTANT_ID);
+      doNothing().when(systemManagementService).banAssistant(ASSISTANT_ID);
 
       mockMvc
           .perform(
@@ -258,9 +258,9 @@ class SystemManagementControllerTest {
       verify(systemManagementService).activateAssistant(ASSISTANT_ID);
 
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID.toString()))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).deleteAssistant(ASSISTANT_ID);
+      verify(systemManagementService).banAssistant(ASSISTANT_ID);
     }
 
     @Test
@@ -749,17 +749,17 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /assistants/{id} - Delegates to deleteAssistant")
-    void deleteAssistant_delegatesAndWrapsResponse() throws Exception {
-      doNothing().when(systemManagementService).deleteAssistant(ASSISTANT_ID);
+    @DisplayName("PATCH /assistants/{id}/ban - Delegates to banAssistant")
+    void banAssistant_delegatesAndWrapsResponse() throws Exception {
+      doNothing().when(systemManagementService).banAssistant(ASSISTANT_ID);
 
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Delete assistant successfully."));
+          .andExpect(jsonPath("$.message").value("Ban assistant successfully."));
 
-      verify(systemManagementService).deleteAssistant(ASSISTANT_ID);
+      verify(systemManagementService).banAssistant(ASSISTANT_ID);
     }
 
     @Test
@@ -895,14 +895,14 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on deleteAssistant -> 404 NOT_FOUND USER_001")
-    void deleteAssistant_notFound_translatesTo404() throws Exception {
+    @DisplayName("UserException(USER_NOT_FOUND) on banAssistant -> 404 NOT_FOUND USER_001")
+    void banAssistant_notFound_translatesTo404() throws Exception {
       doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .deleteAssistant(ASSISTANT_ID);
+          .banAssistant(ASSISTANT_ID);
 
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
@@ -1038,7 +1038,7 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
@@ -1063,7 +1063,7 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).createAssistant(any());
       verify(systemManagementService, never()).deactivateAssistant(any());
       verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).deleteAssistant(any());
+      verify(systemManagementService, never()).banAssistant(any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
@@ -1088,7 +1088,7 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
@@ -1119,7 +1119,7 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).createAssistant(any());
       verify(systemManagementService, never()).deactivateAssistant(any());
       verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).deleteAssistant(any());
+      verify(systemManagementService, never()).banAssistant(any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
@@ -1144,7 +1144,7 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(delete("/api/system-management/assistants/{id}", ASSISTANT_ID))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
@@ -1175,7 +1175,7 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).createAssistant(any());
       verify(systemManagementService, never()).deactivateAssistant(any());
       verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).deleteAssistant(any());
+      verify(systemManagementService, never()).banAssistant(any());
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());

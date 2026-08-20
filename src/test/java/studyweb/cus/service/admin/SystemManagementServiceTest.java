@@ -827,7 +827,7 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 4. deactivate, activate, delete Assistant WebMVC Service Tests
+  // 4. deactivate, activate, ban Assistant WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service assistant status modifications - Executed via WebMVC")
@@ -848,7 +848,7 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Deactivate assistant successfully."));
 
-      assertThat(assistant.getStatus()).isEqualTo(UserStatus.BANNED);
+      assertThat(assistant.getStatus()).isEqualTo(UserStatus.INACTIVE);
     }
 
     @Test
@@ -898,32 +898,32 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("deleteAssistant -> soft deletes by mutating status to INACTIVE")
-    void deleteAssistant_setsStatusToInactive() throws Exception {
+    @DisplayName("banAssistant -> ban permanently by mutating status to BANNED")
+    void banAssistant_setsStatusToInactive() throws Exception {
       User assistant = User.builder().status(UserStatus.ACTIVE).build();
       assistant.setId(ASSISTANT_ID);
       when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
 
       mockMvc
           .perform(
-              delete("/api/system-management/assistants/{id}", ASSISTANT_ID)
+              patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID)
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Delete assistant successfully."));
+          .andExpect(jsonPath("$.message").value("Ban assistant successfully."));
 
-      assertThat(assistant.getStatus()).isEqualTo(UserStatus.INACTIVE);
+      assertThat(assistant.getStatus()).isEqualTo(UserStatus.BANNED);
       verify(userRepository, never()).delete(any());
     }
 
     @Test
-    @DisplayName("deleteAssistant - not found -> throws UserException USER_001 404")
-    void deleteAssistant_notFound_throws404() throws Exception {
+    @DisplayName("banAssistant - not found -> throws UserException USER_001 404")
+    void banAssistant_notFound_throws404() throws Exception {
       when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
 
       mockMvc
           .perform(
-              delete("/api/system-management/assistants/{id}", ASSISTANT_ID)
+              patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID)
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
