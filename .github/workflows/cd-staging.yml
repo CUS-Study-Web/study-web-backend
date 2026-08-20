@@ -1,18 +1,14 @@
-name: Study Web Backend CD flow
+name: Study Web Backend CD Staging
 
 on:
-  workflow_run:
-    workflows:
-      - "Study Web Backend CI flow"
-    types:
-      - completed
+  push:
     branches:
-      - main
+      - staging
 
 concurrency:
-  group: be-deploy
-  cancel-in-progress: false
- 
+  group: be-deploy-staging
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/backend
@@ -23,7 +19,6 @@ jobs:
 
   build-and-push-ghcr:
     name: Build and Push Docker Image to GitHub Container Registry
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -34,7 +29,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -63,20 +58,18 @@ jobs:
         run: |
           echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
 
-      - name: Build and push for main
+      - name: Build and push for staging
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.event.workflow_run.head_sha }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
-
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:staging
 
   deploy:
-    name: Deploy Backend
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy Backend Staging
     needs: build-and-push-ghcr
     runs-on: self-hosted
 
@@ -96,40 +89,18 @@ jobs:
           echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
           echo "DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS" >> "$GITHUB_ENV"
 
-      - name: Verify Podman User
-        run: |
-          echo "===== USER ====="
-          whoami
-          id
-
-          echo "===== ROOTLESS ====="
-          podman info --format 'rootless={{.Host.Security.Rootless}}'
-
-          echo "===== PODMAN VERSION ====="
-          podman --version
-
-          echo "===== RUNTIME ====="
-          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
-
-          echo "===== LINGER ====="
-          loginctl show-user "$(whoami)" -p Linger
-
       - name: Create permanent configs
         working-directory: gitops-manifests
         env:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
-          # 1. Create the permanent directories first
           mkdir -p ~/.config/systemd/user/git-ops/nginx
-          
-          # 2. Save backend.env to the permanent location
+
           printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
           chmod 600 ~/.config/systemd/user/git-ops/backend.env
-          
-          # 3. Copy the Nginx config to the permanent location
+
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
-          
-          # 4. Copy the compose files to the permanent location for Systemd to use
+
           cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
 
       - name: Deploy Backend
@@ -137,7 +108,7 @@ jobs:
         env:
           RUNNER_TRACKING_ID: ""
         run: |
-          make be-prod
+          make be-staging
 
       - name: Verify Backend
         working-directory: gitops-manifests
@@ -146,10 +117,10 @@ jobs:
           podman ps -a
 
           echo "===== BACKEND LOGS ====="
-          podman inspect studyweb-backend \
+          podman inspect studyweb-backend-staging \
             --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}}'
 
-          podman logs --tail 100 studyweb-backend
+          podman logs --tail 100 studyweb-backend-staging
 
           echo "===== PORT ====="
-          podman port studyweb-backend
+          podman port studyweb-backend-staging
