@@ -28,6 +28,7 @@ import studyweb.cus.dto.response.assessment.AssessmentStartResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSubmitResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
+import studyweb.cus.utils.TestFixtures;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.user.User;
@@ -78,45 +79,26 @@ class LearnerAssessmentServiceTest {
 
   // --- Factory helpers ---
 
-  private Assessment assessment(int numQuestions, int maxScore) {
-    Assessment a = new Assessment();
-    a.setId(assessmentId);
-    a.setTitle("Midterm Exam");
-    a.setAssessmentType(AssessmentType.EXAM);
-    a.setNumQuestions(numQuestions);
-    a.setMaxScore(maxScore);
-    a.setFileType(AssessmentFileType.PDF);
-    a.setFileKey("exams/midterm.pdf");
-    return a;
-  }
-
-  private User user() {
-    User u = new User();
-    u.setId(userId);
-    u.setGmail(userEmail);
-    return u;
-  }
-
-  private AnswerKey answerKey(int questionNumber, AnswerChoice answer) {
+  private AnswerKey createMockAnswerKey(int questionNumber, AnswerChoice answer) {
     AnswerKey key = new AnswerKey();
     key.setQuestionNumber(questionNumber);
     key.setCorrectAnswer(answer);
     return key;
   }
 
-  private List<AnswerKey> sampleAnswerKeys() {
+  private List<AnswerKey> createSampleAnswerKeys() {
     return List.of(
-        answerKey(1, AnswerChoice.A),
-        answerKey(2, AnswerChoice.B),
-        answerKey(3, AnswerChoice.C),
-        answerKey(4, AnswerChoice.D));
+        createMockAnswerKey(1, AnswerChoice.A),
+        createMockAnswerKey(2, AnswerChoice.B),
+        createMockAnswerKey(3, AnswerChoice.C),
+        createMockAnswerKey(4, AnswerChoice.D));
   }
 
-  private AssessmentSubmitRequest submitRequest(List<StudentAnswerItem> answers) {
+  private AssessmentSubmitRequest createMockSubmitRequest(List<StudentAnswerItem> answers) {
     return new AssessmentSubmitRequest(15, answers);
   }
 
-  private AssessmentAttempt savedAttempt(Assessment assessment, User user) {
+  private AssessmentAttempt createMockSavedAttempt(Assessment assessment, User user) {
     AssessmentAttempt attempt = AssessmentAttempt.builder()
         .user(user)
         .exam(assessment)
@@ -133,15 +115,15 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAssessmentForTaking_returnsStartResponse() {
-    Assessment assessment = assessment(40, 10);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 40, 10);
     AssessmentStartResponse expected = new AssessmentStartResponse(assessmentId, "Midterm Exam", AssessmentType.EXAM,
-        40, 0, AssessmentFileType.PDF, "https://s3.test/exams/midterm.pdf");
+        40, 0, AssessmentFileType.PDF, "https://s3.test/exams/exam.pdf");
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
-    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
-    when(fileService.generatePresignedUrl("exams/midterm.pdf")).thenReturn("https://s3.test/exams/midterm.pdf");
-    when(mapper.toStartResponse(assessment, "https://s3.test/exams/midterm.pdf")).thenReturn(expected);
+    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(TestFixtures.createMockUser(userId, userEmail)));
+    when(fileService.generatePresignedUrl("exams/exam.pdf")).thenReturn("https://s3.test/exams/exam.pdf");
+    when(mapper.toStartResponse(assessment, "https://s3.test/exams/exam.pdf")).thenReturn(expected);
 
     AssessmentStartResponse result = service.getAssessmentForTaking(courseId, assessmentId, userEmail);
 
@@ -178,8 +160,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_allCorrect_returnsFullScore() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     List<StudentAnswerItem> answers = List.of(
         new StudentAnswerItem(1, AnswerChoice.A),
         new StudentAnswerItem(2, AnswerChoice.B),
@@ -190,7 +172,7 @@ class LearnerAssessmentServiceTest {
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -199,7 +181,7 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(answers));
+        createMockSubmitRequest(answers));
 
     assertThat(result.numCorrect()).isEqualTo(4);
     assertThat(result.numWrong()).isZero();
@@ -211,8 +193,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_allWrong_returnsZeroScore() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     List<StudentAnswerItem> answers = List.of(
         new StudentAnswerItem(1, AnswerChoice.D),
         new StudentAnswerItem(2, AnswerChoice.A),
@@ -223,7 +205,7 @@ class LearnerAssessmentServiceTest {
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -232,7 +214,7 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(answers));
+        createMockSubmitRequest(answers));
 
     assertThat(result.numCorrect()).isZero();
     assertThat(result.numWrong()).isEqualTo(4);
@@ -242,8 +224,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_partialCorrect_calculatesScoreCorrectly() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     List<StudentAnswerItem> answers = List.of(
         new StudentAnswerItem(1, AnswerChoice.A), // correct
         new StudentAnswerItem(2, AnswerChoice.B), // correct
@@ -254,7 +236,7 @@ class LearnerAssessmentServiceTest {
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -263,7 +245,7 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(answers));
+        createMockSubmitRequest(answers));
 
     assertThat(result.numCorrect()).isEqualTo(2);
     assertThat(result.numWrong()).isEqualTo(2);
@@ -273,14 +255,14 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_nullAnswers_treatsAsAllWrong() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -288,7 +270,7 @@ class LearnerAssessmentServiceTest {
       return a;
     });
 
-    AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail, submitRequest(null));
+    AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail, createMockSubmitRequest(null));
 
     assertThat(result.numCorrect()).isZero();
     assertThat(result.numWrong()).isEqualTo(4);
@@ -296,14 +278,14 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_emptyAnswers_treatsAsAllWrong() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -312,22 +294,22 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(List.of()));
+        createMockSubmitRequest(List.of()));
 
     assertThat(result.numCorrect()).isZero();
   }
 
   @Test
   void submitAssessment_incrementsAttemptNumber() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     List<StudentAnswerItem> answers = List.of(new StudentAnswerItem(1, AnswerChoice.A));
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(2);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -336,15 +318,15 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(answers));
+        createMockSubmitRequest(answers));
 
     assertThat(result.attemptNumber()).isEqualTo(3);
   }
 
   @Test
   void submitAssessment_savesAttemptWithDetails() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     List<StudentAnswerItem> answers = List.of(
         new StudentAnswerItem(1, AnswerChoice.A),
         new StudentAnswerItem(2, AnswerChoice.B));
@@ -353,7 +335,7 @@ class LearnerAssessmentServiceTest {
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -361,7 +343,7 @@ class LearnerAssessmentServiceTest {
       return a;
     });
 
-    service.submitAssessment(courseId, assessmentId, userEmail, submitRequest(answers));
+    service.submitAssessment(courseId, assessmentId, userEmail, createMockSubmitRequest(answers));
 
     ArgumentCaptor<AssessmentAttempt> captor = ArgumentCaptor.forClass(AssessmentAttempt.class);
     verify(attemptRepository).save(captor.capture());
@@ -374,10 +356,10 @@ class LearnerAssessmentServiceTest {
   @Test
   void submitAssessment_userNotFound_throwsUserException() {
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
-    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment(4, 10));
+    when(assessmentRepository.requireAssessment(any())).thenReturn(TestFixtures.createMockExam(assessmentId, null, 4, 10));
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.submitAssessment(courseId, assessmentId, userEmail, submitRequest(List.of())))
+    assertThatThrownBy(() -> service.submitAssessment(courseId, assessmentId, userEmail, createMockSubmitRequest(List.of())))
         .isInstanceOf(UserException.class)
         .satisfies(
             ex -> assertThat(((UserException) ex).getCode())
@@ -386,14 +368,14 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_nullDuration_defaultsToZero() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
     when(attemptRepository.countByUserIdAndExamId(userId, assessmentId)).thenReturn(0);
     when(attemptRepository.save(any(AssessmentAttempt.class))).thenAnswer(inv -> {
       AssessmentAttempt a = inv.getArgument(0);
@@ -411,8 +393,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void submitAssessment_zeroQuestions_returnsZeroScore() {
-    Assessment assessment = assessment(0, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 0, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
@@ -427,7 +409,7 @@ class LearnerAssessmentServiceTest {
     });
 
     AssessmentSubmitResponse result = service.submitAssessment(courseId, assessmentId, userEmail,
-        submitRequest(List.of()));
+        createMockSubmitRequest(List.of()));
 
     assertThat(result.score()).isEqualByComparingTo(BigDecimal.ZERO);
   }
@@ -438,9 +420,9 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void listAttempts_returnsPagedResults() {
-    User user = user();
-    Assessment assessment = assessment(4, 10);
-    AssessmentAttempt attempt = savedAttempt(assessment, user);
+    User user = TestFixtures.createMockUser(userId, userEmail);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    AssessmentAttempt attempt = createMockSavedAttempt(assessment, user);
     AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(1).selectedAnswer(AnswerChoice.A).build();
     AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(2).selectedAnswer(AnswerChoice.B).build();
     AssessmentAttemptDetail detail3 = AssessmentAttemptDetail.builder().attempt(attempt).questionNumber(3).selectedAnswer(AnswerChoice.C).build();
@@ -459,7 +441,7 @@ class LearnerAssessmentServiceTest {
         any(Pageable.class)))
         .thenReturn(page);
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
 
     Page<AssessmentAttemptResponse> result = service.listAttempts(courseId, assessmentId, userEmail,
         PageRequest.of(0, 10));
@@ -470,8 +452,8 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void listAttempts_emptyPage_returnsEmpty() {
-    User user = user();
-    Assessment assessment = assessment(40, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 40, 10);
     Page<AssessmentAttempt> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
@@ -494,9 +476,9 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAttemptDetail_returnsDetailsWithCorrectAnswers() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
-    AssessmentAttempt attempt = savedAttempt(assessment, user);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
+    AssessmentAttempt attempt = createMockSavedAttempt(assessment, user);
     AssessmentAttemptDetail detail1 = AssessmentAttemptDetail.builder()
         .attempt(attempt).questionNumber(1).selectedAnswer(AnswerChoice.A).build();
     AssessmentAttemptDetail detail2 = AssessmentAttemptDetail.builder()
@@ -508,7 +490,7 @@ class LearnerAssessmentServiceTest {
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
-        .thenReturn(sampleAnswerKeys());
+        .thenReturn(createSampleAnswerKeys());
 
     AssessmentSubmitResponse result = service.getAttemptDetail(courseId, assessmentId, attemptId, userEmail);
 
@@ -522,8 +504,8 @@ class LearnerAssessmentServiceTest {
   @Test
   void getAttemptDetail_attemptNotFound_throwsAssessmentException() {
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
-    when(assessmentRepository.requireAssessment(any())).thenReturn(assessment(4, 10));
-    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
+    when(assessmentRepository.requireAssessment(any())).thenReturn(TestFixtures.createMockExam(assessmentId, null, 4, 10));
+    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(TestFixtures.createMockUser(userId, userEmail)));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getAttemptDetail(courseId, assessmentId, attemptId, userEmail))
@@ -535,15 +517,15 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAttemptDetail_differentUser_throwsAttemptNotFound() {
-    Assessment assessment = assessment(4, 10);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
     User owner = new User();
     owner.setId(UUID.randomUUID()); // different user
     owner.setGmail("other@studyweb.edu");
-    AssessmentAttempt attempt = savedAttempt(assessment, owner);
+    AssessmentAttempt attempt = createMockSavedAttempt(assessment, owner);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
-    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(user()));
+    when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(TestFixtures.createMockUser(userId, userEmail)));
     when(attemptRepository.findById(attemptId)).thenReturn(Optional.of(attempt));
 
     assertThatThrownBy(() -> service.getAttemptDetail(courseId, assessmentId, attemptId, userEmail))
@@ -555,11 +537,11 @@ class LearnerAssessmentServiceTest {
 
   @Test
   void getAttemptDetail_wrongAssessmentId_throwsAttemptNotFound() {
-    Assessment assessment = assessment(4, 10);
-    User user = user();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, null, 4, 10);
+    User user = TestFixtures.createMockUser(userId, userEmail);
     Assessment differentAssessment = new Assessment();
     differentAssessment.setId(UUID.randomUUID()); // different assessment
-    AssessmentAttempt attempt = savedAttempt(differentAssessment, user);
+    AssessmentAttempt attempt = createMockSavedAttempt(differentAssessment, user);
 
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);

@@ -41,6 +41,7 @@ import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
+import studyweb.cus.utils.TestFixtures;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Subject;
 import studyweb.cus.enums.AccessTier;
@@ -98,66 +99,6 @@ class AssessmentServiceTest {
 
   // --- Factory helpers ---
 
-  private Course course() {
-    Course c = new Course();
-    c.setId(courseId);
-    c.setTitle("Java Course");
-    return c;
-  }
-
-  private Subject subject() {
-    Subject s = new Subject();
-    s.setId(subjectId);
-    s.setCourse(course());
-    s.setTitle("Basics");
-    return s;
-  }
-
-  private Assessment createTestAssessment(AssessmentType type) {
-    Assessment a = new Assessment();
-    a.setId(UUID.randomUUID());
-    a.setTitle("Test " + type);
-    a.setAssessmentType(type);
-    a.setAccess(AccessTier.PUBLIC);
-    if (type == AssessmentType.EXAM) {
-      a.setCourse(new Course());
-      a.setFileKey("exams/exam.pdf");
-      a.setDurationMin(60);
-      a.setMaxScore(100);
-    } else {
-      a.setSubject(new Subject());
-      a.setFileKey("exercises/hw.pdf");
-      a.setNumQuestions(5);
-    }
-    return a;
-  }
-
-  private Assessment examAssessment() {
-    Assessment a = new Assessment();
-    a.setId(assessmentId);
-    a.setTitle("Midterm Exam");
-    a.setAssessmentType(AssessmentType.EXAM);
-    a.setNumQuestions(40);
-    a.setMaxScore(100);
-    a.setStatus(AssessmentStatus.DRAFT);
-    a.setCourse(course());
-    a.setFileType(AssessmentFileType.PDF);
-    a.setFileKey("https://s3.test/exam.pdf");
-    return a;
-  }
-
-  private Assessment homeworkAssessment() {
-    Assessment a = new Assessment();
-    a.setId(assessmentId);
-    a.setTitle("Homework 1");
-    a.setAssessmentType(AssessmentType.HOMEWORK);
-    a.setNumQuestions(10);
-    a.setSubject(subject());
-    a.setFileType(AssessmentFileType.PDF);
-    a.setFileKey("exercises/hw.pdf");
-    return a;
-  }
-
   private MockMultipartFile pdfFile() {
     return new MockMultipartFile("file", "exam.pdf", "application/pdf", new byte[] { 1, 2, 3 });
   }
@@ -174,7 +115,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_invalidAnswerKeysJson_throwsException() throws Exception {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
@@ -205,7 +146,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_fileUploadFails_throwsException() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
 
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
@@ -231,9 +172,9 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_exam_persistsAndReturnsSummary() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "https://s3.test/exam.pdf"));
+    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "exams/exam.pdf"));
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
@@ -258,7 +199,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_homework_requiresSubjectId() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
 
     CreateAssessmentRequest request = new CreateAssessmentRequest(
@@ -274,8 +215,8 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_homework_withSubject_persists() {
-    Course course = course();
-    Subject subject = subject();
+    Course course = TestFixtures.createMockCourse(courseId);
+    Subject subject = TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId));
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject);
     when(fileService.uploadExerciseFile(any())).thenReturn(new UploadDocumentResult(50L, "key", "https://s3.test/hw.pdf"));
@@ -302,7 +243,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_publishedStatus_setsPublishedAt() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
@@ -345,7 +286,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_withAnswerKeys_savesKeys() throws Exception {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(100L, "key", "url"));
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
@@ -374,7 +315,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_unsupportedFileType_throwsException() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile unknownFile = new MockMultipartFile("file", "test.txt", "text/plain", new byte[] { 1 });
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
@@ -401,7 +342,7 @@ class AssessmentServiceTest {
 
   @Test
   void getAssessmentDetail_returnsDetailWithAnswerKeys() {
-    Assessment assessment = examAssessment();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
     AnswerKey key1 = new AnswerKey();
     key1.setQuestionNumber(1);
     key1.setCorrectAnswer(AnswerChoice.A);
@@ -411,13 +352,13 @@ class AssessmentServiceTest {
         40, null, 100, null, "PDF", "url", null, courseId, null, "Java Course", null, null, null,
         List.of(keyResp));
 
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(List.of(key1));
     when(assessmentMapper.toAnswerKeyResponse(key1)).thenReturn(keyResp);
-    when(fileService.generatePresignedUrl("https://s3.test/exam.pdf")).thenReturn("https://s3.test/exam.pdf");
-    when(assessmentMapper.toDetail(eq(assessment), anyList(), eq("https://s3.test/exam.pdf"))).thenReturn(expected);
+    when(fileService.generatePresignedUrl("exams/exam.pdf")).thenReturn("exams/exam.pdf");
+    when(assessmentMapper.toDetail(eq(assessment), anyList(), eq("exams/exam.pdf"))).thenReturn(expected);
 
     AssessmentDetailResponse result = service.getAssessmentDetail(courseId, assessmentId);
 
@@ -427,7 +368,7 @@ class AssessmentServiceTest {
 
   @Test
   void getAssessmentDetail_assessmentNotFound_throwsException() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId))
         .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
             studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
@@ -445,9 +386,9 @@ class AssessmentServiceTest {
 
   @Test
   void listHomeworkBySubject_returnsPagedResults() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
-    when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject());
-    Assessment hw = homeworkAssessment();
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
+    when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
+    Assessment hw = TestFixtures.createMockHomework(assessmentId, TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
     Page<Assessment> page = new PageImpl<>(List.of(hw), PageRequest.of(0, 10), 1);
     when(assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
         eq(subjectId), eq(AssessmentType.HOMEWORK), any(Pageable.class)))
@@ -462,8 +403,8 @@ class AssessmentServiceTest {
 
   @Test
   void listExamsByCourse_returnsPagedResults() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
-    Assessment exam = examAssessment();
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
+    Assessment exam = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
     Page<Assessment> page = new PageImpl<>(List.of(exam), PageRequest.of(0, 10), 1);
     when(assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
         eq(courseId), eq(AssessmentType.EXAM), any(Pageable.class)))
@@ -477,7 +418,7 @@ class AssessmentServiceTest {
 
   @Test
   void listExamsByCourse_emptyPage_returnsEmpty() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     Page<Assessment> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
     when(assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
         eq(courseId), eq(AssessmentType.EXAM), any(Pageable.class)))
@@ -494,8 +435,8 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_updatesTitle() {
-    Assessment assessment = examAssessment();
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
@@ -509,8 +450,8 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_examUpdatesDurationAndScore() {
-    Assessment assessment = examAssessment();
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
@@ -526,10 +467,10 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_publishFirstTime_setsPublishedAt() {
-    Assessment assessment = examAssessment();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
     assertThat(assessment.getPublishedAt()).isNull();
 
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
@@ -544,7 +485,7 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_assessmentNotFound_throwsException() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId))
         .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
             studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
@@ -561,8 +502,8 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_withNewFile_uploadsAndUpdates() {
-    Assessment assessment = examAssessment();
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
@@ -579,9 +520,9 @@ class AssessmentServiceTest {
 
   @Test
   void updateAssessment_noNewFile_keepsOldFile() {
-    Assessment assessment = examAssessment();
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
     String originalUrl = assessment.getFileKey();
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
 
@@ -602,8 +543,8 @@ class AssessmentServiceTest {
 
   @Test
   void deleteAssessment_softDeletes() {
-    Assessment assessment = examAssessment();
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
 
     service.deleteAssessment(courseId, assessmentId);
@@ -613,7 +554,7 @@ class AssessmentServiceTest {
 
   @Test
   void deleteAssessment_assessmentNotFound_throwsException() {
-    when(courseRepository.requireCourse(courseId)).thenReturn(course());
+    when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId))
         .thenThrow(new studyweb.cus.exception.assessment.AssessmentException(
             studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
@@ -631,7 +572,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_docxFile_detectsCorrectly() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile docxFile = new MockMultipartFile("file", "test.docx", "application/msword", new byte[] { 1 });
     when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(10L, "key", "url"));
@@ -656,7 +597,7 @@ class AssessmentServiceTest {
 
   @Test
   void createAssessment_xlsxFile_detectsCorrectly() {
-    Course course = course();
+    Course course = TestFixtures.createMockCourse(courseId);
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     MockMultipartFile xlsxFile = new MockMultipartFile("file", "test.xlsx", "application/vnd.ms-excel",
         new byte[] { 1 });
