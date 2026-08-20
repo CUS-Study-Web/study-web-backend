@@ -50,16 +50,19 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.GlobalExceptionHandler;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.system.SystemErrorCode;
@@ -1422,6 +1425,350 @@ class SystemManagementServiceTest {
 
       verify(userRepository, never()).save(any());
       verify(systemManagementMapper, never()).toLearnerSummary(any(), any(), anyDouble(), anyInt());
+    }
+  }
+
+  // =========================================================================
+  // 6. getVipRequests WebMVC Service Tests (Null Safety, Mapping & Counts)
+  // =========================================================================
+  @Nested
+  @DisplayName("Service getVipRequests - Null Safety, Mapping & Counters")
+  class GetVipRequestsWebMvcServiceTests {
+
+    @Test
+    @DisplayName("Empty VIP requests list -> Returns empty page with 0 total and 0 waiting counts")
+    void getVipRequests_emptyList_returnsZeroCounts() throws Exception {
+      when(vipRequestRepository.searchVipRequests(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(Page.empty());
+      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
+          .thenReturn(List.of());
+      when(vipRequestRepository.countTotal()).thenReturn(0L);
+      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(0L);
+
+      mockMvc
+          .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.totalCount").value(0))
+          .andExpect(jsonPath("$.data.waitingCount").value(0))
+          .andExpect(jsonPath("$.data.requests.content").isArray())
+          .andExpect(jsonPath("$.data.requests.content").isEmpty());
+
+      verify(vipRequestRepository).searchVipRequests(isNull(), isNull(), any(Pageable.class));
+      verify(vipRequestRepository).countTotal();
+      verify(vipRequestRepository).countByStatus(VipRequestStatus.WAITING);
+      verify(systemManagementMapper, never()).toVipRequestResponse(any(), any());
+    }
+
+    @Test
+    @DisplayName("Populated VIP requests -> Batch resolves primary courses and maps response")
+    void getVipRequests_populatedList_mapsCorrectly() throws Exception {
+      User user1 =
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Learner 1")
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
+              .status(UserStatus.ACTIVE)
+              .build();
+      user1.setId(USER_ID_1);
+
+      User user2 =
+          User.builder()
+              .gmail(GMAIL_2)
+              .name("Learner 2")
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user2.png")
+              .status(UserStatus.ACTIVE)
+              .build();
+      user2.setId(USER_ID_2);
+
+      VipRequest vr1 =
+          VipRequest.builder()
+              .user(user1)
+              .status(VipRequestStatus.WAITING)
+              .note("Cần VIP khóa React")
+              .requestDate(LocalDateTime.of(2026, 8, 20, 10, 0, 0))
+              .build();
+      vr1.setId(UUID.randomUUID());
+
+      VipRequest vr2 =
+          VipRequest.builder()
+              .user(user2)
+              .status(VipRequestStatus.APPROVED)
+              .note("Kích hoạt VIP Java")
+              .requestDate(LocalDateTime.of(2026, 8, 19, 9, 30, 0))
+              .build();
+      vr2.setId(UUID.randomUUID());
+
+      Page<VipRequest> page = new PageImpl<>(List.of(vr1, vr2));
+      when(vipRequestRepository.searchVipRequests(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(page);
+
+      Course course1 =
+          Course.builder().badgeTitle("React Badge").title("React Masterclass").build();
+      UserCourseProgress progress1 =
+          UserCourseProgress.builder().user(user1).course(course1).build();
+
+      Course course2 = Course.builder().badgeTitle(null).title("Java Fallback").build();
+      UserCourseProgress progress2 =
+          UserCourseProgress.builder().user(user2).course(course2).build();
+
+      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1, USER_ID_2)))
+          .thenReturn(List.of(progress1, progress2));
+
+      when(vipRequestRepository.countTotal()).thenReturn(5L);
+      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(3L);
+
+      VipRequestResponse res1 =
+          new VipRequestResponse(
+              vr1.getId(),
+              USER_ID_1,
+              "Learner 1",
+              GMAIL_1,
+              "https://cdn.studyweb.edu/avatars/user1.png",
+              "React Badge",
+              "Cần VIP khóa React",
+              vr1.getRequestDate(),
+              VipRequestStatus.WAITING);
+
+      VipRequestResponse res2 =
+          new VipRequestResponse(
+              vr2.getId(),
+              USER_ID_2,
+              "Learner 2",
+              GMAIL_2,
+              "https://cdn.studyweb.edu/avatars/user2.png",
+              "Java Fallback",
+              "Kích hoạt VIP Java",
+              vr2.getRequestDate(),
+              VipRequestStatus.APPROVED);
+
+      when(systemManagementMapper.toVipRequestResponse(vr1, "React Badge")).thenReturn(res1);
+      when(systemManagementMapper.toVipRequestResponse(vr2, "Java Fallback")).thenReturn(res2);
+
+      mockMvc
+          .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.totalCount").value(5))
+          .andExpect(jsonPath("$.data.waitingCount").value(3))
+          .andExpect(jsonPath("$.data.requests.content[0].mainCourse").value("React Badge"))
+          .andExpect(jsonPath("$.data.requests.content[0].status").value("WAITING"))
+          .andExpect(jsonPath("$.data.requests.content[1].mainCourse").value("Java Fallback"))
+          .andExpect(jsonPath("$.data.requests.content[1].status").value("APPROVED"));
+
+      verify(systemManagementMapper).toVipRequestResponse(vr1, "React Badge");
+      verify(systemManagementMapper).toVipRequestResponse(vr2, "Java Fallback");
+    }
+
+    @Test
+    @DisplayName("Search & Status parameters -> Forwarded correctly to repository")
+    void getVipRequests_withFilters_forwardsToRepository() throws Exception {
+      when(vipRequestRepository.searchVipRequests(
+              eq("keyword"), eq(VipRequestStatus.DECLINED), any(Pageable.class)))
+          .thenReturn(Page.empty());
+      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
+          .thenReturn(List.of());
+      when(vipRequestRepository.countTotal()).thenReturn(10L);
+      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(2L);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/vip-requests")
+                  .param("search", "keyword")
+                  .param("status", "DECLINED")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.totalCount").value(10))
+          .andExpect(jsonPath("$.data.waitingCount").value(2));
+
+      verify(vipRequestRepository)
+          .searchVipRequests(eq("keyword"), eq(VipRequestStatus.DECLINED), any(Pageable.class));
+    }
+  }
+
+  // =========================================================================
+  // 7. approveVipRequest WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service approveVipRequest - Business Rules & Validations")
+  class ApproveVipRequestWebMvcServiceTests {
+
+    @Test
+    @DisplayName("Success -> Sets request status to APPROVED and upgrades active user to VIP")
+    void approveVipRequest_success_upgradesUserToVip() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      User user =
+          User.builder()
+              .gmail("vip.target@studyweb.edu")
+              .name("Target User")
+              .status(UserStatus.ACTIVE)
+              .tier(UserTier.NORMAL)
+              .build();
+      user.setId(UUID.randomUUID());
+
+      VipRequest vipRequest =
+          VipRequest.builder()
+              .user(user)
+              .status(VipRequestStatus.WAITING)
+              .note("Xin nâng cấp VIP")
+              .build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP request approved successfully."));
+
+      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.APPROVED);
+      assertThat(user.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(user.getVipStartDate()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Request not found -> Throws SystemException RESOURCE_NOT_FOUND (404 SYS_001)")
+    void approveVipRequest_notFound_returns404() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.RESOURCE_NOT_FOUND.code()));
+    }
+
+    @Test
+    @DisplayName(
+        "Soft-deleted user (INACTIVE) -> Throws UserException USER_NOT_FOUND (404 USER_001)")
+    void approveVipRequest_inactiveUser_returns404UserNotFound() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      User user =
+          User.builder()
+              .gmail("deleted@studyweb.edu")
+              .name("Deleted User")
+              .status(UserStatus.INACTIVE)
+              .tier(UserTier.NORMAL)
+              .build();
+      user.setId(UUID.randomUUID());
+
+      VipRequest vipRequest =
+          VipRequest.builder()
+              .user(user)
+              .status(VipRequestStatus.WAITING)
+              .note("Xin nâng cấp VIP")
+              .build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+
+      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+      assertThat(user.getTier()).isEqualTo(UserTier.NORMAL);
+      assertThat(user.getVipStartDate()).isNull();
+    }
+  }
+
+  // =========================================================================
+  // 8. disapproveVipRequest WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service disapproveVipRequest - Business Rules & Validations")
+  class DisapproveVipRequestWebMvcServiceTests {
+
+    @Test
+    @DisplayName(
+        "Success via /disapprove -> Sets request status to DECLINED without changing user tier")
+    void disapproveVipRequest_disapprovePath_declinesRequest() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      User user =
+          User.builder()
+              .gmail("declined@studyweb.edu")
+              .name("Target User")
+              .status(UserStatus.ACTIVE)
+              .tier(UserTier.NORMAL)
+              .build();
+      user.setId(UUID.randomUUID());
+
+      VipRequest vipRequest =
+          VipRequest.builder()
+              .user(user)
+              .status(VipRequestStatus.WAITING)
+              .note("Xin nâng cấp VIP")
+              .build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/disapprove", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP request disapproved successfully."));
+
+      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.DECLINED);
+      assertThat(user.getTier()).isEqualTo(UserTier.NORMAL);
+    }
+
+    @Test
+    @DisplayName("Request not found -> Throws SystemException RESOURCE_NOT_FOUND (404 SYS_001)")
+    void disapproveVipRequest_notFound_returns404() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/disapprove", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.RESOURCE_NOT_FOUND.code()));
+    }
+
+    @Test
+    @DisplayName(
+        "Soft-deleted user (INACTIVE) -> Throws UserException USER_NOT_FOUND (404 USER_001)")
+    void disapproveVipRequest_inactiveUser_returns404UserNotFound() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      User user =
+          User.builder()
+              .gmail("deleted2@studyweb.edu")
+              .name("Deleted User 2")
+              .status(UserStatus.INACTIVE)
+              .tier(UserTier.NORMAL)
+              .build();
+      user.setId(UUID.randomUUID());
+
+      VipRequest vipRequest =
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/disapprove", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+
+      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.WAITING);
     }
   }
 }

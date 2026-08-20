@@ -34,6 +34,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,8 +51,11 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestListResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.GlobalExceptionHandler;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
@@ -148,8 +152,37 @@ class SystemManagementControllerTest {
         "https://cdn.studyweb.edu/avatars/assistant1.png");
   }
 
+  private static final UUID VIP_REQUEST_ID_1 =
+      UUID.fromString("d3eeaa11-2222-3333-4444-555566667777");
+  private static final UUID VIP_REQUEST_ID_2 =
+      UUID.fromString("e4ffbb22-3333-4444-5555-666677778888");
+
+  private VipRequestResponse sampleVipRequestResponse(
+      UUID id, UUID userId, VipRequestStatus status) {
+    return new VipRequestResponse(
+        id,
+        userId,
+        "Nguyễn Văn A",
+        "learner@studyweb.edu",
+        "https://cdn.studyweb.edu/avatars/nguyenvana.png",
+        "React Masterclass",
+        "Cần kích hoạt VIP để học chuyên sâu",
+        LocalDateTime.of(2026, 8, 20, 10, 0, 0),
+        status);
+  }
+
+  private VipRequestListResponse sampleVipRequestListResponse() {
+    VipRequestResponse res1 =
+        sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
+    VipRequestResponse res2 =
+        sampleVipRequestResponse(VIP_REQUEST_ID_2, LEARNER_ID, VipRequestStatus.APPROVED);
+    Page<VipRequestResponse> page = new PageImpl<>(List.of(res1, res2), PageRequest.of(0, 10), 2);
+    return new VipRequestListResponse(page, 2L, 1L);
+  }
+
   // =========================================================================
   // 1. REQUEST BINDING & DESERIALIZATION
+
   // =========================================================================
   @Nested
   @DisplayName("1. Request Binding & Deserialization")
@@ -1167,6 +1200,13 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isForbidden());
+      mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isForbidden());
+      mockMvc
+          .perform(patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1))
+          .andExpect(status().isForbidden());
+      mockMvc
+          .perform(patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1))
+          .andExpect(status().isForbidden());
 
       verify(systemManagementService, never()).listLearners(any(), any());
       verify(systemManagementService, never()).lockLearner(any());
@@ -1179,6 +1219,9 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).getVipRequests(any(), any(), any());
+      verify(systemManagementService, never()).approveVipRequest(any());
+      verify(systemManagementService, never()).disapproveVipRequest(any());
     }
 
     @Test
@@ -1189,6 +1232,8 @@ class SystemManagementControllerTest {
           .thenReturn(new PageImpl<>(List.of()));
       when(systemManagementService.listAssistants(isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
+      when(systemManagementService.getVipRequests(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(new VipRequestListResponse(new PageImpl<>(List.of()), 0L, 0L));
 
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
       mockMvc
@@ -1201,6 +1246,130 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
           .andExpect(status().isOk());
       mockMvc.perform(get("/api/system-management/assistants")).andExpect(status().isOk());
+      mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isOk());
+      mockMvc
+          .perform(patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1))
+          .andExpect(status().isOk());
+      mockMvc
+          .perform(patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1))
+          .andExpect(status().isOk());
+    }
+  }
+
+  // =========================================================================
+  // 6. GET VIP REQUESTS ENDPOINT TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("6. GET /api/system-management/vip-requests")
+  @WithMockUser(roles = "ADMIN")
+  class GetVipRequestsEndpointTests {
+
+    @Test
+    @DisplayName("Default parameters -> returns 200 OK with VipRequestListResponse payload")
+    void getVipRequests_defaultParams_returns200AndListResponse() throws Exception {
+      VipRequestListResponse mockResponse = sampleVipRequestListResponse();
+      when(systemManagementService.getVipRequests(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(mockResponse);
+
+      mockMvc
+          .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP requests fetched successfully!"))
+          .andExpect(jsonPath("$.data.totalCount").value(2))
+          .andExpect(jsonPath("$.data.waitingCount").value(1))
+          .andExpect(jsonPath("$.data.requests.content").isArray())
+          .andExpect(jsonPath("$.data.requests.content[0].id").value(VIP_REQUEST_ID_1.toString()))
+          .andExpect(jsonPath("$.data.requests.content[0].userId").value(LEARNER_ID.toString()))
+          .andExpect(jsonPath("$.data.requests.content[0].name").value("Nguyễn Văn A"))
+          .andExpect(jsonPath("$.data.requests.content[0].gmail").value("learner@studyweb.edu"))
+          .andExpect(
+              jsonPath("$.data.requests.content[0].note")
+                  .value("Cần kích hoạt VIP để học chuyên sâu"))
+          .andExpect(jsonPath("$.data.requests.content[0].status").value("WAITING"))
+          .andExpect(jsonPath("$.data.requests.content[0].mainCourse").value("React Masterclass"))
+          .andExpect(jsonPath("$.data.requests.content[1].id").value(VIP_REQUEST_ID_2.toString()))
+          .andExpect(jsonPath("$.data.requests.content[1].status").value("APPROVED"));
+
+      ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+      verify(systemManagementService).getVipRequests(isNull(), isNull(), pageableCaptor.capture());
+      assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(0);
+      assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("With search, status and pagination -> forwards all parameters to service")
+    void getVipRequests_withSearchAndStatus_passesParamsToService() throws Exception {
+      when(systemManagementService.getVipRequests(
+              eq("nguyen"), eq(VipRequestStatus.WAITING), any(Pageable.class)))
+          .thenReturn(sampleVipRequestListResponse());
+
+      mockMvc
+          .perform(
+              get("/api/system-management/vip-requests")
+                  .param("search", "nguyen")
+                  .param("status", "WAITING")
+                  .param("page", "1")
+                  .param("size", "5")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200));
+
+      ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+      verify(systemManagementService)
+          .getVipRequests(eq("nguyen"), eq(VipRequestStatus.WAITING), pageableCaptor.capture());
+      assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(1);
+      assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(5);
+    }
+  }
+
+  // =========================================================================
+  // 7. APPROVE VIP REQUEST ENDPOINT TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("7. PATCH /api/system-management/vip-requests/{id}/approve")
+  @WithMockUser(roles = "ADMIN")
+  class ApproveVipRequestEndpointTests {
+
+    @Test
+    @DisplayName("Valid ID -> calls service and returns 200 OK")
+    void approveVipRequest_validId_returns200AndCallsService() throws Exception {
+      doNothing().when(systemManagementService).approveVipRequest(VIP_REQUEST_ID_1);
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP request approved successfully."));
+
+      verify(systemManagementService).approveVipRequest(VIP_REQUEST_ID_1);
+    }
+  }
+
+  // =========================================================================
+  // 8. DISAPPROVE VIP REQUEST ENDPOINT TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("8. PATCH /api/system-management/vip-requests/{id}/disapprove")
+  @WithMockUser(roles = "ADMIN")
+  class DisapproveVipRequestEndpointTests {
+
+    @Test
+    @DisplayName("Call /disapprove -> calls service and returns 200 OK")
+    void disapproveVipRequest_disapprovePath_returns200AndCallsService() throws Exception {
+      doNothing().when(systemManagementService).disapproveVipRequest(VIP_REQUEST_ID_1);
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP request disapproved successfully."));
+
+      verify(systemManagementService).disapproveVipRequest(VIP_REQUEST_ID_1);
     }
   }
 }
