@@ -70,6 +70,7 @@ import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
 import studyweb.cus.repository.user.ActivityLogRepository;
 import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.security.JwtAuthenticationEntryPoint;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.security.JwtUtils;
@@ -107,6 +108,7 @@ class SystemManagementServiceTest {
   @MockitoBean private AssessmentAttemptRepository assessmentAttemptRepository;
   @MockitoBean private AssessmentRepository assessmentRepository;
   @MockitoBean private ActivityLogRepository activityLogRepository;
+  @MockitoBean private VipRequestRepository vipRequestRepository;
   @MockitoBean private SystemManagementMapper systemManagementMapper;
   @MockitoBean private PasswordEncoder passwordEncoder;
   @MockitoBean private JwtUtils jwtUtils;
