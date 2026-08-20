@@ -30,6 +30,7 @@ import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.entity.redis.PasswordResetOtp;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.mapper.user.UserMapper;
@@ -112,7 +113,7 @@ class AuthServiceTest {
     User user = user();
     when(userService.createUser(registerRequest())).thenReturn(user);
     when(userMapper.toUserResponse(user)).thenReturn(userResponse());
-    when(jwtUtils.generateAccessToken(GMAIL)).thenReturn("access-token");
+    when(jwtUtils.generateAccessToken(GMAIL, UserRole.LEARNER)).thenReturn("access-token");
     when(jwtUtils.generateRefreshToken(GMAIL)).thenReturn("refresh-token");
 
     AuthResponse response = authService.register(registerRequest());
@@ -154,7 +155,7 @@ class AuthServiceTest {
     when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
     when(passwordEncoder.matches("password1", user.getPassword())).thenReturn(true);
     when(userMapper.toUserResponse(user)).thenReturn(userResponse());
-    when(jwtUtils.generateAccessToken(GMAIL)).thenReturn("access-token");
+    when(jwtUtils.generateAccessToken(GMAIL, UserRole.LEARNER)).thenReturn("access-token");
     when(jwtUtils.generateRefreshToken(GMAIL)).thenReturn("refresh-token");
 
     AuthResponse response = authService.login(new LoginRequest(GMAIL, "password1"));
@@ -172,7 +173,7 @@ class AuthServiceTest {
     when(jwtUtils.getEmailFromToken(REFRESH_TOKEN)).thenReturn(GMAIL);
     when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
     when(userMapper.toUserResponse(user)).thenReturn(userResponse());
-    when(jwtUtils.generateAccessToken(GMAIL)).thenReturn("new-access-token");
+    when(jwtUtils.generateAccessToken(GMAIL, UserRole.LEARNER)).thenReturn("new-access-token");
 
     AuthResponse response = authService.refreshToken(REFRESH_TOKEN);
 
