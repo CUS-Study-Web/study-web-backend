@@ -290,18 +290,30 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public void deactivateAssistant(UUID id) {
-    throw new UnsupportedOperationException("not implemented");
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.BANNED);
   }
 
   @Override
   @Transactional
   public void activateAssistant(UUID id) {
-    throw new UnsupportedOperationException("not implemented");
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.ACTIVE);
   }
 
   @Override
   @Transactional
   public void deleteAssistant(UUID id) {
-    throw new UnsupportedOperationException("not implemented");
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    user.setStatus(UserStatus.INACTIVE);
   }
 }
