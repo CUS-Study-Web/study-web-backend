@@ -319,7 +319,50 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public AssistantSummaryResponse createAssistant(CreateAssistantRequest request) {
-    throw new UnsupportedOperationException("not implemented");
+    Optional<User> existingUserOpt = userRepository.findByGmail(request.gmail());
+
+    String rawPassword = request.password();
+    if (rawPassword == null || rawPassword.isBlank()) {
+      rawPassword = defaultPassword;
+    }
+    if (rawPassword == null || rawPassword.isBlank()) {
+      throw new SystemException(
+          SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!");
+    }
+    String encodedPassword = passwordEncoder.encode(rawPassword);
+
+    User user;
+    if (existingUserOpt.isPresent()) {
+      User existing = existingUserOpt.get();
+      if (existing.getStatus() == UserStatus.ACTIVE) {
+        throw new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
+      }
+      if (existing.getStatus() == UserStatus.BANNED) {
+        throw new AuthException(AuthErrorCode.ACCOUNT_BANNED);
+      }
+      // INACTIVE (Soft-deleted): Reactivate existing entity, update fields, and reset credentials
+      existing.setName(request.name());
+      existing.setPhone(request.phone());
+      existing.setRole(UserRole.ASSISTANT);
+      existing.setStatus(UserStatus.ACTIVE);
+      existing.setPassword(encodedPassword);
+      user = userRepository.save(existing);
+    } else {
+      user =
+          userRepository.save(
+              User.builder()
+                  .name(request.name())
+                  .gmail(request.gmail())
+                  .phone(request.phone())
+                  .role(UserRole.ASSISTANT)
+                  .status(UserStatus.ACTIVE)
+                  .tier(UserTier.NORMAL)
+                  .password(encodedPassword)
+                  .joinDate(LocalDateTime.now())
+                  .build());
+    }
+
+    return systemManagementMapper.toAssistantSummary(user, 0, List.of());
   }
 
   @Override
