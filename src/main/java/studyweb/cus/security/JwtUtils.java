@@ -1,8 +1,10 @@
 package studyweb.cus.security;
 
+import studyweb.cus.enums.UserRole;
+
 public interface JwtUtils {
 
-  String generateAccessToken(String email);
+  String generateAccessToken(String email, UserRole role);
 
   String generateRefreshToken(String email);
 
