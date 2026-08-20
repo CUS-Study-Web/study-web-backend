@@ -39,6 +39,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           """
           SELECT u FROM User u
           WHERE u.role = 'ASSISTANT'
+            AND u.status <> 'INACTIVE'
             AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
           """,
@@ -46,6 +47,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           """
           SELECT COUNT(u) FROM User u
           WHERE u.role = 'ASSISTANT'
+            AND u.status <> 'INACTIVE'
             AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
           """)
