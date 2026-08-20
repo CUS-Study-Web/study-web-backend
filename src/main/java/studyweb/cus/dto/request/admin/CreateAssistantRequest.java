@@ -2,9 +2,11 @@ package studyweb.cus.dto.request.admin;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public record CreateAssistantRequest(
     @NotBlank(message = "Name is required") String name,
     @NotBlank(message = "Email is required") @Email(message = "Invalid email format") String gmail,
-    String phone,
+    @Pattern(regexp = "^$|^\\d{10}$", message = "Phone number must be blank or exactly 10 digits")
+        String phone,
     String password) {}
