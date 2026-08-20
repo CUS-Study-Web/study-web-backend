@@ -1,6 +1,16 @@
 package studyweb.cus.service.admin;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -9,25 +19,6 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -43,6 +34,17 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.config.SecurityConfig;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.controller.admin.SystemManagementController;
@@ -57,6 +59,7 @@ import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.GlobalExceptionHandler;
+import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
@@ -671,72 +674,8 @@ class SystemManagementServiceTest {
   class CreateVipAccountWebMvcServiceTests {
 
     @Test
-    @DisplayName("Existing user -> upgrades tier to VIP, saves entity, returns 200 via WebMVC")
-    void createVipAccount_existingUser_upgradesTierAndSaves() throws Exception {
-      CreateVipAccountRequest request =
-          new CreateVipAccountRequest(
-              "Trần Thị B",
-              "vip.learner@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "VIP upgrade note");
-
-      User existingUser =
-          User.builder()
-              .gmail("vip.learner@studyweb.edu")
-              .name("Trần B (old)")
-              .tier(UserTier.NORMAL)
-              .avatarUrl("https://cdn.studyweb.edu/avatars/user_vip.png")
-              .build();
-      existingUser.setId(USER_ID_1);
-
-      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(existingUser));
-      when(userRepository.save(existingUser)).thenReturn(existingUser);
-      when(systemManagementMapper.toLearnerSummary(existingUser, null, 0.0, 0))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  "vip.learner@studyweb.edu",
-                  "N/A",
-                  0.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.VIP,
-                  "Trần Thị B",
-                  0,
-                  "VIP upgrade note",
-                  request.startDate(),
-                  request.endDate(),
-                  "https://cdn.studyweb.edu/avatars/user_vip.png"));
-
-      mockMvc
-          .perform(
-              post("/api/system-management/create-vip-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.name").value("Trần Thị B"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"))
-          .andExpect(
-              jsonPath("$.data.avatarUrl").value("https://cdn.studyweb.edu/avatars/user_vip.png"));
-
-      assertThat(existingUser.getName()).isEqualTo("Trần Thị B");
-      assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);
-      assertThat(existingUser.getVipStartDate()).isEqualTo(request.startDate());
-      assertThat(existingUser.getVipEndDate()).isEqualTo(request.endDate());
-      assertThat(existingUser.getNote()).isEqualTo("VIP upgrade note");
-      verify(passwordEncoder, never()).encode(any());
-      verify(userRepository).save(existingUser);
-      verify(systemManagementMapper).toLearnerSummary(existingUser, null, 0.0, 0);
-    }
-
-    @Test
     @DisplayName(
-        "New user -> encodes password, creates User entity with VIP/LEARNER/ACTIVE, returns 200 via WebMVC")
+        "createVipAccount - Not Found -> encodes password, creates User entity with VIP/LEARNER/ACTIVE, returns 200")
     void createVipAccount_newUser_encodesDefaultPasswordAndSaves() throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
@@ -807,6 +746,134 @@ class SystemManagementServiceTest {
       assertThat(savedUser.getNote()).isEqualTo("VIP created note");
 
       verify(systemManagementMapper).toLearnerSummary(any(User.class), isNull(), eq(0.0), eq(0));
+    }
+
+    @Test
+    @DisplayName(
+        "createVipAccount - ACTIVE user exists -> throws AuthException EMAIL_ALREADY_EXISTS 409")
+    void createVipAccount_activeUserExists_throws409() throws Exception {
+      CreateVipAccountRequest request =
+          new CreateVipAccountRequest(
+              "Trần Thị B",
+              "active.vip@studyweb.edu",
+              "React",
+              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              "VIP note");
+      User activeUser = User.builder().status(UserStatus.ACTIVE).build();
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(activeUser));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/create-vip-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.code()));
+
+      verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createVipAccount - BANNED user exists -> throws AuthException ACCOUNT_BANNED 403")
+    void createVipAccount_bannedUserExists_throws403AccountBanned() throws Exception {
+      CreateVipAccountRequest request =
+          new CreateVipAccountRequest(
+              "Trần Thị B",
+              "banned.vip@studyweb.edu",
+              "React",
+              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              "VIP note");
+      User bannedUser = User.builder().status(UserStatus.BANNED).build();
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(bannedUser));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/create-vip-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.ACCOUNT_BANNED.code()))
+          .andExpect(jsonPath("$.message").value(AuthErrorCode.ACCOUNT_BANNED.message()));
+
+      verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName(
+        "createVipAccount - INACTIVE user exists -> reactivates entity, updates tier to VIP & credentials, returns 200")
+    void createVipAccount_inactiveUserExists_reactivatesEntity() throws Exception {
+      CreateVipAccountRequest request =
+          new CreateVipAccountRequest(
+              "Trần Thị B (Reactivated)",
+              "inactive.vip@studyweb.edu",
+              "React",
+              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              "VIP upgrade reactivated");
+
+      User inactiveUser =
+          User.builder()
+              .gmail("inactive.vip@studyweb.edu")
+              .name("Trần B (Old)")
+              .tier(UserTier.NORMAL)
+              .status(UserStatus.INACTIVE)
+              .avatarUrl("https://cdn.studyweb.edu/avatars/user_vip.png")
+              .build();
+      inactiveUser.setId(USER_ID_1);
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
+      when(passwordEncoder.encode("StudyWeb@123")).thenReturn("$2a$10$reactivatedHash");
+      when(userRepository.save(inactiveUser)).thenReturn(inactiveUser);
+      when(systemManagementMapper.toLearnerSummary(inactiveUser, null, 0.0, 0))
+          .thenReturn(
+              new LearnerSummaryResponse(
+                  USER_ID_1,
+                  "inactive.vip@studyweb.edu",
+                  "N/A",
+                  0.0,
+                  0.0,
+                  "Chưa đăng nhập",
+                  UserStatus.ACTIVE,
+                  UserTier.VIP,
+                  "Trần Thị B (Reactivated)",
+                  0,
+                  "VIP upgrade reactivated",
+                  request.startDate(),
+                  request.endDate(),
+                  "https://cdn.studyweb.edu/avatars/user_vip.png"));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/create-vip-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.name").value("Trần Thị B (Reactivated)"))
+          .andExpect(jsonPath("$.data.tier").value("VIP"))
+          .andExpect(
+              jsonPath("$.data.avatarUrl").value("https://cdn.studyweb.edu/avatars/user_vip.png"));
+
+      assertThat(inactiveUser.getName()).isEqualTo("Trần Thị B (Reactivated)");
+      assertThat(inactiveUser.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(inactiveUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+      assertThat(inactiveUser.getRole()).isEqualTo(UserRole.LEARNER);
+      assertThat(inactiveUser.getPassword()).isEqualTo("$2a$10$reactivatedHash");
+      assertThat(inactiveUser.getVipStartDate()).isEqualTo(request.startDate());
+      assertThat(inactiveUser.getVipEndDate()).isEqualTo(request.endDate());
+      assertThat(inactiveUser.getNote()).isEqualTo("VIP upgrade reactivated");
+      verify(passwordEncoder).encode("StudyWeb@123");
+      verify(userRepository).save(inactiveUser);
+      verify(systemManagementMapper).toLearnerSummary(inactiveUser, null, 0.0, 0);
     }
   }
 
