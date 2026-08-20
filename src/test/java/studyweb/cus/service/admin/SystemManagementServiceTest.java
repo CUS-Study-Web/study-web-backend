@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,6 +57,7 @@ import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.GlobalExceptionHandler;
 import studyweb.cus.exception.auth.AuthErrorCode;
+import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
@@ -549,7 +549,7 @@ class SystemManagementServiceTest {
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Ban learner sucessfully."));
+          .andExpect(jsonPath("$.message").value("Ban learner successfully."));
 
       assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
       verify(userRepository).findById(USER_ID_1);
@@ -575,40 +575,60 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 3. unbanLearner WebMVC Service Tests
+  // 3. lockLearner WebMVC Service Tests
   // =========================================================================
   @Nested
-  @DisplayName("Service unbanLearner - Executed via WebMVC")
-  class UnbanLearnerWebMvcServiceTests {
+  @DisplayName("Service lockLearner - Executed via WebMVC")
+  class LockLearnerWebMvcServiceTests {
 
     @Test
-    @DisplayName("User found -> updates entity status to ACTIVE and returns 200")
-    void unbanLearner_existingUser_mutatesStatusToActive() throws Exception {
+    @DisplayName("User found (ACTIVE) -> updates entity status to INACTIVE and returns 200")
+    void lockLearner_existingActiveUser_mutatesStatusToInactive() throws Exception {
+      User user = User.builder().status(UserStatus.ACTIVE).build();
+      user.setId(USER_ID_1);
+      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/{id}/lock", USER_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Lock learner successfully."));
+
+      assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
+      verify(userRepository).findById(USER_ID_1);
+    }
+
+    @Test
+    @DisplayName("User is permanently BANNED -> throws SystemException FORBIDDEN (403 SYS_002)")
+    void lockLearner_bannedUser_throwsForbidden() throws Exception {
       User user = User.builder().status(UserStatus.BANNED).build();
       user.setId(USER_ID_1);
       when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
 
       mockMvc
           .perform(
-              patch("/api/system-management/{id}/unban", USER_ID_1)
+              patch("/api/system-management/{id}/lock", USER_ID_1)
                   .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Unban learner sucessfully."));
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.FORBIDDEN.code()))
+          .andExpect(jsonPath("$.message").value("User is permanently banned."));
 
-      assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+      assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
       verify(userRepository).findById(USER_ID_1);
     }
 
     @Test
     @DisplayName(
         "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
-    void unbanLearner_notFound_returns404UserNotFound() throws Exception {
+    void lockLearner_notFound_returns404UserNotFound() throws Exception {
       when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
 
       mockMvc
           .perform(
-              patch("/api/system-management/{id}/unban", USER_ID_1)
+              patch("/api/system-management/{id}/lock", USER_ID_1)
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
@@ -620,47 +640,67 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 4. deleteLearner WebMVC Service Tests
+  // 4. unlockLearner WebMVC Service Tests
   // =========================================================================
   @Nested
-  @DisplayName("Service deleteLearner - Executed via WebMVC")
-  class DeleteLearnerWebMvcServiceTests {
+  @DisplayName("Service unlockLearner - Executed via WebMVC")
+  class UnlockLearnerWebMvcServiceTests {
 
     @Test
-    @DisplayName("User found -> soft deletes by mutating status to INACTIVE and returns 200")
-    void deleteLearner_existingUser_softDeletesToInactive() throws Exception {
-      User user = User.builder().status(UserStatus.ACTIVE).build();
+    @DisplayName("User found (INACTIVE) -> updates entity status to ACTIVE and returns 200")
+    void unlockLearner_existingInactiveUser_mutatesStatusToActive() throws Exception {
+      User user = User.builder().status(UserStatus.INACTIVE).build();
       user.setId(USER_ID_1);
       when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
 
       mockMvc
           .perform(
-              delete("/api/system-management/{id}", USER_ID_1).accept(MediaType.APPLICATION_JSON))
+              patch("/api/system-management/{id}/unlock", USER_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Delete learner sucessfully."));
+          .andExpect(jsonPath("$.message").value("Unlock learner successfully."));
 
-      assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
+      assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
       verify(userRepository).findById(USER_ID_1);
-      verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("User is permanently BANNED -> throws SystemException FORBIDDEN (403 SYS_002)")
+    void unlockLearner_bannedUser_throwsForbidden() throws Exception {
+      User user = User.builder().status(UserStatus.BANNED).build();
+      user.setId(USER_ID_1);
+      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/{id}/unlock", USER_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.FORBIDDEN.code()))
+          .andExpect(jsonPath("$.message").value("User is permanently banned."));
+
+      assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
+      verify(userRepository).findById(USER_ID_1);
     }
 
     @Test
     @DisplayName(
         "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
-    void deleteLearner_notFound_returns404UserNotFound() throws Exception {
+    void unlockLearner_notFound_returns404UserNotFound() throws Exception {
       when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
 
       mockMvc
           .perform(
-              delete("/api/system-management/{id}", USER_ID_1).accept(MediaType.APPLICATION_JSON))
+              patch("/api/system-management/{id}/unlock", USER_ID_1)
+                  .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
           .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
 
       verify(userRepository).findById(USER_ID_1);
-      verify(userRepository, never()).delete(any());
     }
   }
 

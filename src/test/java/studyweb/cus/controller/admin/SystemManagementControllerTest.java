@@ -9,7 +9,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -170,26 +169,26 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /{id}/ban & unban, DELETE /{id} - Path variable string binds to UUID")
+    @DisplayName("PATCH /{id}/lock, /{id}/unlock, /{id}/ban - Path variable string binds to UUID")
     void pathEndpoints_bindPathVariableToUuid() throws Exception {
+      doNothing().when(systemManagementService).lockLearner(LEARNER_ID);
+      doNothing().when(systemManagementService).unlockLearner(LEARNER_ID);
       doNothing().when(systemManagementService).banLearner(LEARNER_ID);
-      doNothing().when(systemManagementService).unbanLearner(LEARNER_ID);
-      doNothing().when(systemManagementService).deleteLearner(LEARNER_ID);
+
+      mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID.toString()))
+          .andExpect(status().isOk());
+      verify(systemManagementService).lockLearner(LEARNER_ID);
+
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID.toString()))
+          .andExpect(status().isOk());
+      verify(systemManagementService).unlockLearner(LEARNER_ID);
 
       mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID.toString()))
           .andExpect(status().isOk());
       verify(systemManagementService).banLearner(LEARNER_ID);
-
-      mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID.toString()))
-          .andExpect(status().isOk());
-      verify(systemManagementService).unbanLearner(LEARNER_ID);
-
-      mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID.toString()))
-          .andExpect(status().isOk());
-      verify(systemManagementService).deleteLearner(LEARNER_ID);
     }
 
     @Test
@@ -450,6 +449,34 @@ class SystemManagementControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /{id}/lock - Delegates to lockLearner and wraps in SuccessResponse")
+    void lockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
+      doNothing().when(systemManagementService).lockLearner(LEARNER_ID);
+
+      mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Lock learner successfully."));
+
+      verify(systemManagementService).lockLearner(LEARNER_ID);
+    }
+
+    @Test
+    @DisplayName("PATCH /{id}/unlock - Delegates to unlockLearner and wraps in SuccessResponse")
+    void unlockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
+      doNothing().when(systemManagementService).unlockLearner(LEARNER_ID);
+
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Unlock learner successfully."));
+
+      verify(systemManagementService).unlockLearner(LEARNER_ID);
+    }
+
+    @Test
     @DisplayName("PATCH /{id}/ban - Delegates to banLearner and wraps in SuccessResponse")
     void banLearner_delegatesAndWrapsSuccessResponse() throws Exception {
       doNothing().when(systemManagementService).banLearner(LEARNER_ID);
@@ -458,37 +485,9 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Ban learner sucessfully."));
+          .andExpect(jsonPath("$.message").value("Ban learner successfully."));
 
       verify(systemManagementService).banLearner(LEARNER_ID);
-    }
-
-    @Test
-    @DisplayName("PATCH /{id}/unban - Delegates to unbanLearner and wraps in SuccessResponse")
-    void unbanLearner_delegatesAndWrapsSuccessResponse() throws Exception {
-      doNothing().when(systemManagementService).unbanLearner(LEARNER_ID);
-
-      mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Unban learner sucessfully."));
-
-      verify(systemManagementService).unbanLearner(LEARNER_ID);
-    }
-
-    @Test
-    @DisplayName("DELETE /{id} - Delegates to deleteLearner and wraps in SuccessResponse")
-    void deleteLearner_delegatesAndWrapsSuccessResponse() throws Exception {
-      doNothing().when(systemManagementService).deleteLearner(LEARNER_ID);
-
-      mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Delete learner sucessfully."));
-
-      verify(systemManagementService).deleteLearner(LEARNER_ID);
     }
 
     @Test
@@ -564,14 +563,14 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on delete -> 404 NOT_FOUND with USER_001")
-    void delete_userNotFound_translatesTo404() throws Exception {
+    @DisplayName("UserException(USER_NOT_FOUND) on lock -> 404 NOT_FOUND with USER_001")
+    void lock_userNotFound_translatesTo404() throws Exception {
       doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .deleteLearner(LEARNER_ID);
+          .lockLearner(LEARNER_ID);
 
       mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID))
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
@@ -632,10 +631,10 @@ class SystemManagementControllerTest {
     void unhandledException_translatesTo500() throws Exception {
       doThrow(new RuntimeException("Unexpected fatal crash"))
           .when(systemManagementService)
-          .unbanLearner(LEARNER_ID);
+          .lockLearner(LEARNER_ID);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID))
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
           .andExpect(status().isInternalServerError())
           .andExpect(jsonPath("$.statusCode").value(500))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.INTERNAL_ERROR.code()))
@@ -656,13 +655,13 @@ class SystemManagementControllerTest {
     void anonymousAccess_blockedWith401() throws Exception {
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isUnauthorized());
       mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .andExpect(status().isUnauthorized());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .andExpect(status().isUnauthorized());
+      mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
-          .andExpect(status().isUnauthorized());
-      mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID))
-          .andExpect(status().isUnauthorized());
-      mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
           .perform(
@@ -678,9 +677,9 @@ class SystemManagementControllerTest {
           .andExpect(status().isUnauthorized());
 
       verify(systemManagementService, never()).listLearners(any(), any());
+      verify(systemManagementService, never()).lockLearner(any());
+      verify(systemManagementService, never()).unlockLearner(any());
       verify(systemManagementService, never()).banLearner(any());
-      verify(systemManagementService, never()).unbanLearner(any());
-      verify(systemManagementService, never()).deleteLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
     }
@@ -691,13 +690,13 @@ class SystemManagementControllerTest {
     void learnerRole_blockedWith403() throws Exception {
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isForbidden());
       mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .andExpect(status().isForbidden());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .andExpect(status().isForbidden());
+      mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
-          .andExpect(status().isForbidden());
-      mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID))
-          .andExpect(status().isForbidden());
-      mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
@@ -713,9 +712,9 @@ class SystemManagementControllerTest {
           .andExpect(status().isForbidden());
 
       verify(systemManagementService, never()).listLearners(any(), any());
+      verify(systemManagementService, never()).lockLearner(any());
+      verify(systemManagementService, never()).unlockLearner(any());
       verify(systemManagementService, never()).banLearner(any());
-      verify(systemManagementService, never()).unbanLearner(any());
-      verify(systemManagementService, never()).deleteLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
     }
@@ -726,13 +725,13 @@ class SystemManagementControllerTest {
     void assistantRole_blockedWith403() throws Exception {
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isForbidden());
       mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .andExpect(status().isForbidden());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .andExpect(status().isForbidden());
+      mockMvc
           .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
-          .andExpect(status().isForbidden());
-      mockMvc
-          .perform(patch("/api/system-management/{id}/unban", LEARNER_ID))
-          .andExpect(status().isForbidden());
-      mockMvc
-          .perform(delete("/api/system-management/{id}", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
@@ -748,9 +747,9 @@ class SystemManagementControllerTest {
           .andExpect(status().isForbidden());
 
       verify(systemManagementService, never()).listLearners(any(), any());
+      verify(systemManagementService, never()).lockLearner(any());
+      verify(systemManagementService, never()).unlockLearner(any());
       verify(systemManagementService, never()).banLearner(any());
-      verify(systemManagementService, never()).unbanLearner(any());
-      verify(systemManagementService, never()).deleteLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
       verify(systemManagementService, never()).updateAccount(any());
     }
@@ -763,6 +762,15 @@ class SystemManagementControllerTest {
           .thenReturn(new PageImpl<>(List.of()));
 
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .andExpect(status().isOk());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .andExpect(status().isOk());
+      mockMvc
+          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .andExpect(status().isOk());
     }
   }
 }
