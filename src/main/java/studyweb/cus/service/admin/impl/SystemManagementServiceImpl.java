@@ -331,10 +331,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       if (existing.getStatus() == UserStatus.ACTIVE) {
         throw new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
       }
-      if (existing.getStatus() == UserStatus.BANNED) {
+      if (existing.getStatus() == UserStatus.INACTIVE) {
         throw new AuthException(AuthErrorCode.ACCOUNT_BANNED);
       }
-      // INACTIVE (Soft-deleted): Reactivate existing entity, update fields, and reset credentials
+      // BANNED: Reactivate existing entity, update fields, and reset credentials
       existing.setName(request.name());
       existing.setPhone(request.phone());
       existing.setRole(UserRole.ASSISTANT);
