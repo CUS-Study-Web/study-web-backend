@@ -40,6 +40,9 @@ import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.user.ActivityLogRepository;
+import studyweb.cus.repository.course.AssessmentRepository;
+import studyweb.cus.repository.progress.UserCourseProgressRepository;
+import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.admin.SystemManagementService;
 
 @Service
@@ -52,7 +55,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final AssessmentRepository assessmentRepository;
-  private final ActivityLogRepository activityLogRepository;
+  // private final ActivityLogRepository activityLogRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
 
@@ -283,16 +286,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     Page<User> assistantPage = userRepository.searchAssistants(search, pageable);
     List<UUID> assistantIds = assistantPage.map(User::getId).toList();
 
-    // List<ActivityLog> activities =
-    //     assistantIds.isEmpty()
-    //         ? List.of()
-    //         : activityLogRepository.findRecentActivitiesByUserIds(assistantIds);
-
-    // Map<UUID, List<ActivityLog>> activitiesByAssistant =
-    //     activities.stream()
-    //         .filter(a -> a.getUser() != null)
-    //         .collect(Collectors.groupingBy(a -> a.getUser().getId()));
-
     Map<UUID, Long> examCountByAssistant =
         assistantIds.isEmpty()
             ? Map.of()
@@ -306,8 +299,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     return assistantPage.map(
         user -> {
           // List<AssistantActivityResponse> recentActivities =
-          //     activitiesByAssistant.getOrDefault(user.getId(), List.of()).stream()
-          //         .limit(10)
+          //     activityLogRepository
+          //         .findRecentActivitiesByUserId(
+          //             user.getId(), org.springframework.data.domain.PageRequest.of(0, 10))
+          //         .stream()
           //         .map(systemManagementMapper::toAssistantActivity)
           //         .toList();
           int numExams = examCountByAssistant.getOrDefault(user.getId(), 0L).intValue();
