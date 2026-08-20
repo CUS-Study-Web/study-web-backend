@@ -31,4 +31,21 @@ public interface UserRepository extends JpaRepository<User, UUID> {
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
           """)
   Page<User> searchLearners(@Param("search") String search, Pageable pageable);
+
+  @Query(
+      value =
+          """
+          SELECT u FROM User u
+          WHERE u.role = 'ASSISTANT'
+            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          """,
+      countQuery =
+          """
+          SELECT COUNT(u) FROM User u
+          WHERE u.role = 'ASSISTANT'
+            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+          """)
+  Page<User> searchAssistants(@Param("search") String search, Pageable pageable);
 }
