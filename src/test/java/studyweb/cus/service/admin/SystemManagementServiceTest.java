@@ -61,7 +61,9 @@ import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
+import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
+import studyweb.cus.repository.user.ActivityLogRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.security.JwtAuthenticationEntryPoint;
 import studyweb.cus.security.JwtAuthenticationFilter;
@@ -98,6 +100,8 @@ class SystemManagementServiceTest {
   @MockitoBean private UserRepository userRepository;
   @MockitoBean private UserCourseProgressRepository userCourseProgressRepository;
   @MockitoBean private AssessmentAttemptRepository assessmentAttemptRepository;
+  @MockitoBean private AssessmentRepository assessmentRepository;
+  @MockitoBean private ActivityLogRepository activityLogRepository;
   @MockitoBean private SystemManagementMapper systemManagementMapper;
   @MockitoBean private PasswordEncoder passwordEncoder;
   @MockitoBean private JwtUtils jwtUtils;
