@@ -11,7 +11,6 @@ public record AssistantSummaryResponse(
     String phone,
     UserStatus status,
     int numExams,
-    int numLearners,
     String lastLogin,
     List<AssistantActivityResponse> recentActivities,
     String avatarUrl) {}
