@@ -372,7 +372,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         userRepository
             .findById(id)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.BANNED);
+    validateStatusBeforeSwitchStatus(user.getStatus());
+    user.setStatus(UserStatus.INACTIVE);
   }
 
   @Override
@@ -382,16 +383,23 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         userRepository
             .findById(id)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    validateStatusBeforeSwitchStatus(user.getStatus());
     user.setStatus(UserStatus.ACTIVE);
   }
 
   @Override
   @Transactional
-  public void deleteAssistant(UUID id) {
+  public void banAssistant(UUID id) {
     User user =
         userRepository
             .findById(id)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.INACTIVE);
+    user.setStatus(UserStatus.BANNED);
+  }
+
+  private void validateStatusBeforeSwitchStatus(UserStatus status) {
+    if (status == UserStatus.BANNED) {
+      throw new SystemException(SystemErrorCode.FORBIDDEN, "User is permanently banned.");
+    }
   }
 }

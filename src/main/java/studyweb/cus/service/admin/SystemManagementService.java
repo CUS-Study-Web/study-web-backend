@@ -28,5 +28,5 @@ public interface SystemManagementService {
 
   void activateAssistant(UUID id);
 
-  void deleteAssistant(UUID id);
+  void banAssistant(UUID id);
 }

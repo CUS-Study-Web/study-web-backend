@@ -170,11 +170,11 @@ public class SystemManagementController extends AbstractBaseController {
     return success("Activate assistant successfully.");
   }
 
-  @DeleteMapping("/assistants/{id}")
-  @Operation(summary = "Delete Assistant", description = "Soft delete assistant account")
-  public ResponseEntity<SuccessResponse> deleteAssistant(@PathVariable UUID id) {
-    log.info("[DELETE /api/system-management/assistants/{id}] Delete assistant id: {}", id);
-    systemManagementService.deleteAssistant(id);
-    return success("Delete assistant successfully.");
+  @PatchMapping("/assistants/{id}/ban")
+  @Operation(summary = "Ban Assistant", description = "Ban permanently assistant account")
+  public ResponseEntity<SuccessResponse> banAssistant(@PathVariable UUID id) {
+    log.info("[PATCH /api/system-management/assistants/{id}] Ban assistant id: {}", id);
+    systemManagementService.banAssistant(id);
+    return success("Ban assistant successfully.");
   }
 }
