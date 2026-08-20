@@ -96,32 +96,34 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
+  public void lockLearner(UUID id) {
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    validateStatusBeforeSwitchStatus(user.getStatus());
+    user.setStatus(UserStatus.INACTIVE);
+  }
+
+  @Override
+  @Transactional
+  public void unlockLearner(UUID id) {
+    User user =
+        userRepository
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    validateStatusBeforeSwitchStatus(user.getStatus());
+    user.setStatus(UserStatus.ACTIVE);
+  }
+
+  @Override
+  @Transactional
   public void banLearner(UUID id) {
     User user =
         userRepository
             .findById(id)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
     user.setStatus(UserStatus.BANNED);
-  }
-
-  @Override
-  @Transactional
-  public void unbanLearner(UUID id) {
-    User user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.ACTIVE);
-  }
-
-  @Override
-  @Transactional
-  public void deleteLearner(UUID id) {
-    User user =
-        userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.INACTIVE);
   }
 
   @Override
@@ -190,5 +192,11 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     User updatedUser = userRepository.save(user);
 
     return systemManagementMapper.toLearnerSummary(updatedUser, null, 0.0, 0);
+  }
+
+  private void validateStatusBeforeSwitchStatus(UserStatus status) {
+    if (status == UserStatus.BANNED) {
+      throw new SystemException(SystemErrorCode.FORBIDDEN, "User is permanently banned.");
+    }
   }
 }

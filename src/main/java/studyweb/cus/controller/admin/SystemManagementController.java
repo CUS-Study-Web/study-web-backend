@@ -11,7 +11,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,28 +52,35 @@ public class SystemManagementController extends AbstractBaseController {
         systemManagementService.listLearners(search, pageable), "Learners fetched successfully!");
   }
 
+  @PatchMapping("/{id}/lock")
+  @Operation(
+      summary = "Lock a specific Learner",
+      description = "Lock a specific Learner with INACTIVE status from an ACTIVE status")
+  public ResponseEntity<SuccessResponse> lockLearner(@PathVariable UUID id) {
+    log.info("[PATCH /api/system-management/{id}/lock] Lock a learner with id: {}", id);
+    systemManagementService.lockLearner(id);
+    return success("Lock learner successfully.");
+  }
+
+  @PatchMapping("/{id}/unlock")
+  @Operation(
+      summary = "Unlock a specific Learner",
+      description = "Unlock a specific Learner with ACTIVE status from an INACTIVE status")
+  public ResponseEntity<SuccessResponse> unlockLearner(@PathVariable UUID id) {
+    log.info("[PATCH /api/system-management/{id}/unlock] Unlock a learner with id: {}", id);
+    systemManagementService.unlockLearner(id);
+    return success("Unlock learner successfully.");
+  }
+
   @PatchMapping("/{id}/ban")
-  @Operation(summary = "Ban a specific Learner")
+  @Operation(
+      summary = "Ban a specific Learner / user",
+      description =
+          "Ban a specific Learner permanently with BANNED status from an either INACTIVE or ACTIVE status")
   public ResponseEntity<SuccessResponse> banLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/{id}/ban] Ban a learner with id: {}", id);
+    log.info("[PATCH /api/system-management/{id}/ban] Ban learner with id: {}", id);
     systemManagementService.banLearner(id);
-    return success("Ban learner sucessfully.");
-  }
-
-  @PatchMapping("/{id}/unban")
-  @Operation(summary = "Unban a specific Learner")
-  public ResponseEntity<SuccessResponse> unbanLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/{id}/unban] Unban a learner with id: {}", id);
-    systemManagementService.unbanLearner(id);
-    return success("Unban learner sucessfully.");
-  }
-
-  @DeleteMapping("/{id}")
-  @Operation(summary = "Delete a specific Learner / user")
-  public ResponseEntity<SuccessResponse> deleteLearner(@PathVariable UUID id) {
-    log.info("[DELETE /api/system-management/{id}] Delete learner with id: {}", id);
-    systemManagementService.deleteLearner(id);
-    return success("Delete learner sucessfully.");
+    return success("Ban learner successfully.");
   }
 
   @PostMapping("/create-vip-account")

@@ -9,13 +9,13 @@ import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 public interface SystemManagementService {
   Page<LearnerSummaryResponse> listLearners(String search, Pageable pageable);
 
-  void banLearner(UUID id);
+  void lockLearner(UUID id);
 
-  void unbanLearner(UUID id);
+  void unlockLearner(UUID id);
 
   LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request);
 
   LearnerSummaryResponse updateAccount(CreateVipAccountRequest request);
 
-  void deleteLearner(UUID id);
+  void banLearner(UUID id);
 }
