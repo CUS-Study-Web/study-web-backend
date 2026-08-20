@@ -28,7 +28,6 @@ import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
@@ -284,15 +283,15 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     Page<User> assistantPage = userRepository.searchAssistants(search, pageable);
     List<UUID> assistantIds = assistantPage.map(User::getId).toList();
 
-    List<ActivityLog> activities =
-        assistantIds.isEmpty()
-            ? List.of()
-            : activityLogRepository.findRecentActivitiesByUserIds(assistantIds);
+    // List<ActivityLog> activities =
+    //     assistantIds.isEmpty()
+    //         ? List.of()
+    //         : activityLogRepository.findRecentActivitiesByUserIds(assistantIds);
 
-    Map<UUID, List<ActivityLog>> activitiesByAssistant =
-        activities.stream()
-            .filter(a -> a.getUser() != null)
-            .collect(Collectors.groupingBy(a -> a.getUser().getId()));
+    // Map<UUID, List<ActivityLog>> activitiesByAssistant =
+    //     activities.stream()
+    //         .filter(a -> a.getUser() != null)
+    //         .collect(Collectors.groupingBy(a -> a.getUser().getId()));
 
     Map<UUID, Long> examCountByAssistant =
         assistantIds.isEmpty()
@@ -306,13 +305,13 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     return assistantPage.map(
         user -> {
-          List<AssistantActivityResponse> recentActivities =
-              activitiesByAssistant.getOrDefault(user.getId(), List.of()).stream()
-                  .limit(10)
-                  .map(systemManagementMapper::toAssistantActivity)
-                  .toList();
+          // List<AssistantActivityResponse> recentActivities =
+          //     activitiesByAssistant.getOrDefault(user.getId(), List.of()).stream()
+          //         .limit(10)
+          //         .map(systemManagementMapper::toAssistantActivity)
+          //         .toList();
           int numExams = examCountByAssistant.getOrDefault(user.getId(), 0L).intValue();
-          return systemManagementMapper.toAssistantSummary(user, numExams, recentActivities);
+          return systemManagementMapper.toAssistantSummary(user, numExams, List.of());
         });
   }
 
