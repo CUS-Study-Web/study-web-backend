@@ -11,9 +11,12 @@ import studyweb.cus.constant.admin.SystemManagementConstants;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.constant.admin.SystemManagementConstants;
+import studyweb.cus.entity.user.VipRequest;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SystemManagementMapper {
@@ -49,6 +52,16 @@ public interface SystemManagementMapper {
     }
     return "N/A";
   }
+  @Mapping(target = "id", source = "vipRequest.id")
+  @Mapping(target = "userId", source = "vipRequest.user.id")
+  @Mapping(target = "name", source = "vipRequest.user.name")
+  @Mapping(target = "gmail", source = "vipRequest.user.gmail")
+  @Mapping(target = "avatarUrl", source = "vipRequest.user.avatarUrl")
+  @Mapping(target = "note", source = "vipRequest.note")
+  @Mapping(target = "requestDate", source = "vipRequest.requestDate")
+  @Mapping(target = "status", source = "vipRequest.status")
+  @Mapping(target = "mainCourse", source = "mainCourse", defaultValue = "N/A")
+  VipRequestResponse toVipRequestResponse(VipRequest vipRequest, String mainCourse);
 
   @Mapping(target = "id", source = "user.id")
   @Mapping(target = "name", source = "user.name")

@@ -18,6 +18,8 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestListResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
@@ -25,10 +27,12 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
@@ -38,6 +42,7 @@ import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.service.admin.SystemManagementService;
 
 @Service
@@ -51,6 +56,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final AnswerKeyRepository answerKeyRepository;
   private final AssessmentRepository assessmentRepository;
   // private final ActivityLogRepository activityLogRepository;
+  private final VipRequestRepository vipRequestRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
 
@@ -330,5 +336,51 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             .password(encodedPassword)
             .joinDate(LocalDateTime.now())
             .build());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public VipRequestListResponse getVipRequests(
+      String search, VipRequestStatus status, Pageable pageable) {
+    Page<VipRequest> vipRequestPage =
+        vipRequestRepository.searchVipRequests(search, status, pageable);
+
+    List<UUID> userIds =
+        vipRequestPage.getContent().stream().map(vr -> vr.getUser().getId()).distinct().toList();
+
+    Map<UUID, UserCourseProgress> primaryCourseByUser =
+        userCourseProgressRepository.findPrimaryCourseByUserIds(userIds).stream()
+            .collect(Collectors.toMap(e -> e.getUser().getId(), e -> e, (e1, e2) -> e1));
+
+    Page<VipRequestResponse> pageResponse =
+        vipRequestPage.map(
+            vr -> {
+              UserCourseProgress progress = primaryCourseByUser.get(vr.getUser().getId());
+              String mainCourse = "N/A";
+              if (progress != null && progress.getCourse() != null) {
+                mainCourse =
+                    progress.getCourse().getBadgeTitle() != null
+                        ? progress.getCourse().getBadgeTitle()
+                        : progress.getCourse().getTitle();
+              }
+              return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
+            });
+
+    long totalCount = vipRequestRepository.countTotal();
+    long waitingCount = vipRequestRepository.countByStatus(VipRequestStatus.WAITING);
+
+    return new VipRequestListResponse(pageResponse, totalCount, waitingCount);
+  }
+
+  @Override
+  @Transactional
+  public void approveVipRequest(UUID id) {
+    throw new UnsupportedOperationException("no implemented");
+  }
+
+  @Override
+  @Transactional
+  public void disapproveVipRequest(UUID id) {
+    throw new UnsupportedOperationException("no implemented");
   }
 }
