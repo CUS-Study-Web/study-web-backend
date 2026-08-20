@@ -45,13 +45,18 @@ import org.springframework.test.web.servlet.MockMvc;
 import studyweb.cus.config.SecurityConfig;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.controller.admin.SystemManagementController;
+import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
+import studyweb.cus.dto.response.admin.AssistantActivityResponse;
+import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
+import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -110,8 +115,10 @@ class SystemManagementServiceTest {
 
   private static final UUID USER_ID_1 = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
   private static final UUID USER_ID_2 = UUID.fromString("b1ffca88-1234-4ef8-bb6d-6bb9bd380b22");
+  private static final UUID ASSISTANT_ID = UUID.fromString("c2bbcc00-1111-2222-3333-444455556666");
   private static final String GMAIL_1 = "learner1@studyweb.edu";
   private static final String GMAIL_2 = "learner2@studyweb.edu";
+  private static final String ASSISTANT_GMAIL = "assistant@cus.edu.vn";
 
   // =========================================================================
   // 1. listLearners WebMVC Service Tests (Null Safety & Edge Cases)
@@ -534,7 +541,400 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 2. banLearner WebMVC Service Tests
+  // 2. listAssistants WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service listAssistants - Aggregation, Batching & Mapping")
+  class ListAssistantsWebMvcServiceTests {
+
+    @Test
+    @DisplayName("Empty assistant page -> returns empty page without NPE")
+    void listAssistants_emptyPage_returnsEmpty() throws Exception {
+      when(userRepository.searchAssistants(isNull(), any(Pageable.class))).thenReturn(Page.empty());
+
+      mockMvc
+          .perform(get("/api/system-management/assistants").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.content").isEmpty())
+          .andExpect(jsonPath("$.data.totalElements").value(0));
+
+      verify(activityLogRepository, never()).findRecentActivitiesByUserIds(any());
+      verify(assessmentRepository, never()).countExamsByAssistantIds(any());
+    }
+
+    @Test
+    @DisplayName("Assistants with activities and exam counts -> batch loads and maps properly")
+    void listAssistants_withActivitiesAndExamCounts_mapsCorrectly() throws Exception {
+      User assistant =
+          User.builder()
+              .name("Trần Minh Hiếu")
+              .gmail(ASSISTANT_GMAIL)
+              .phone("0901 111 222")
+              .role(UserRole.ASSISTANT)
+              .status(UserStatus.ACTIVE)
+              .avatarUrl("https://cdn.studyweb.edu/avatars/assistant1.png")
+              .build();
+      assistant.setId(ASSISTANT_ID);
+
+      ActivityLog log =
+          ActivityLog.builder()
+              .user(assistant)
+              .actionType(ActionType.SUBMIT_EXAM)
+              .description("Đăng tải đề thi V-ACT mã đề 007")
+              .build();
+      log.setId(UUID.randomUUID());
+
+      AssistantActivityResponse actResponse =
+          new AssistantActivityResponse(log.getId(), log.getDescription(), "Hôm nay, 10:42");
+
+      when(userRepository.searchAssistants(isNull(), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of(assistant)));
+      when(activityLogRepository.findRecentActivitiesByUserIds(List.of(ASSISTANT_ID)))
+          .thenReturn(List.of(log));
+      when(assessmentRepository.countExamsByAssistantIds(List.of(ASSISTANT_ID)))
+          .thenReturn(List.<Object[]>of(new Object[] {ASSISTANT_ID, 12L}));
+      when(systemManagementMapper.toAssistantActivity(log)).thenReturn(actResponse);
+      when(systemManagementMapper.toAssistantSummary(assistant, 12, List.of(actResponse)))
+          .thenReturn(
+              new AssistantSummaryResponse(
+                  ASSISTANT_ID,
+                  "Trần Minh Hiếu",
+                  ASSISTANT_GMAIL,
+                  "0901 111 222",
+                  UserStatus.ACTIVE,
+                  12,
+                  "Hôm nay, 10:42",
+                  List.of(actResponse),
+                  "https://cdn.studyweb.edu/avatars/assistant1.png"));
+
+      mockMvc
+          .perform(get("/api/system-management/assistants").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.content[0].id").value(ASSISTANT_ID.toString()))
+          .andExpect(jsonPath("$.data.content[0].name").value("Trần Minh Hiếu"))
+          .andExpect(jsonPath("$.data.content[0].numExams").value(12))
+          .andExpect(
+              jsonPath("$.data.content[0].recentActivities[0].description")
+                  .value("Đăng tải đề thi V-ACT mã đề 007"))
+          .andExpect(
+              jsonPath("$.data.content[0].avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/assistant1.png"));
+
+      verify(activityLogRepository).findRecentActivitiesByUserIds(List.of(ASSISTANT_ID));
+      verify(assessmentRepository).countExamsByAssistantIds(List.of(ASSISTANT_ID));
+      verify(systemManagementMapper).toAssistantSummary(assistant, 12, List.of(actResponse));
+    }
+  }
+
+  // =========================================================================
+  // 3. createAssistant WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service createAssistant - Executed via WebMVC")
+  class CreateAssistantWebMvcServiceTests {
+
+    @Test
+    @DisplayName(
+        "createAssistant - Not Found -> encodes password, creates assistant with ASSISTANT role")
+    void createAssistant_notFound_createsUserWithAssistantRole() throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", "new.assistant@cus.edu.vn", "0901 111 222", "CustomPass@123");
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
+      when(passwordEncoder.encode("CustomPass@123")).thenReturn("$2a$10$encodedCustomHash");
+      when(userRepository.save(any(User.class)))
+          .thenAnswer(
+              inv -> {
+                User u = inv.getArgument(0);
+                u.setId(ASSISTANT_ID);
+                return u;
+              });
+      when(systemManagementMapper.toAssistantSummary(any(User.class), eq(0), eq(List.of())))
+          .thenReturn(
+              new AssistantSummaryResponse(
+                  ASSISTANT_ID,
+                  "Trần Minh Hiếu",
+                  "new.assistant@cus.edu.vn",
+                  "0901 111 222",
+                  UserStatus.ACTIVE,
+                  0,
+                  "Chưa đăng nhập",
+                  List.of(),
+                  null));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/assistants")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.id").value(ASSISTANT_ID.toString()))
+          .andExpect(jsonPath("$.data.name").value("Trần Minh Hiếu"));
+
+      ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+      verify(userRepository).save(captor.capture());
+      User saved = captor.getValue();
+      assertThat(saved.getRole()).isEqualTo(UserRole.ASSISTANT);
+      assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
+      assertThat(saved.getPassword()).isEqualTo("$2a$10$encodedCustomHash");
+      assertThat(saved.getPhone()).isEqualTo("0901 111 222");
+    }
+
+    @Test
+    @DisplayName("createAssistant - No password provided -> uses default password")
+    void createAssistant_noPassword_usesDefaultPassword() throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest("Trần Minh Hiếu", "new2@cus.edu.vn", "0901 111 222", null);
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
+      when(passwordEncoder.encode("StudyWeb@123")).thenReturn("$2a$10$encodedDefaultHash");
+      when(userRepository.save(any(User.class)))
+          .thenAnswer(
+              inv -> {
+                User u = inv.getArgument(0);
+                u.setId(ASSISTANT_ID);
+                return u;
+              });
+      when(systemManagementMapper.toAssistantSummary(any(User.class), eq(0), eq(List.of())))
+          .thenReturn(
+              new AssistantSummaryResponse(
+                  ASSISTANT_ID,
+                  "Trần Minh Hiếu",
+                  "new2@cus.edu.vn",
+                  "0901 111 222",
+                  UserStatus.ACTIVE,
+                  0,
+                  "Chưa đăng nhập",
+                  List.of(),
+                  null));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/assistants")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk());
+
+      verify(passwordEncoder).encode("StudyWeb@123");
+    }
+
+    @Test
+    @DisplayName(
+        "createAssistant - ACTIVE user exists -> throws AuthException EMAIL_ALREADY_EXISTS 409")
+    void createAssistant_activeUserExists_throws409() throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest("Trần Minh Hiếu", "existing@cus.edu.vn", "0901 111 222", null);
+      User activeUser = User.builder().status(UserStatus.ACTIVE).build();
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(activeUser));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/assistants")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.code()));
+
+      verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("createAssistant - BANNED user exists -> throws AuthException ACCOUNT_BANNED 403")
+    void createAssistant_bannedUserExists_throws403AccountBanned() throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest("Trần Minh Hiếu", "banned@cus.edu.vn", "0901 111 222", null);
+      User bannedUser = User.builder().status(UserStatus.BANNED).build();
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(bannedUser));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/assistants")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.ACCOUNT_BANNED.code()))
+          .andExpect(jsonPath("$.message").value(AuthErrorCode.ACCOUNT_BANNED.message()));
+
+      verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName(
+        "createAssistant - INACTIVE user exists -> reactivates entity, updates fields & credentials, returns 200")
+    void createAssistant_inactiveUserExists_reactivatesEntity() throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu (Reactivated)", "inactive@cus.edu.vn", "0901 999 888", "NewPass@123");
+
+      User inactiveUser =
+          User.builder()
+              .gmail("inactive@cus.edu.vn")
+              .name("Old Name")
+              .phone("0901 000 000")
+              .role(UserRole.LEARNER)
+              .status(UserStatus.INACTIVE)
+              .password("OldHashedPass")
+              .build();
+      inactiveUser.setId(ASSISTANT_ID);
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
+      when(passwordEncoder.encode("NewPass@123")).thenReturn("$2a$10$reactivatedHash");
+      when(userRepository.save(inactiveUser)).thenReturn(inactiveUser);
+      when(systemManagementMapper.toAssistantSummary(inactiveUser, 0, List.of()))
+          .thenReturn(
+              new AssistantSummaryResponse(
+                  ASSISTANT_ID,
+                  "Trần Minh Hiếu (Reactivated)",
+                  "inactive@cus.edu.vn",
+                  "0901 999 888",
+                  UserStatus.ACTIVE,
+                  0,
+                  "Chưa đăng nhập",
+                  List.of(),
+                  null));
+
+      mockMvc
+          .perform(
+              post("/api/system-management/assistants")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request))
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.id").value(ASSISTANT_ID.toString()))
+          .andExpect(jsonPath("$.data.name").value("Trần Minh Hiếu (Reactivated)"))
+          .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+      assertThat(inactiveUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+      assertThat(inactiveUser.getRole()).isEqualTo(UserRole.ASSISTANT);
+      assertThat(inactiveUser.getName()).isEqualTo("Trần Minh Hiếu (Reactivated)");
+      assertThat(inactiveUser.getPhone()).isEqualTo("0901 999 888");
+      assertThat(inactiveUser.getPassword()).isEqualTo("$2a$10$reactivatedHash");
+      verify(userRepository).save(inactiveUser);
+    }
+  }
+
+  // =========================================================================
+  // 4. deactivate, activate, delete Assistant WebMVC Service Tests
+  // =========================================================================
+  @Nested
+  @DisplayName("Service assistant status modifications - Executed via WebMVC")
+  class AssistantStatusModificationsWebMvcServiceTests {
+
+    @Test
+    @DisplayName("deactivateAssistant -> sets status to INACTIVE")
+    void deactivateAssistant_setsStatusToInactive() throws Exception {
+      User assistant = User.builder().status(UserStatus.ACTIVE).build();
+      assistant.setId(ASSISTANT_ID);
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Deactivate assistant successfully."));
+
+      assertThat(assistant.getStatus()).isEqualTo(UserStatus.BANNED);
+    }
+
+    @Test
+    @DisplayName("deactivateAssistant - not found -> throws UserException USER_001 404")
+    void deactivateAssistant_notFound_throws404() throws Exception {
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+    }
+
+    @Test
+    @DisplayName("activateAssistant -> sets status to ACTIVE")
+    void activateAssistant_setsStatusToActive() throws Exception {
+      User assistant = User.builder().status(UserStatus.INACTIVE).build();
+      assistant.setId(ASSISTANT_ID);
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Activate assistant successfully."));
+
+      assertThat(assistant.getStatus()).isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("activateAssistant - not found -> throws UserException USER_001 404")
+    void activateAssistant_notFound_throws404() throws Exception {
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+    }
+
+    @Test
+    @DisplayName("deleteAssistant -> soft deletes by mutating status to INACTIVE")
+    void deleteAssistant_setsStatusToInactive() throws Exception {
+      User assistant = User.builder().status(UserStatus.ACTIVE).build();
+      assistant.setId(ASSISTANT_ID);
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      mockMvc
+          .perform(
+              delete("/api/system-management/assistants/{id}", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Delete assistant successfully."));
+
+      assertThat(assistant.getStatus()).isEqualTo(UserStatus.INACTIVE);
+      verify(userRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("deleteAssistant - not found -> throws UserException USER_001 404")
+    void deleteAssistant_notFound_throws404() throws Exception {
+      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              delete("/api/system-management/assistants/{id}", ASSISTANT_ID)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+
+      verify(userRepository, never()).delete(any());
+    }
+  }
+
+  // =========================================================================
+  // 5. banLearner WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service banLearner - Executed via WebMVC")
@@ -709,7 +1109,7 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 5. createVipAccount WebMVC Service Tests
+  // 8. createVipAccount WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service createVipAccount - Executed via WebMVC")
@@ -920,7 +1320,7 @@ class SystemManagementServiceTest {
   }
 
   // =========================================================================
-  // 6. updateAccount WebMVC Service Tests
+  // 9. updateAccount WebMVC Service Tests
   // =========================================================================
   @Nested
   @DisplayName("Service updateAccount - Executed via WebMVC")
