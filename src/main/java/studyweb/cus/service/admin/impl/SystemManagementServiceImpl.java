@@ -375,12 +375,34 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public void approveVipRequest(UUID id) {
-    throw new UnsupportedOperationException("no implemented");
+    VipRequest vipRequest =
+        vipRequestRepository
+            .findById(id)
+            .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
+
+    User user = vipRequest.getUser();
+    if (user == null || user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    vipRequest.setStatus(VipRequestStatus.APPROVED);
+    user.setTier(UserTier.VIP);
+    user.setVipStartDate(LocalDateTime.now());
   }
 
   @Override
   @Transactional
   public void disapproveVipRequest(UUID id) {
-    throw new UnsupportedOperationException("no implemented");
+    VipRequest vipRequest =
+        vipRequestRepository
+            .findById(id)
+            .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
+
+    User user = vipRequest.getUser();
+    if (user == null || user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_NOT_FOUND);
+    }
+
+    vipRequest.setStatus(VipRequestStatus.DECLINED);
   }
 }
