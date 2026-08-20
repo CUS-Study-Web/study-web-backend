@@ -24,6 +24,7 @@ import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.enums.UserStatus;
 import studyweb.cus.service.admin.SystemManagementService;
 
 @RestController
@@ -33,8 +34,7 @@ import studyweb.cus.service.admin.SystemManagementService;
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(
     name = "System management",
-    description =
-        "Endpoints for admin to view manage learners, assitants, VIP requests, and access logs")
+    description = "Admin endpoints for learner and assistant management")
 public class SystemManagementController extends AbstractBaseController {
   private final SystemManagementService systemManagementService;
 
@@ -42,14 +42,17 @@ public class SystemManagementController extends AbstractBaseController {
   @Operation(summary = "List Learners", description = "List all learners with pagination")
   public ResponseEntity<SingleResponse<Page<LearnerSummaryResponse>>> listLearners(
       @RequestParam(required = false) String search,
+      @RequestParam(required = false) UserStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
-        "[GET /api/admin/learners] search='{}', page={}, size={}",
+        "[GET /api/admin/learners] search='{}', status='{}', page={}, size={}",
         search,
+        status,
         pageable.getPageNumber(),
         pageable.getPageSize());
     return successSingle(
-        systemManagementService.listLearners(search, pageable), "Learners fetched successfully!");
+        systemManagementService.listLearners(search, status, pageable),
+        "Learners fetched successfully!");
   }
 
   @PatchMapping("/{id}/lock")

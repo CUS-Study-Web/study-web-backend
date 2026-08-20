@@ -49,8 +49,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<LearnerSummaryResponse> listLearners(String search, Pageable pageable) {
-    Page<User> learnerPage = userRepository.searchLearners(search, pageable);
+  public Page<LearnerSummaryResponse> listLearners(
+      String search, UserStatus status, Pageable pageable) {
+    Page<User> learnerPage = userRepository.searchLearners(search, status, pageable);
 
     List<UUID> userIds = learnerPage.map(User::getId).toList();
 
