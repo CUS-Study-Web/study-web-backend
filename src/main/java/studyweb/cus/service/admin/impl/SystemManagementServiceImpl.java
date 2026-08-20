@@ -13,8 +13,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.AssistantActivityResponse;
+import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
@@ -22,6 +28,7 @@ import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
+import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
@@ -33,8 +40,7 @@ import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.CourseRepository;
-import studyweb.cus.repository.progress.UserCourseProgressRepository;
-import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.ActivityLogRepository;
 import studyweb.cus.service.admin.SystemManagementService;
 
 @Service
@@ -46,6 +52,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final CourseRepository courseRepository;
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
+  private final AssessmentRepository assessmentRepository;
+  private final ActivityLogRepository activityLogRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
 
@@ -268,5 +276,67 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       }
     }
     return ((double) numCorrect / totalQuestions) * maxScore;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<AssistantSummaryResponse> listAssistants(String search, Pageable pageable) {
+    Page<User> assistantPage = userRepository.searchAssistants(search, pageable);
+    List<UUID> assistantIds = assistantPage.map(User::getId).toList();
+
+    List<ActivityLog> activities =
+        assistantIds.isEmpty()
+            ? List.of()
+            : activityLogRepository.findRecentActivitiesByUserIds(assistantIds);
+
+    Map<UUID, List<ActivityLog>> activitiesByAssistant =
+        activities.stream()
+            .filter(a -> a.getUser() != null)
+            .collect(Collectors.groupingBy(a -> a.getUser().getId()));
+
+    Map<UUID, Long> examCountByAssistant =
+        assistantIds.isEmpty()
+            ? Map.of()
+            : assessmentRepository.countExamsByAssistantIds(assistantIds).stream()
+                .collect(
+                    Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1],
+                        (existing, replacement) -> existing));
+
+    return assistantPage.map(
+        user -> {
+          List<AssistantActivityResponse> recentActivities =
+              activitiesByAssistant.getOrDefault(user.getId(), List.of()).stream()
+                  .limit(10)
+                  .map(systemManagementMapper::toAssistantActivity)
+                  .toList();
+          int numExams = examCountByAssistant.getOrDefault(user.getId(), 0L).intValue();
+          return systemManagementMapper.toAssistantSummary(user, numExams, recentActivities);
+        });
+  }
+
+  @Override
+  @Transactional
+  public AssistantSummaryResponse createAssistant(CreateAssistantRequest request) {
+    throw new UnsupportedOperationException("not implemented");
+  }
+
+  @Override
+  @Transactional
+  public void deactivateAssistant(UUID id) {
+    throw new UnsupportedOperationException("not implemented");
+  }
+
+  @Override
+  @Transactional
+  public void activateAssistant(UUID id) {
+    throw new UnsupportedOperationException("not implemented");
+  }
+
+  @Override
+  @Transactional
+  public void deleteAssistant(UUID id) {
+    throw new UnsupportedOperationException("not implemented");
   }
 }

@@ -2,13 +2,19 @@ package studyweb.cus.mapper.admin;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 import studyweb.cus.constant.admin.SystemManagementConstants;
+
+import studyweb.cus.dto.response.admin.AssistantActivityResponse;
+import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
+import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -45,6 +51,26 @@ public interface SystemManagementMapper {
     }
     return "N/A";
   }
+
+  @Mapping(target = "id", source = "user.id")
+  @Mapping(target = "name", source = "user.name")
+  @Mapping(target = "gmail", source = "user.gmail")
+  @Mapping(target = "phone", source = "user.phone")
+  @Mapping(target = "status", source = "user.status")
+  @Mapping(target = "numExams", source = "numExams")
+  @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
+  @Mapping(target = "recentActivities", source = "recentActivities")
+  @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+  AssistantSummaryResponse toAssistantSummary(
+      User user, int numExams, List<AssistantActivityResponse> recentActivities);
+
+  @Mapping(target = "id", source = "activityLog.id")
+  @Mapping(target = "description", source = "activityLog.description")
+  @Mapping(
+      target = "timestamp",
+      source = "activityLog.createdAt",
+      qualifiedByName = "formatLastLogin")
+  AssistantActivityResponse toAssistantActivity(ActivityLog activityLog);
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {
