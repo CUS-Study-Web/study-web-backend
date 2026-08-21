@@ -14,7 +14,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 
 @Entity
 @Table(name = "assessment_attempt_details")
@@ -34,12 +34,5 @@ public class AssessmentAttemptDetail extends AbstractBaseEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "selected_answer")
-  private CorrectAnswer selectedAnswer;
-
-  @Enumerated(EnumType.STRING)
-  @Column(name = "correct_answer", nullable = false)
-  private CorrectAnswer correctAnswer;
-
-  @Column(name = "is_correct", nullable = false)
-  private Boolean isCorrect;
+  private AnswerChoice selectedAnswer;
 }

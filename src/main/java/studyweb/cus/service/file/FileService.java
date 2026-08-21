@@ -19,4 +19,8 @@ public interface FileService {
   List<UploadDocumentResult> uploadMultipleExercises(List<MultipartFile> files);
 
   List<UploadDocumentResult> uploadMultipleExams(List<MultipartFile> files);
+
+  void deleteFile(String fileKey);
+  
+  String generatePresignedUrl(String fileKey);
 }

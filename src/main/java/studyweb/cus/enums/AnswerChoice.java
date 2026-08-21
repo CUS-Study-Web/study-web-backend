@@ -1,6 +1,6 @@
 package studyweb.cus.enums;
 
-public enum CorrectAnswer {
+public enum AnswerChoice {
   A,
   B,
   C,

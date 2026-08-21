@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -105,24 +106,24 @@ public class FileServiceImpl implements FileService {
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
 
-    String fileUrl = presignedUrl(objectName);
+    String fileUrl = generatePresignedUrl(objectName);
     log.info("Uploaded file {} ({} bytes)", objectName, file.getSize());
-    return new UploadDocumentResult(file.getSize(), fileUrl);
+    return new UploadDocumentResult(file.getSize(), objectName, fileUrl);
   }
 
-  private String presignedUrl(String objectName) {
+  @Override
+  public String generatePresignedUrl(String objectKey) {
     try {
-      GetObjectRequest getObjectRequest =
-          GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectName).build();
-      GetObjectPresignRequest presignRequest =
-          GetObjectPresignRequest.builder()
-              .signatureDuration(PRESIGN_EXPIRY)
-              .getObjectRequest(getObjectRequest)
-              .build();
+      GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey)
+          .build();
+      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+          .signatureDuration(PRESIGN_EXPIRY)
+          .getObjectRequest(getObjectRequest)
+          .build();
       PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
       return presigned.url().toString();
     } catch (Exception e) {
-      log.error("Failed to generate presigned URL for {}", objectName, e);
+      log.error("Failed to generate presigned URL for {}", objectKey, e);
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
   }
@@ -136,5 +137,21 @@ public class FileServiceImpl implements FileService {
       return null;
     }
     return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+  }
+
+  @Override
+  public void deleteFile(String fileKey) {
+    if (fileKey == null || fileKey.isBlank()) {
+      return;
+    }
+    try {
+      s3Client.deleteObject(DeleteObjectRequest.builder()
+          .bucket(s3Properties.getBucket())
+          .key(fileKey)
+          .build());
+      log.info("Deleted file from S3: {}", fileKey);
+    } catch (Exception e) {
+      log.error("Failed to delete file {} from S3", fileKey, e);
+    }
   }
 }
