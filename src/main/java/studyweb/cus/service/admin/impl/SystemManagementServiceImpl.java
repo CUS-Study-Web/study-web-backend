@@ -382,7 +382,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         vipRequestRepository
             .findById(id)
             .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
-
+    
+    validateStatusBeforeSwitchStatus(vipRequest.getStatus());
+            
     User user = vipRequest.getUser();
     if (user == null || user.getStatus() == UserStatus.INACTIVE) {
       throw new UserException(UserErrorCode.USER_NOT_FOUND);
@@ -401,11 +403,19 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             .findById(id)
             .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
 
+    validateStatusBeforeSwitchStatus(vipRequest.getStatus());
+
     User user = vipRequest.getUser();
     if (user == null || user.getStatus() == UserStatus.INACTIVE) {
       throw new UserException(UserErrorCode.USER_NOT_FOUND);
     }
 
     vipRequest.setStatus(VipRequestStatus.DECLINED);
+  }
+
+  private void validateStatusBeforeSwitchStatus(VipRequestStatus status) {
+    if (status != VipRequestStatus.WAITING) {
+      throw new SystemException(SystemErrorCode.FORBIDDEN, "Vip status can only be changed from WAITING.");
+    }
   }
 }
