@@ -2,7 +2,6 @@ package studyweb.cus.controller.admin;
 
 import java.util.UUID;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.controller.AbstractBaseController;
-import studyweb.cus.dto.base.SingleResponse;
+import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
@@ -43,7 +42,7 @@ public class SystemManagementController extends AbstractBaseController {
 
   @GetMapping("/learners")
   @Operation(summary = "List Learners", description = "List all learners with pagination")
-  public ResponseEntity<SingleResponse<Page<LearnerSummaryResponse>>> listLearners(
+  public ResponseEntity<PageResponse<LearnerSummaryResponse>> listLearners(
       @RequestParam(required = false) String search,
       @RequestParam(required = false) UserStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
@@ -53,7 +52,7 @@ public class SystemManagementController extends AbstractBaseController {
         status,
         pageable.getPageNumber(),
         pageable.getPageSize());
-    return successSingle(
+    return paging(
         systemManagementService.listLearners(search, status, pageable),
         "Learners fetched successfully!");
   }
