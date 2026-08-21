@@ -102,7 +102,9 @@ jobs:
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
 
           cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
-
+      - name: Check infra
+        run: |
+          make infra
       - name: Deploy Backend
         working-directory: gitops-manifests
         env:
