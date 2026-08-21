@@ -8,7 +8,7 @@ import studyweb.cus.enums.UserTier;
 public record LearnerSummaryResponse(
     UUID id,
     String gmail,
-    String mainCourse,
+    String primaryCourse,
     Double progress,
     Double averageScore,
     String lastLogin,

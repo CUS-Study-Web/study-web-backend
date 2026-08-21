@@ -1,6 +1,7 @@
 package studyweb.cus.dto.request.admin;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,7 +10,7 @@ import jakarta.validation.constraints.Size;
 public record CreateVipAccountRequest(
     @NotBlank(message = "Name is required") String name,
     @NotBlank(message = "Email is required") String gmail,
-    String mainCourse,
+    UUID primaryCourseId,
     @NotNull(message = "Start date is required") LocalDateTime startDate,
     @NotNull(message = "End date is required") LocalDateTime endDate,
     String note,

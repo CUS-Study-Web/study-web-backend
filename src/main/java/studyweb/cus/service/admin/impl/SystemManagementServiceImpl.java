@@ -132,10 +132,13 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                   throw new AdminException(AdminErrorCode.USER_EXISTED, "Create VIP accounts only for CUS pre-registered learners"); 
               });
 
+    Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
+
     String encodedPassword = passwordEncoder.encode(request.password());
 
     userRepository.save(
         User.builder()
+            .primaryCourse(primaryCourse)
             .name(request.name())
             .gmail(request.gmail())
             .tier(UserTier.VIP)
