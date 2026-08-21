@@ -55,54 +55,54 @@ public class SystemManagementController extends AbstractBaseController {
         "Learners fetched successfully!");
   }
 
-  @PatchMapping("/{id}/lock")
+  @PatchMapping("/learners/{id}/lock")
   @Operation(
       summary = "Lock a specific Learner",
       description = "Lock a specific Learner with INACTIVE status from an ACTIVE status")
   public ResponseEntity<SuccessResponse> lockLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/{id}/lock] Lock a learner with id: {}", id);
+    log.info("[PATCH /api/system-management/learners/{id}/lock] Lock a learner with id: {}", id);
     systemManagementService.lockLearner(id);
     return success("Lock learner successfully.");
   }
 
-  @PatchMapping("/{id}/unlock")
+  @PatchMapping("/learners/{id}/unlock")
   @Operation(
       summary = "Unlock a specific Learner",
       description = "Unlock a specific Learner with ACTIVE status from an INACTIVE status")
   public ResponseEntity<SuccessResponse> unlockLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/{id}/unlock] Unlock a learner with id: {}", id);
+    log.info("[PATCH /api/system-management/learners/{id}/unlock] Unlock a learner with id: {}", id);
     systemManagementService.unlockLearner(id);
     return success("Unlock learner successfully.");
   }
 
-  @PatchMapping("/{id}/ban")
+  @PatchMapping("/learners/{id}/ban")
   @Operation(
-      summary = "Ban a specific Learner / user",
+      summary = "Ban a specific Learner",
       description =
           "Ban a specific Learner permanently with BANNED status from an either INACTIVE or ACTIVE status")
   public ResponseEntity<SuccessResponse> banLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/{id}/ban] Ban learner with id: {}", id);
+    log.info("[PATCH /api/system-management/learners/{id}/ban] Ban learner with id: {}", id);
     systemManagementService.banLearner(id);
     return success("Ban learner successfully.");
   }
 
-  @PostMapping("/create-vip-account")
+  @PostMapping("/learners/create-vip-account")
   @Operation(summary = "Create a VIP account for learners")
   public ResponseEntity<SingleResponse<LearnerSummaryResponse>> createVipAccount(
       @Valid @RequestBody CreateVipAccountRequest request) {
     log.info(
-        "[POST /api/system-management/create-vip-account] Create a vip account with email: {}",
+        "[POST /api/system-management/learners/create-vip-account] Create a vip account with email: {}",
         request.gmail());
     return successSingle(
         systemManagementService.createVipAccount(request), "Learners fetched successfully!");
   }
 
-  @PatchMapping(value = "/update-account")
+  @PatchMapping(value = "/learners/update-account")
   @Operation(summary = "Update an existing account")
   public ResponseEntity<SingleResponse<LearnerSummaryResponse>> updateAccount(
       @Valid @RequestBody CreateVipAccountRequest request) {
     log.info(
-        "[PATCH /api/system-management/update-account] Update account with email: {}",
+        "[PATCH /api/system-management/learners/update-account] Update account with email: {}",
         request.gmail());
     return successSingle(
         systemManagementService.updateAccount(request), "Account updated successfully!");
