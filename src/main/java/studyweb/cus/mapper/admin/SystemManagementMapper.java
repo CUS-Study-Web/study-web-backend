@@ -19,7 +19,7 @@ public interface SystemManagementMapper {
   @Mapping(target = "name", source = "user.name")
   @Mapping(target = "status", source = "user.status")
   @Mapping(target = "tier", source = "user.tier")
-  @Mapping(target = "mainCourse", source = "progress.course.title", defaultValue = "N/A")
+  @Mapping(target = "primaryCourse", expression = "java(resolvePrimaryCourse(user, progress))")
   @Mapping(target = "progress", source = "progress.progressPercent", defaultValue = "0.0")
   @Mapping(target = "averageScore", source = "averageScore", qualifiedByName = "roundGpa")
   @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
@@ -30,6 +30,17 @@ public interface SystemManagementMapper {
   @Mapping(target = "avatarUrl", source = "user.avatarUrl")
   LearnerSummaryResponse toLearnerSummary(
       User user, UserCourseProgress progress, Double averageScore, int numExams);
+
+  default String resolvePrimaryCourse(User user, UserCourseProgress progress) {
+    if (user != null && user.getPrimaryCourse() != null && user.getPrimaryCourse().getTitle() != null) {
+      return user.getPrimaryCourse().getTitle();
+    }
+    if (progress != null && progress.getCourse() != null && progress.getCourse().getTitle() != null) {
+      return progress.getCourse().getTitle();
+    }
+    return "N/A";
+  }
+
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {

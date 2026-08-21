@@ -3,6 +3,7 @@ package studyweb.cus.service.admin.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -17,16 +18,21 @@ import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.entity.course.AnswerKey;
+import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
+import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
+import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
@@ -41,6 +47,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final UserCourseProgressRepository userCourseProgressRepository;
   private final CourseRepository courseRepository;
   private final AssessmentAttemptRepository assessmentAttemptRepository;
+  private final AnswerKeyRepository answerKeyRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
 
@@ -52,12 +59,47 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     List<UUID> userIds = learnerPage.map(User::getId).toList();
 
-    Map<UUID, UserCourseProgress> primaryCourseByUser =
+    if (userIds.isEmpty()) {
+      return learnerPage.map(
+          user -> systemManagementMapper.toLearnerSummary(user, null, 0.0, 0));
+    }
+
+    Map<UUID, UserCourseProgress> maxProgressByUser =
         userCourseProgressRepository.findPrimaryCourseByUserIds(userIds).stream()
+            .filter(ucp -> ucp.getUser() != null)
             .collect(Collectors.toMap(e -> e.getUser().getId(), e -> e, (e1, e2) -> e1));
+
+    Map<String, UserCourseProgress> progressByUserAndCourse =
+        userCourseProgressRepository.findByUserIds(userIds).stream()
+            .filter(ucp -> ucp.getUser() != null && ucp.getCourse() != null)
+            .collect(
+                Collectors.toMap(
+                    ucp -> ucp.getUser().getId() + ":" + ucp.getCourse().getId(),
+                    ucp -> ucp,
+                    (existing, replacement) -> existing));
 
     List<AssessmentAttempt> attempts =
         assessmentAttemptRepository.findAllByUserIdsWithExam(userIds);
+
+    List<UUID> examIds =
+        attempts.stream()
+            .map(aa -> aa.getExam() != null ? aa.getExam().getId() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+    Map<UUID, Map<Integer, AnswerChoice>> answerKeysByExam =
+        examIds.isEmpty()
+            ? Map.of()
+            : answerKeyRepository.findByExamIdInAndDeletedAtIsNull(examIds).stream()
+                .filter(ak -> ak.getExam() != null && ak.getQuestionNumber() != null)
+                .collect(
+                    Collectors.groupingBy(
+                        ak -> ak.getExam().getId(),
+                        Collectors.toMap(
+                            AnswerKey::getQuestionNumber,
+                            AnswerKey::getCorrectAnswer,
+                            (k1, k2) -> k1)));
 
     Map<String, List<AssessmentAttempt>> attemptsByUserAndCourse =
         attempts.stream()
@@ -74,23 +116,54 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         user -> {
           double avgScore = 0.0;
           int numExams = 0;
-          UserCourseProgress primaryProgress = primaryCourseByUser.get(user.getId());
-          if (primaryProgress != null && primaryProgress.getCourse() != null) {
-            String groupKey = user.getId() + ":" + primaryProgress.getCourse().getId();
+          Course primaryCourse = user.getPrimaryCourse();
+          UserCourseProgress userProgress = null;
+
+          if (primaryCourse != null) {
+            String groupKey = user.getId() + ":" + primaryCourse.getId();
+            userProgress = progressByUserAndCourse.get(groupKey);
             List<AssessmentAttempt> primaryCourseAttempts =
                 attemptsByUserAndCourse.getOrDefault(groupKey, List.of());
 
             numExams = primaryCourseAttempts.size();
             avgScore =
                 primaryCourseAttempts.stream()
-                    .mapToDouble(aa -> aa.getScore().doubleValue())
+                    .mapToDouble(
+                        aa -> {
+                          Map<Integer, AnswerChoice> keys =
+                              answerKeysByExam.getOrDefault(
+                                  aa.getExam() != null ? aa.getExam().getId() : null, Map.of());
+                          return calculateAttemptScore(aa, keys);
+                        })
                     .average()
                     .orElse(0.0);
+          } else {
+            userProgress = maxProgressByUser.get(user.getId());
+            if (userProgress != null && userProgress.getCourse() != null) {
+              String groupKey = user.getId() + ":" + userProgress.getCourse().getId();
+              List<AssessmentAttempt> primaryCourseAttempts =
+                  attemptsByUserAndCourse.getOrDefault(groupKey, List.of());
+
+              numExams = primaryCourseAttempts.size();
+              avgScore =
+                  primaryCourseAttempts.stream()
+                      .mapToDouble(
+                          aa -> {
+                            Map<Integer, AnswerChoice> keys =
+                                answerKeysByExam.getOrDefault(
+                                    aa.getExam() != null ? aa.getExam().getId() : null, Map.of());
+                            return calculateAttemptScore(aa, keys);
+                          })
+                      .average()
+                      .orElse(0.0);
+            }
           }
 
-          return systemManagementMapper.toLearnerSummary(user, primaryProgress, avgScore, numExams);
+          return systemManagementMapper.toLearnerSummary(user, userProgress, avgScore, numExams);
         });
   }
+
+
 
   @Override
   @Transactional
@@ -182,4 +255,32 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       throw new AdminException(AdminErrorCode.USER_BANNED);
     }
   }
+
+  private double calculateAttemptScore(
+      AssessmentAttempt attempt, Map<Integer, AnswerChoice> answerKeys) {
+    if (attempt == null || attempt.getExam() == null || answerKeys == null) {
+      return 0.0;
+    }
+    Assessment exam = attempt.getExam();
+    int totalQuestions =
+        exam.getNumQuestions() != null && exam.getNumQuestions() > 0
+            ? exam.getNumQuestions()
+            : answerKeys.size();
+    if (totalQuestions == 0) {
+      return 0.0;
+    }
+    int maxScore = exam.getMaxScore() != null ? exam.getMaxScore() : 100;
+    int numCorrect = 0;
+    if (attempt.getDetails() != null) {
+      for (AssessmentAttemptDetail detail : attempt.getDetails()) {
+        if (detail.getSelectedAnswer() != null
+            && detail.getQuestionNumber() != null
+            && detail.getSelectedAnswer() == answerKeys.get(detail.getQuestionNumber())) {
+          numCorrect++;
+        }
+      }
+    }
+    return ((double) numCorrect / totalQuestions) * maxScore;
+  }
 }
+

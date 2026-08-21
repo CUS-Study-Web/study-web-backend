@@ -11,14 +11,10 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import studyweb.cus.entity.course.AssessmentAttempt;
 
 public interface AssessmentAttemptRepository extends JpaRepository<AssessmentAttempt, UUID> {
-  @Query(
-      """
-      SELECT aa FROM AssessmentAttempt aa
-      JOIN FETCH aa.exam a
-      WHERE aa.user.id IN :userIds
-        AND aa.score IS NOT NULL
-      """)
+  @EntityGraph(attributePaths = {"details", "exam", "exam.course"})
+  @Query("SELECT aa FROM AssessmentAttempt aa WHERE aa.user.id IN :userIds")
   List<AssessmentAttempt> findAllByUserIdsWithExam(@Param("userIds") List<UUID> userIds);
+
 
   @EntityGraph(attributePaths = {"details", "exam"})
   Page<AssessmentAttempt> findByUserIdAndExamIdOrderByAttemptNumberDesc(
