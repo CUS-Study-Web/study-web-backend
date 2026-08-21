@@ -16,8 +16,7 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
           """
           SELECT vr FROM VipRequest vr
           JOIN FETCH vr.user u
-          WHERE u.status <> 'INACTIVE'
-            AND (:status IS NULL OR vr.status = :status)
+          WHERE (:status IS NULL OR vr.status = :status)
             AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(vr.note) LIKE LOWER(CONCAT('%', :search, '%')))
@@ -26,8 +25,7 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
           """
           SELECT COUNT(vr) FROM VipRequest vr
           JOIN vr.user u
-          WHERE u.status <> 'INACTIVE'
-            AND (:status IS NULL OR vr.status = :status)
+          WHERE (:status IS NULL OR vr.status = :status)
             AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%'))
                  OR LOWER(vr.note) LIKE LOWER(CONCAT('%', :search, '%')))
@@ -39,7 +37,6 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
       """
       SELECT COUNT(vr) FROM VipRequest vr
       JOIN vr.user u
-      WHERE u.status <> 'INACTIVE'
       """)
   long countTotal();
 
@@ -47,8 +44,7 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
       """
       SELECT COUNT(vr) FROM VipRequest vr
       JOIN vr.user u
-      WHERE u.status <> 'INACTIVE'
-        AND vr.status = :status
+      WHERE vr.status = :status
       """)
   long countByStatus(@Param("status") VipRequestStatus status);
 }
