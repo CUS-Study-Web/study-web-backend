@@ -25,6 +25,7 @@ import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
+import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.service.admin.SystemManagementService;
@@ -99,14 +100,14 @@ public class SystemManagementController extends AbstractBaseController {
     return success("A VIP Learner created successfully!");
   }
 
-  @PatchMapping(value = "/learners/update-account")
-  @Operation(summary = "Update an existing account")
-  public ResponseEntity<SingleResponse<LearnerSummaryResponse>> updateAccount(
-      @Valid @RequestBody CreateVipAccountRequest request) {
+  @PatchMapping(value = "/learners/{id}/update-account")
+  @Operation(summary = "Update an existing account for learner")
+  public ResponseEntity<SuccessResponse> updateLearnerAccount(
+      @PathVariable UUID id, @Valid @RequestBody UpdateAccountRequest request) {
     log.info(
-        "[PATCH /api/system-management/learners/update-account] Update account with email: {}",
+        "[PATCH /api/system-management/learners/{id}/update-account] Update account with email: {}",
         request.gmail());
-    return successSingle(
-        systemManagementService.updateAccount(request), "Account updated successfully!");
+    systemManagementService.updateLearnerAccount(id, request);
+    return success("Update learner account succesfully!");
   }
 }

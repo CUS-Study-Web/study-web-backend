@@ -15,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
+import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AssessmentAttempt;
+import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.UserRole;
@@ -24,12 +26,9 @@ import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
-import studyweb.cus.exception.system.SystemErrorCode;
-import studyweb.cus.exception.system.SystemException;
-import studyweb.cus.exception.user.UserErrorCode;
-import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
+import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.admin.SystemManagementService;
@@ -40,6 +39,7 @@ import studyweb.cus.service.admin.SystemManagementService;
 public class SystemManagementServiceImpl implements SystemManagementService {
   private final UserRepository userRepository;
   private final UserCourseProgressRepository userCourseProgressRepository;
+  private final CourseRepository courseRepository;
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
@@ -154,25 +154,32 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
-  public LearnerSummaryResponse updateAccount(CreateVipAccountRequest request) {
+  public void updateLearnerAccount(UUID id, UpdateAccountRequest request) {
     User user =
         userRepository
-            .findByGmail(request.gmail())
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.LEARNER)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
+
+    Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
 
     user.setName(request.name());
-    user.setTier(UserTier.VIP);
+    user.setName(request.gmail());
+    user.setTier(request.tier());
+    user.setPrimaryCourse(primaryCourse);
     user.setVipStartDate(request.startDate());
     user.setVipEndDate(request.endDate());
     user.setNote(request.note());
-    User updatedUser = userRepository.save(user);
+    if (request.password() == null || request.password().isBlank()) {
+      String encodedPassword = passwordEncoder.encode(request.password());
+      user.setPassword(encodedPassword);
+    }
 
-    return systemManagementMapper.toLearnerSummary(updatedUser, null, 0.0, 0);
+    userRepository.save(user);
   }
 
   private void validateStatusBeforeSwitchStatus(UserStatus status) {
     if (status == UserStatus.BANNED) {
-      throw new SystemException(SystemErrorCode.FORBIDDEN, "User is permanently banned.");
+      throw new AdminException(AdminErrorCode.USER_BANNED);
     }
   }
 }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
+import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.enums.UserStatus;
 
@@ -18,7 +19,7 @@ public interface SystemManagementService {
 
   void createVipAccount(CreateVipAccountRequest request);
 
-  LearnerSummaryResponse updateAccount(CreateVipAccountRequest request);
+  void updateLearnerAccount(UUID id, UpdateAccountRequest request);
 
   void banLearner(UUID id);
 }
