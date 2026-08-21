@@ -3,17 +3,17 @@ package studyweb.cus.service.admin.impl;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AssessmentAttempt;
@@ -22,8 +22,8 @@ import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
-import studyweb.cus.exception.auth.AuthErrorCode;
-import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.admin.AdminErrorCode;
+import studyweb.cus.exception.admin.AdminException;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
@@ -43,9 +43,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
-
-  @Value("${DEFAULT_PASSWORD}")
-  private String defaultPassword;
 
   @Override
   @Transactional(readOnly = true)
@@ -129,52 +126,27 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
-  public LearnerSummaryResponse createVipAccount(CreateVipAccountRequest request) {
-    if (defaultPassword == null || defaultPassword.isBlank()) {
-      throw new SystemException(
-          SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!");
-    }
+  public void createVipAccount(CreateVipAccountRequest request) {
+    userRepository.findByGmail(request.gmail())
+              .ifPresent(user -> { 
+                  throw new AdminException(AdminErrorCode.USER_EXISTED, "Create VIP accounts only for CUS pre-registered learners"); 
+              });
 
-    Optional<User> existingUserOpt = userRepository.findByGmail(request.gmail());
-    String encodedPassword = passwordEncoder.encode(defaultPassword);
+    String encodedPassword = passwordEncoder.encode(request.password());
 
-    User user;
-    if (existingUserOpt.isPresent()) {
-      User existing = existingUserOpt.get();
-      if (existing.getStatus() == UserStatus.ACTIVE) {
-        throw new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
-      }
-      if (existing.getStatus() == UserStatus.BANNED) {
-        throw new AuthException(AuthErrorCode.ACCOUNT_BANNED);
-      }
-      // INACTIVE (Soft-deleted): Reactivate existing entity, update fields, and reset credentials
-      existing.setName(request.name());
-      existing.setRole(UserRole.LEARNER);
-      existing.setTier(UserTier.VIP);
-      existing.setStatus(UserStatus.ACTIVE);
-      existing.setPassword(encodedPassword);
-      existing.setVipStartDate(request.startDate());
-      existing.setVipEndDate(request.endDate());
-      existing.setNote(request.note());
-      user = userRepository.save(existing);
-    } else {
-      user =
-          userRepository.save(
-              User.builder()
-                  .name(request.name())
-                  .gmail(request.gmail())
-                  .tier(UserTier.VIP)
-                  .role(UserRole.LEARNER)
-                  .status(UserStatus.ACTIVE)
-                  .password(encodedPassword)
-                  .joinDate(LocalDateTime.now())
-                  .vipStartDate(request.startDate())
-                  .vipEndDate(request.endDate())
-                  .note(request.note())
-                  .build());
-    }
-
-    return systemManagementMapper.toLearnerSummary(user, null, 0.0, 0);
+    userRepository.save(
+        User.builder()
+            .name(request.name())
+            .gmail(request.gmail())
+            .tier(UserTier.VIP)
+            .role(UserRole.LEARNER)
+            .status(UserStatus.ACTIVE)
+            .password(encodedPassword)
+            .joinDate(LocalDateTime.now())
+            .vipStartDate(request.startDate())
+            .vipEndDate(request.endDate())
+            .note(request.note())
+            .build());
   }
 
   @Override

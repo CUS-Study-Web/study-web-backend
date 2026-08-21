@@ -1,11 +1,7 @@
 package studyweb.cus.controller.admin;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -19,6 +15,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
@@ -87,14 +89,14 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PostMapping("/learners/create-vip-account")
-  @Operation(summary = "Create a VIP account for learners")
-  public ResponseEntity<SingleResponse<LearnerSummaryResponse>> createVipAccount(
+  @Operation(summary = "Create VIP accounts for learners", description="Create VIP accounts for only learners who pre-register CUS courses")
+  public ResponseEntity<SuccessResponse> createVipAccount(
       @Valid @RequestBody CreateVipAccountRequest request) {
     log.info(
         "[POST /api/system-management/learners/create-vip-account] Create a vip account with email: {}",
         request.gmail());
-    return successSingle(
-        systemManagementService.createVipAccount(request), "Learners fetched successfully!");
+    systemManagementService.createVipAccount(request);
+    return success("A VIP Learner created successfully!");
   }
 
   @PatchMapping(value = "/learners/update-account")
