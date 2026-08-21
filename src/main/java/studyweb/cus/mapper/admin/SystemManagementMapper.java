@@ -9,6 +9,7 @@ import org.mapstruct.ReportingPolicy;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.constant.admin.SystemManagementConstants;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SystemManagementMapper {
@@ -53,7 +54,7 @@ public interface SystemManagementMapper {
   @Named("formatLastLogin")
   default String formatLastLogin(LocalDateTime dateTime) {
     if (dateTime == null) {
-      return "Chưa đăng nhập";
+      return SystemManagementConstants.textNotLogin;
     }
     return dateTime.format(DATE_FORMATTER);
   }
