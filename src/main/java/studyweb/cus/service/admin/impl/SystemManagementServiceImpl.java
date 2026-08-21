@@ -13,6 +13,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
@@ -366,8 +369,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
               return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
             });
 
-    long totalCount = vipRequestRepository.countTotal();
-    long waitingCount = vipRequestRepository.countByStatus(VipRequestStatus.WAITING);
+    int totalCount = vipRequestRepository.countTotal();
+    int waitingCount = vipRequestRepository.countByStatus(VipRequestStatus.WAITING);
 
     return new VipRequestListResponse(pageResponse, totalCount, waitingCount);
   }

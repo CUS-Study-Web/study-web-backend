@@ -1,11 +1,13 @@
 package studyweb.cus.repository.user;
 
 import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.VipRequestStatus;
 
@@ -38,7 +40,7 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
       SELECT COUNT(vr) FROM VipRequest vr
       JOIN vr.user u
       """)
-  long countTotal();
+  int countTotal();
 
   @Query(
       """
@@ -46,5 +48,5 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
       JOIN vr.user u
       WHERE vr.status = :status
       """)
-  long countByStatus(@Param("status") VipRequestStatus status);
+  int countByStatus(@Param("status") VipRequestStatus status);
 }
