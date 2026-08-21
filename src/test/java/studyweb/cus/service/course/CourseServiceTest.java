@@ -134,7 +134,7 @@ class CourseServiceTest {
     when(courseRepository.save(any(Course.class))).thenReturn(course);
     when(courseMapper.toCourseSummary(course)).thenReturn(summary);
     when(fileService.uploadAvatarFile(any(MultipartFile.class)))
-        .thenReturn(new UploadDocumentResult(0L, "url"));
+        .thenReturn(new UploadDocumentResult(0L, "key", "url"));
 
     CourseSummaryResponse result =
         courseService.createCourse(
@@ -148,7 +148,7 @@ class CourseServiceTest {
   @Test
   void createCourse_withThumbnail_uploadsAndPersistsUrl() {
     UploadDocumentResult uploaded =
-        new UploadDocumentResult(5L, "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
+        new UploadDocumentResult(5L, "key", "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
     when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
     when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
     when(courseMapper.toCourseSummary(any(Course.class)))
@@ -172,7 +172,7 @@ class CourseServiceTest {
     Course course = course();
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
     UploadDocumentResult uploaded =
-        new UploadDocumentResult(5L, "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
+        new UploadDocumentResult(5L, "key", "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
     when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
 
     MockMultipartFile thumbnail =

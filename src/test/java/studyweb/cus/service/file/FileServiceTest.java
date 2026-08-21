@@ -129,6 +129,15 @@ class FileServiceTest {
   }
 
   @Test
+  void missingExtensionIsRejected() {
+    MultipartFile noExtension = file("no_extension_file", "application/octet-stream", 1);
+
+    assertThatThrownBy(() -> fileService.uploadDocumentFile(noExtension))
+        .isInstanceOf(FileException.class)
+        .hasMessage(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.message());
+  }
+
+  @Test
   void uploadMultipleDocumentsEmptyReturnsEmpty() {
     assertThat(fileService.uploadMultipleDocuments(List.of())).isEmpty();
   }

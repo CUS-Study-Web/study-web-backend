@@ -22,7 +22,9 @@ public enum AssessmentErrorCode implements BaseErrorCode {
   ATTEMPT_NOT_FOUND(
       "ASSESSMENT_006", "Assessment attempt not found or access denied", HttpStatus.NOT_FOUND),
   VIP_ONLY(
-      "ASSESSMENT_007", "This assessment is for VIP members only", HttpStatus.FORBIDDEN);
+      "ASSESSMENT_007", "This assessment is for VIP members only", HttpStatus.FORBIDDEN),
+  DUPLICATE_ANSWER(
+      "ASSESSMENT_008", "Duplicate answer submitted for the same question", HttpStatus.BAD_REQUEST);
 
   private final String code;
   private final String message;

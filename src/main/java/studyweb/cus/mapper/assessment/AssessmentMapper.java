@@ -24,7 +24,8 @@ public interface AssessmentMapper {
   @Mapping(source = "assessment.course.title", target = "courseName")
   @Mapping(source = "assessment.subject.title", target = "subjectName")
   @Mapping(source = "answerKeys", target = "answerKeys")
-  AssessmentDetailResponse toDetail(Assessment assessment, List<AnswerKeyResponse> answerKeys);
+  @Mapping(source = "presignedUrl", target = "fileUrl")
+  AssessmentDetailResponse toDetail(Assessment assessment, List<AnswerKeyResponse> answerKeys, String presignedUrl);
 
   AnswerKeyResponse toAnswerKeyResponse(AnswerKey answerKey);
 }

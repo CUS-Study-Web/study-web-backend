@@ -132,6 +132,10 @@ jobs:
           # 4. Copy the compose files to the permanent location for Systemd to use
           cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
 
+      - name: Check infra
+        working-directory: gitops-manifests
+        run: make infra
+          
       - name: Deploy Backend
         working-directory: gitops-manifests
         env:

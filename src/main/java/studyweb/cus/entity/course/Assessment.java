@@ -62,8 +62,8 @@ public class Assessment extends AbstractAuditEntity {
   @Column(name = "file_type", length = 20)
   private AssessmentFileType fileType;
 
-  @Column(name = "file_url", length = 500)
-  private String fileUrl;
+  @Column(name = "file_key", length = 500)
+  private String fileKey;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "access", nullable = false, length = 20)

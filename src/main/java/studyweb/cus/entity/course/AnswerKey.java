@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.QuestionType;
 
 @Entity
@@ -43,5 +43,5 @@ public class AnswerKey extends AbstractAuditEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "correct_answer", nullable = false, length = 10)
-  private CorrectAnswer correctAnswer;
+  private AnswerChoice correctAnswer;
 }

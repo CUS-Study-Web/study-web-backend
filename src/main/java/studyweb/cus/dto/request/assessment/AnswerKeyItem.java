@@ -1,5 +1,5 @@
 package studyweb.cus.dto.request.assessment;
 
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
 
-public record AnswerKeyItem(Integer questionNumber, CorrectAnswer correctAnswer) {}
+public record AnswerKeyItem(Integer questionNumber, AnswerChoice correctAnswer) {}
