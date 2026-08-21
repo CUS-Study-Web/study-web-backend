@@ -133,8 +133,8 @@ jobs:
           cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
 
       - name: Check infra
-        run: |
-          make infra
+        working-directory: gitops-manifests
+        run: make infra
           
       - name: Deploy Backend
         working-directory: gitops-manifests
