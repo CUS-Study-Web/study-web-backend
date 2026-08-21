@@ -37,7 +37,6 @@ import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.CourseRepository;
-import studyweb.cus.repository.user.ActivityLogRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
@@ -312,37 +311,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
-  public AssistantSummaryResponse createAssistant(CreateAssistantRequest request) {
-    Optional<User> existingUserOpt = userRepository.findByGmail(request.gmail());
+  public void createAssistant(CreateAssistantRequest request) {
+    userRepository.findByGmail(request.gmail())
+              .ifPresent(user -> { 
+                  throw new AdminException(AdminErrorCode.USER_EXISTED); 
+              });
 
-    String rawPassword = request.password();
-    if (rawPassword == null || rawPassword.isBlank()) {
-      rawPassword = defaultPassword;
-    }
-    if (rawPassword == null || rawPassword.isBlank()) {
-      throw new SystemException(
-          SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!");
-    }
-    String encodedPassword = passwordEncoder.encode(rawPassword);
+    String encodedPassword = passwordEncoder.encode(request.password());
 
-    User user;
-    if (existingUserOpt.isPresent()) {
-      User existing = existingUserOpt.get();
-      if (existing.getStatus() == UserStatus.ACTIVE) {
-        throw new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS);
-      }
-      if (existing.getStatus() == UserStatus.INACTIVE) {
-        throw new AuthException(AuthErrorCode.ACCOUNT_BANNED);
-      }
-      // BANNED: Reactivate existing entity, update fields, and reset credentials
-      existing.setName(request.name());
-      existing.setPhone(request.phone());
-      existing.setRole(UserRole.ASSISTANT);
-      existing.setStatus(UserStatus.ACTIVE);
-      existing.setPassword(encodedPassword);
-      user = userRepository.save(existing);
-    } else {
-      user =
           userRepository.save(
               User.builder()
                   .name(request.name())
@@ -354,9 +330,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                   .password(encodedPassword)
                   .joinDate(LocalDateTime.now())
                   .build());
-    }
-
-    return systemManagementMapper.toAssistantSummary(user, 0, List.of());
   }
 
   @Override

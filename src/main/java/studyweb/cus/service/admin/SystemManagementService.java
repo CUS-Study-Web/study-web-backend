@@ -23,7 +23,7 @@ public interface SystemManagementService {
   Page<AssistantSummaryResponse> listAssistants(
       String search, UserStatus status, Pageable pageable);
 
-  AssistantSummaryResponse createAssistant(CreateAssistantRequest request);
+  void createAssistant(CreateAssistantRequest request);
 
   void deactivateAssistant(UUID id);
 

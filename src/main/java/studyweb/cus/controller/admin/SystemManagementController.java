@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
-import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
@@ -146,13 +145,13 @@ public class SystemManagementController extends AbstractBaseController {
 
   @PostMapping("/assistants")
   @Operation(summary = "Create Assistant", description = "Create a new assistant account")
-  public ResponseEntity<SingleResponse<AssistantSummaryResponse>> createAssistant(
+  public ResponseEntity<SuccessResponse> createAssistant(
       @Valid @RequestBody CreateAssistantRequest request) {
     log.info(
         "[POST /api/system-management/assistants] Create assistant with email: {}",
         request.gmail());
-    return successSingle(
-        systemManagementService.createAssistant(request), "Assistant created successfully!");
+    systemManagementService.createAssistant(request);
+    return success("Assistant created successfully!");
   }
 
   @PatchMapping("/assistants/{id}/deactivate")
