@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
+import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
@@ -127,7 +128,7 @@ public class SystemManagementController extends AbstractBaseController {
   @Operation(
       summary = "List Assistants",
       description = "List all assistants with pagination, stats, and recent activities")
-  public ResponseEntity<SingleResponse<Page<AssistantSummaryResponse>>> listAssistants(
+  public ResponseEntity<PageResponse<AssistantSummaryResponse>> listAssistants(
       @RequestParam(required = false) String search,
       @RequestParam(required = false) UserStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
@@ -137,10 +138,11 @@ public class SystemManagementController extends AbstractBaseController {
         status,
         pageable.getPageNumber(),
         pageable.getPageSize());
-    return successSingle(
+    return paging(
         systemManagementService.listAssistants(search, status, pageable),
         "Assistants fetched successfully!");
   }
+
 
   @PostMapping("/assistants")
   @Operation(summary = "Create Assistant", description = "Create a new assistant account")
