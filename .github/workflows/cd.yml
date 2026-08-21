@@ -146,6 +146,7 @@ jobs:
       - name: Verify Backend
         working-directory: gitops-manifests
         run: |
+          sleep 5s
           echo "===== CONTAINERS ====="
           podman ps -a
 
