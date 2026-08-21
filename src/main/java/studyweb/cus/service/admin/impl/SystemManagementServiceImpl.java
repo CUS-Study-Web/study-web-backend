@@ -97,8 +97,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void lockLearner(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.LEARNER)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     validateStatusBeforeSwitchStatus(user.getStatus());
     user.setStatus(UserStatus.INACTIVE);
   }
@@ -108,8 +108,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void unlockLearner(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.LEARNER)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     validateStatusBeforeSwitchStatus(user.getStatus());
     user.setStatus(UserStatus.ACTIVE);
   }
@@ -119,8 +119,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void banLearner(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.LEARNER)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     user.setStatus(UserStatus.BANNED);
   }
 
