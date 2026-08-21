@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.course.AnswerKey;
@@ -319,17 +318,17 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     String encodedPassword = passwordEncoder.encode(request.password());
 
-          userRepository.save(
-              User.builder()
-                  .name(request.name())
-                  .gmail(request.gmail())
-                  .phone(request.phone())
-                  .role(UserRole.ASSISTANT)
-                  .status(UserStatus.ACTIVE)
-                  .tier(UserTier.NORMAL)
-                  .password(encodedPassword)
-                  .joinDate(LocalDateTime.now())
-                  .build());
+    userRepository.save(
+        User.builder()
+            .name(request.name())
+            .gmail(request.gmail())
+            .phone(request.phone())
+            .role(UserRole.ASSISTANT)
+            .status(UserStatus.ACTIVE)
+            .tier(UserTier.NORMAL)
+            .password(encodedPassword)
+            .joinDate(LocalDateTime.now())
+            .build());
   }
 
   @Override
@@ -337,8 +336,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void deactivateAssistant(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.ASSISTANT)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     validateStatusBeforeSwitchStatus(user.getStatus());
     user.setStatus(UserStatus.INACTIVE);
   }
@@ -348,8 +347,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void activateAssistant(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.ASSISTANT)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     validateStatusBeforeSwitchStatus(user.getStatus());
     user.setStatus(UserStatus.ACTIVE);
   }
@@ -359,14 +358,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public void banAssistant(UUID id) {
     User user =
         userRepository
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+            .findByIdAndRole(id, UserRole.ASSISTANT)
+            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
     user.setStatus(UserStatus.BANNED);
-  }
-
-  private void validateStatusBeforeSwitchStatus(UserStatus status) {
-    if (status == UserStatus.BANNED) {
-      throw new SystemException(SystemErrorCode.FORBIDDEN, "User is permanently banned.");
-    }
   }
 }
