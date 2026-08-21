@@ -1,5 +1,7 @@
 package studyweb.cus.entity.course;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,7 +11,6 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,8 +28,6 @@ import studyweb.cus.enums.AssessmentType;
     name = "assessments",
     indexes = {
       @Index(name = "idx_assessments_course", columnList = "course_id"),
-      @Index(name = "idx_assessments_subject", columnList = "subject_id")
-      @Index(name = "idx_assessments_lesson", columnList = "lesson_id"),
       @Index(name = "idx_assessments_subject", columnList = "subject_id"),
       @Index(name = "idx_assessments_uploaded_by", columnList = "uploaded_by_id")
     })
@@ -46,10 +45,6 @@ public class Assessment extends AbstractAuditEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "subject_id")
   private Subject subject;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "lesson_id")
-  private Lesson lesson;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "uploaded_by_id")
