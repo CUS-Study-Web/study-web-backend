@@ -24,6 +24,7 @@ import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.service.admin.SystemManagementService;
 
@@ -61,7 +62,7 @@ public class SystemManagementController extends AbstractBaseController {
       description = "Lock a specific Learner with INACTIVE status from an ACTIVE status")
   public ResponseEntity<SuccessResponse> lockLearner(@PathVariable UUID id) {
     log.info("[PATCH /api/system-management/learners/{id}/lock] Lock a learner with id: {}", id);
-    systemManagementService.lockLearner(id);
+    systemManagementService.switchUserStatus(id, UserStatus.INACTIVE, UserRole.LEARNER);
     return success("Lock learner successfully.");
   }
 
@@ -72,7 +73,7 @@ public class SystemManagementController extends AbstractBaseController {
   public ResponseEntity<SuccessResponse> unlockLearner(@PathVariable UUID id) {
     log.info(
         "[PATCH /api/system-management/learners/{id}/unlock] Unlock a learner with id: {}", id);
-    systemManagementService.unlockLearner(id);
+    systemManagementService.switchUserStatus(id, UserStatus.ACTIVE, UserRole.LEARNER);
     return success("Unlock learner successfully.");
   }
 
@@ -83,7 +84,7 @@ public class SystemManagementController extends AbstractBaseController {
           "Ban a specific Learner permanently with BANNED status from an either INACTIVE or ACTIVE status")
   public ResponseEntity<SuccessResponse> banLearner(@PathVariable UUID id) {
     log.info("[PATCH /api/system-management/learners/{id}/ban] Ban learner with id: {}", id);
-    systemManagementService.banLearner(id);
+    systemManagementService.switchUserStatus(id, UserStatus.BANNED, UserRole.LEARNER);
     return success("Ban learner successfully.");
   }
 

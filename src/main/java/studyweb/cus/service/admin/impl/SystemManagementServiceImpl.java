@@ -162,34 +162,15 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional
-  public void lockLearner(UUID id) {
+  public void switchUserStatus(UUID id, UserStatus status, UserRole role) {
     User user =
         userRepository
-            .findByIdAndRole(id, UserRole.LEARNER)
+            .findByIdAndRole(id, role)
             .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    validateStatusBeforeSwitchStatus(user.getStatus());
-    user.setStatus(UserStatus.INACTIVE);
-  }
-
-  @Override
-  @Transactional
-  public void unlockLearner(UUID id) {
-    User user =
-        userRepository
-            .findByIdAndRole(id, UserRole.LEARNER)
-            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    validateStatusBeforeSwitchStatus(user.getStatus());
-    user.setStatus(UserStatus.ACTIVE);
-  }
-
-  @Override
-  @Transactional
-  public void banLearner(UUID id) {
-    User user =
-        userRepository
-            .findByIdAndRole(id, UserRole.LEARNER)
-            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.BANNED);
+    if (status != UserStatus.BANNED && user.getStatus() == UserStatus.BANNED) {
+      throw new AdminException(AdminErrorCode.USER_BANNED);
+    }
+    user.setStatus(status);
   }
 
   @Override
@@ -260,12 +241,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     }
 
     userRepository.save(user);
-  }
-
-  private void validateStatusBeforeSwitchStatus(UserStatus status) {
-    if (status == UserStatus.BANNED) {
-      throw new AdminException(AdminErrorCode.USER_BANNED);
-    }
   }
 
   private double calculateAttemptScore(
