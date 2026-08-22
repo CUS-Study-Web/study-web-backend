@@ -25,9 +25,10 @@ public class S3Config {
                 StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(
                         properties.getAccessKey(), properties.getSecretKey())));
+    builder.forcePathStyle(true);
     if (properties.hasEndpoint()) {
       // custom S3-compatible endpoints are path-style, not virtual-hosted
-      builder.endpointOverride(properties.endpointUri()).forcePathStyle(true);
+      builder.endpointOverride(properties.endpointUri());
     }
     return builder.build();
   }
@@ -41,11 +42,10 @@ public class S3Config {
                 StaticCredentialsProvider.create(
                     AwsBasicCredentials.create(
                         properties.getAccessKey(), properties.getSecretKey())));
+    builder.serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
     if (properties.hasEndpoint()) {
       // custom S3-compatible endpoints are path-style, not virtual-hosted
-      builder
-          .endpointOverride(properties.endpointUri())
-          .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
+      builder.endpointOverride(properties.endpointUri());
     }
     return builder.build();
   }
