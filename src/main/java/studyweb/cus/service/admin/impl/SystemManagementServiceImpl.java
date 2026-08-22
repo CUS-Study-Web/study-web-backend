@@ -232,16 +232,29 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             .findByIdAndRole(id, UserRole.LEARNER)
             .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
 
-    Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
-
-    user.setName(request.name());
-    user.setName(request.gmail());
-    user.setTier(request.tier());
-    user.setPrimaryCourse(primaryCourse);
-    user.setVipStartDate(request.startDate());
-    user.setVipEndDate(request.endDate());
-    user.setNote(request.note());
-    if (request.password() == null || request.password().isBlank()) {
+    if (request.primaryCourseId() != null) {
+      Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
+      user.setPrimaryCourse(primaryCourse);
+    }
+    if (request.name() != null) {
+      user.setName(request.name());
+    }
+    if (request.gmail() != null && !request.gmail().isBlank()) {
+      user.setGmail(request.gmail());
+    }
+    if (request.tier() != null) {
+      user.setTier(request.tier());
+    }
+    if (request.startDate() != null) {
+      user.setVipStartDate(request.startDate());
+    }
+    if (request.endDate() != null) {
+      user.setVipEndDate(request.endDate());
+    }
+    if (request.note() != null) {
+      user.setNote(request.note());
+    }
+    if (request.password() != null && !request.password().isBlank()) {
       String encodedPassword = passwordEncoder.encode(request.password());
       user.setPassword(encodedPassword);
     }
