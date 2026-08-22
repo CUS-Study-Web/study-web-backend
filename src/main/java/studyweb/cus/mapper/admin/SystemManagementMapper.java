@@ -15,7 +15,6 @@ import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
-import studyweb.cus.constant.admin.SystemManagementConstants;
 import studyweb.cus.entity.user.VipRequest;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
@@ -52,6 +51,7 @@ public interface SystemManagementMapper {
     }
     return "N/A";
   }
+
   @Mapping(target = "id", source = "vipRequest.id")
   @Mapping(target = "userId", source = "vipRequest.user.id")
   @Mapping(target = "name", source = "vipRequest.user.name")

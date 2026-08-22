@@ -1,13 +1,11 @@
 package studyweb.cus.repository.user;
 
 import java.util.UUID;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.VipRequestStatus;
@@ -36,7 +34,10 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
                  OR LOWER(vr.note) LIKE LOWER(CONCAT('%', :search, '%')))
           """)
   Page<VipRequest> searchVipRequests(
-      @Param("search") String search, @Param("status") VipRequestStatus status, @Param("role") UserRole role, Pageable pageable);
+      @Param("search") String search,
+      @Param("status") VipRequestStatus status,
+      @Param("role") UserRole role,
+      Pageable pageable);
 
   @Query(
       """
