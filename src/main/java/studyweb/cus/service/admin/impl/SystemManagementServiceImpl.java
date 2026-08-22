@@ -331,36 +331,4 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             .joinDate(LocalDateTime.now())
             .build());
   }
-
-  @Override
-  @Transactional
-  public void deactivateAssistant(UUID id) {
-    User user =
-        userRepository
-            .findByIdAndRole(id, UserRole.ASSISTANT)
-            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    validateStatusBeforeSwitchStatus(user.getStatus());
-    user.setStatus(UserStatus.INACTIVE);
-  }
-
-  @Override
-  @Transactional
-  public void activateAssistant(UUID id) {
-    User user =
-        userRepository
-            .findByIdAndRole(id, UserRole.ASSISTANT)
-            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    validateStatusBeforeSwitchStatus(user.getStatus());
-    user.setStatus(UserStatus.ACTIVE);
-  }
-
-  @Override
-  @Transactional
-  public void banAssistant(UUID id) {
-    User user =
-        userRepository
-            .findByIdAndRole(id, UserRole.ASSISTANT)
-            .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
-    user.setStatus(UserStatus.BANNED);
-  }
 }

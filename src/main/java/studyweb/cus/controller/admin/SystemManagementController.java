@@ -159,7 +159,7 @@ public class SystemManagementController extends AbstractBaseController {
     log.info(
         "[PATCH /api/system-management/assistants/{id}/deactivate] Deactivate assistant id: {}",
         id);
-    systemManagementService.deactivateAssistant(id);
+    systemManagementService.switchUserStatus(id, UserStatus.INACTIVE, UserRole.ASSISTANT);
     return success("Deactivate assistant successfully.");
   }
 
@@ -168,7 +168,7 @@ public class SystemManagementController extends AbstractBaseController {
   public ResponseEntity<SuccessResponse> activateAssistant(@PathVariable UUID id) {
     log.info(
         "[PATCH /api/system-management/assistants/{id}/activate] Activate assistant id: {}", id);
-    systemManagementService.activateAssistant(id);
+    systemManagementService.switchUserStatus(id, UserStatus.ACTIVE, UserRole.ASSISTANT);
     return success("Activate assistant successfully.");
   }
 
@@ -176,7 +176,7 @@ public class SystemManagementController extends AbstractBaseController {
   @Operation(summary = "Ban Assistant", description = "Ban permanently assistant account")
   public ResponseEntity<SuccessResponse> banAssistant(@PathVariable UUID id) {
     log.info("[PATCH /api/system-management/assistants/{id}] Ban assistant id: {}", id);
-    systemManagementService.banAssistant(id);
+    systemManagementService.switchUserStatus(id, UserStatus.BANNED, UserRole.ASSISTANT);
     return success("Ban assistant successfully.");
   }
 }

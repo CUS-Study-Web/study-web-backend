@@ -24,10 +24,4 @@ public interface SystemManagementService {
       String search, UserStatus status, Pageable pageable);
 
   void createAssistant(CreateAssistantRequest request);
-
-  void deactivateAssistant(UUID id);
-
-  void activateAssistant(UUID id);
-
-  void banAssistant(UUID id);
 }
