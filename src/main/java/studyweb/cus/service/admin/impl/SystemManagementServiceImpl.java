@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.entity.content.PricingPageContent;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
@@ -35,7 +38,10 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
+import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
@@ -57,6 +63,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final AssessmentRepository assessmentRepository;
   // private final ActivityLogRepository activityLogRepository;
   private final VipRequestRepository vipRequestRepository;
+  private final PricingPageContentRepository pricingPageContentRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
 
@@ -343,7 +350,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   public Page<VipRequestResponse> getVipRequests(
       String search, VipRequestStatus status, Pageable pageable) {
     Page<VipRequest> vipRequestPage =
-        vipRequestRepository.searchVipRequests(search, status, pageable);
+        vipRequestRepository.searchVipRequests(search, status, UserRole.LEARNER, pageable);
 
     List<UUID> userIds =
         vipRequestPage.getContent().stream().map(vr -> vr.getUser().getId()).distinct().toList();
@@ -389,9 +396,17 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     User user = vipRequest.getUser();
 
+    LocalDateTime now = LocalDateTime.now();
     vipRequest.setStatus(VipRequestStatus.APPROVED);
     user.setTier(UserTier.VIP);
-    user.setVipStartDate(LocalDateTime.now());
+    user.setVipStartDate(now);
+
+    String billingPeriod =
+        pricingPageContentRepository
+            .findFirstByOrderByCreatedAtDesc()
+            .map(PricingPageContent::getVipPkgBillingPeriod)
+            .orElse(null);
+    user.setVipEndDate(calculateVipEndDate(now, billingPeriod));
   }
 
   @Override
@@ -425,5 +440,36 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     if (user.getRole() != UserRole.LEARNER) {
       throw new AdminException(AdminErrorCode.ROLE_NOT_ALLOWED);
     }
+  }
+
+  private LocalDateTime calculateVipEndDate(LocalDateTime startDate, String billingPeriod) {
+    if (billingPeriod == null || billingPeriod.isBlank()) {
+      return startDate.plusMonths(1);
+    }
+    String lower = billingPeriod.toLowerCase();
+    Matcher matcher = Pattern.compile("(\\d+)").matcher(lower);
+    if (matcher.find()) {
+      int amount = Integer.parseInt(matcher.group(1));
+      if (lower.contains("năm") || lower.contains("nam") || lower.contains("year")) {
+        return startDate.plusYears(amount);
+      }
+      if (lower.contains("tuần") || lower.contains("tuan") || lower.contains("week")) {
+        return startDate.plusWeeks(amount);
+      }
+      if (lower.contains("ngày") || lower.contains("ngay") || lower.contains("day")) {
+        return startDate.plusDays(amount);
+      }
+      return startDate.plusMonths(amount);
+    }
+    if (lower.contains("year") || lower.contains("annual") || lower.contains("năm")) {
+      return startDate.plusYears(1);
+    }
+    if (lower.contains("week") || lower.contains("tuần")) {
+      return startDate.plusWeeks(1);
+    }
+    if (lower.contains("day") || lower.contains("ngày")) {
+      return startDate.plusDays(1);
+    }
+    return startDate.plusMonths(1);
   }
 }
