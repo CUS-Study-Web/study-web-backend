@@ -32,13 +32,13 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
 import studyweb.cus.dto.request.assessment.CreateAssessmentRequest;
 import studyweb.cus.dto.request.assessment.UpdateAssessmentRequest;
 import studyweb.cus.dto.response.assessment.AnswerKeyResponse;
 import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.utils.TestFixtures;
@@ -54,6 +54,8 @@ import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
 import studyweb.cus.mapper.assessment.AssessmentMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
@@ -219,7 +221,8 @@ class AssessmentServiceTest {
     Subject subject = TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId));
     when(courseRepository.requireCourse(courseId)).thenReturn(course);
     when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(subject);
-    when(fileService.uploadExerciseFile(any())).thenReturn(new UploadDocumentResult(50L, "key", "https://s3.test/hw.pdf"));
+    when(fileService.uploadExerciseFile(any()))
+        .thenReturn(new UploadDocumentResult(50L, "key", "https://s3.test/hw.pdf"));
     when(assessmentRepository.saveAndFlush(any(Assessment.class))).thenAnswer(inv -> {
       Assessment saved = inv.getArgument(0);
       saved.setId(assessmentId);
@@ -330,10 +333,10 @@ class AssessmentServiceTest {
         30, 100, null, unknownFile, null, null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
-        .isInstanceOf(AssessmentException.class)
+        .isInstanceOf(FileException.class)
         .satisfies(
-            ex -> assertThat(((AssessmentException) ex).getCode())
-                .isEqualTo(AssessmentErrorCode.UNSUPPORTED_FILE_TYPE.code()));
+            ex -> assertThat(((FileException) ex).getCode())
+                .isEqualTo(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.code()));
   }
 
   // ============================================================
@@ -387,8 +390,10 @@ class AssessmentServiceTest {
   @Test
   void listHomeworkBySubject_returnsPagedResults() {
     when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
-    when(subjectRepository.requireSubject(subjectId, courseId)).thenReturn(TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
-    Assessment hw = TestFixtures.createMockHomework(assessmentId, TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
+    when(subjectRepository.requireSubject(subjectId, courseId))
+        .thenReturn(TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
+    Assessment hw = TestFixtures.createMockHomework(assessmentId,
+        TestFixtures.createMockSubject(subjectId, TestFixtures.createMockCourse(courseId)));
     Page<Assessment> page = new PageImpl<>(List.of(hw), PageRequest.of(0, 10), 1);
     when(assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
         eq(subjectId), eq(AssessmentType.HOMEWORK), any(Pageable.class)))
@@ -506,7 +511,8 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
     when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
-    when(fileService.uploadExamFile(any())).thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
+    when(fileService.uploadExamFile(any()))
+        .thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
 
     MockMultipartFile newFile = new MockMultipartFile("file", "new-exam.pdf", "application/pdf", new byte[] { 1, 2 });
     UpdateAssessmentRequest request = new UpdateAssessmentRequest(

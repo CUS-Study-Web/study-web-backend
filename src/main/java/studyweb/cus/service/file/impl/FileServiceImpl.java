@@ -28,7 +28,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import studyweb.cus.config.S3Properties;
-import studyweb.cus.dto.UploadDocumentResult;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.file.FileService;
