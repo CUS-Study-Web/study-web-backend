@@ -514,7 +514,7 @@ class AssessmentServiceTest {
     Assessment assessment = TestFixtures.createMockExam(assessmentId, TestFixtures.createMockCourse(courseId));
     when(courseRepository.requireCourse(courseId)).thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
     when(fileService.uploadExamFile(any()))
         .thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
 
