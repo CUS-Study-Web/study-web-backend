@@ -13,15 +13,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
-import studyweb.cus.dto.response.admin.VipRequestListResponse;
+import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
@@ -343,7 +340,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   @Override
   @Transactional(readOnly = true)
-  public VipRequestListResponse getVipRequests(
+  public Page<VipRequestResponse> getVipRequests(
       String search, VipRequestStatus status, Pageable pageable) {
     Page<VipRequest> vipRequestPage =
         vipRequestRepository.searchVipRequests(search, status, pageable);
@@ -355,24 +352,29 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         userCourseProgressRepository.findPrimaryCourseByUserIds(userIds).stream()
             .collect(Collectors.toMap(e -> e.getUser().getId(), e -> e, (e1, e2) -> e1));
 
-    Page<VipRequestResponse> pageResponse =
-        vipRequestPage.map(
-            vr -> {
-              UserCourseProgress progress = primaryCourseByUser.get(vr.getUser().getId());
-              String mainCourse = "N/A";
-              if (progress != null && progress.getCourse() != null) {
-                mainCourse =
-                    progress.getCourse().getBadgeTitle() != null
-                        ? progress.getCourse().getBadgeTitle()
-                        : progress.getCourse().getTitle();
-              }
-              return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
-            });
+    return vipRequestPage.map(
+        vr -> {
+          UserCourseProgress progress = primaryCourseByUser.get(vr.getUser().getId());
+          String mainCourse = "N/A";
+          if (progress != null && progress.getCourse() != null) {
+            mainCourse =
+                progress.getCourse().getBadgeTitle() != null
+                    ? progress.getCourse().getBadgeTitle()
+                    : progress.getCourse().getTitle();
+          }
+          return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
+        });
+  }
 
-    int totalCount = vipRequestRepository.countTotal();
-    int waitingCount = vipRequestRepository.countByStatus(VipRequestStatus.WAITING);
+  @Override
+  @Transactional(readOnly = true)
+  public VipRequestCountResponse getVipRequestCounts(VipRequestStatus status) {
+    int count =
+        status != null
+            ? vipRequestRepository.countByStatus(status)
+            : vipRequestRepository.countTotal();
 
-    return new VipRequestListResponse(pageResponse, totalCount, waitingCount);
+    return new VipRequestCountResponse(count);
   }
 
   @Override
@@ -382,9 +384,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         vipRequestRepository
             .findById(id)
             .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
-    
+
     validateStatusBeforeSwitchStatus(vipRequest.getStatus());
-            
+
     User user = vipRequest.getUser();
     if (user == null || user.getStatus() == UserStatus.INACTIVE) {
       throw new UserException(UserErrorCode.USER_NOT_FOUND);
@@ -415,7 +417,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
   private void validateStatusBeforeSwitchStatus(VipRequestStatus status) {
     if (status != VipRequestStatus.WAITING) {
-      throw new SystemException(SystemErrorCode.FORBIDDEN, "Vip status can only be changed from WAITING.");
+      throw new SystemException(
+          SystemErrorCode.FORBIDDEN, "Vip status can only be changed from WAITING.");
     }
   }
 }

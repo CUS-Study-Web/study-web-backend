@@ -20,15 +20,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
+import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestCountResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
-import studyweb.cus.dto.response.admin.VipRequestListResponse;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.service.admin.SystemManagementService;
 
@@ -189,8 +191,8 @@ public class SystemManagementController extends AbstractBaseController {
   @GetMapping("/vip-requests")
   @Operation(
       summary = "Get VIP Requests",
-      description = "List VIP upgrade requests with status filter, pagination, and waiting count")
-  public ResponseEntity<SingleResponse<VipRequestListResponse>> getVipRequests(
+      description = "List VIP upgrade requests with status filter and pagination")
+  public ResponseEntity<PageResponse<VipRequestResponse>> getVipRequests(
       @RequestParam(required = false) String search,
       @RequestParam(required = false) VipRequestStatus status,
       @PageableDefault(size = 10) Pageable pageable) {
@@ -200,9 +202,22 @@ public class SystemManagementController extends AbstractBaseController {
         status,
         pageable.getPageNumber(),
         pageable.getPageSize());
-    return successSingle(
+    return paging(
         systemManagementService.getVipRequests(search, status, pageable),
         "VIP requests fetched successfully!");
+  }
+
+  @GetMapping("/vip-requests/counts")
+  @Operation(
+      summary = "Get VIP Request Counts",
+      description =
+          "Get count of VIP upgrade requests filtered by status, or total count if status is not provided")
+  public ResponseEntity<SingleResponse<VipRequestCountResponse>> getVipRequestCounts(
+      @RequestParam(required = false) VipRequestStatus status) {
+    log.info("[GET /api/system-management/vip-requests/counts] status='{}'", status);
+    return successSingle(
+        systemManagementService.getVipRequestCounts(status),
+        "VIP request counts fetched successfully!");
   }
 
   @PatchMapping("/vip-requests/{id}/approve")
