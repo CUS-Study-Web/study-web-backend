@@ -110,7 +110,7 @@ class AssessmentControllerTest {
     void createAssessment_assistantAllowed() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "Exam", AssessmentType.EXAM, AssessmentStatus.DRAFT,
-                40, 60, 100, AccessTier.PUBLIC, "PDF", null);
+                40, 60, 100, AccessTier.PUBLIC, "PDF", null, 0L);
         when(assessmentService.createAssessment(eq(COURSE_ID), any(CreateAssessmentRequest.class)))
                 .thenReturn(summary);
 
@@ -142,7 +142,7 @@ class AssessmentControllerTest {
     void updateAssessment_assistantAllowed() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "Updated", AssessmentType.EXAM, AssessmentStatus.PUBLISHED,
-                40, 60, 100, AccessTier.PUBLIC, "PDF", null);
+                40, 60, 100, AccessTier.PUBLIC, "PDF", null, 0L);
         when(assessmentService.updateAssessment(eq(COURSE_ID), eq(ASSESSMENT_ID), any(UpdateAssessmentRequest.class)))
                 .thenReturn(summary);
 
@@ -209,7 +209,7 @@ class AssessmentControllerTest {
     void listExams_authenticated() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "Exam", AssessmentType.EXAM, AssessmentStatus.PUBLISHED,
-                40, 60, 100, AccessTier.PUBLIC, "PDF", null);
+                40, 60, 100, AccessTier.PUBLIC, "PDF", null, 0L);
         when(assessmentService.listExamsByCourse(eq(COURSE_ID), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(summary), PageRequest.of(0, 10), 1));
 
@@ -224,7 +224,7 @@ class AssessmentControllerTest {
     void listHomework_authenticated() throws Exception {
         AssessmentSummaryResponse summary = new AssessmentSummaryResponse(
                 ASSESSMENT_ID, "HW", AssessmentType.HOMEWORK, AssessmentStatus.PUBLISHED,
-                10, null, null, null, "PDF", null);
+                10, null, null, null, "PDF", null, 0L);
         when(assessmentService.listHomeworkBySubject(eq(COURSE_ID), eq(SUBJECT_ID), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(summary), PageRequest.of(0, 10), 1));
 
