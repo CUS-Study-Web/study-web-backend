@@ -21,7 +21,7 @@ public enum SystemErrorCode implements BaseErrorCode {
       "Invalid multipart request. Please check your file upload.",
       HttpStatus.BAD_REQUEST),
   UNAUTHORIZED("SYS_008", "Unauthorized access", HttpStatus.UNAUTHORIZED),
-  FORBIDDEN("SYS_009", "Forbidden", HttpStatus.FORBIDDEN);
+  FORBIDDEN("SYS_009", "Forbidden access by user role", HttpStatus.FORBIDDEN);
 
   private final String code;
   private final String message;

@@ -18,6 +18,17 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
     Page<Assessment> findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
             UUID courseId, AssessmentType assessmentType, Pageable pageable);
 
+    long countByCourseIdAndAssessmentTypeAndDeletedAtIsNullAndAccessIn(
+            UUID courseId, AssessmentType assessmentType, java.util.Collection<studyweb.cus.enums.AccessTier> accessTiers);
+
+    long countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+            UUID courseId, AssessmentType assessmentType);
+
+    long countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
+            UUID subjectId,
+            AssessmentType assessmentType,
+            java.util.Collection<studyweb.cus.enums.AccessTier> accessTiers);
+
     Page<Assessment> findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
             UUID subjectId, AssessmentType assessmentType, Pageable pageable);
 
