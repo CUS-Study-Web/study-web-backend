@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
+import studyweb.cus.dto.base.PagedResponse;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.course.CourseRequest;
@@ -59,6 +61,9 @@ public class CourseController extends AbstractBaseController {
   @Operation(summary = "Create Course", description = "Create a new course (admin only)")
   public ResponseEntity<SingleResponse<CourseSummaryResponse>> createCourse(
       @Valid @ModelAttribute CourseRequest request) {
+    if (request.title() == null || request.title().trim().isEmpty()) {
+      throw new CourseException(CourseErrorCode.COURSE_TITLE_EMPTY);
+    }
     if (request.thumbnailImage() == null || request.thumbnailImage().isEmpty()) {
       throw new CourseException(CourseErrorCode.CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL);
     }
@@ -67,11 +72,18 @@ public class CourseController extends AbstractBaseController {
   }
 
   @GetMapping("/{id}")
-  @Operation(summary = "Course Detail", description = "Get a course detail with its subjects")
-  public ResponseEntity<SingleResponse<CourseDetailResponse>> courseDetail(
-      @PathVariable UUID id, @AuthenticationPrincipal String email) {
+  @Operation(summary = "Course Detail", description = "Get a course detail with its subjects paginated")
+  public ResponseEntity<PagedResponse<CourseDetailResponse>> courseDetail(
+      @PathVariable UUID id,
+      @AuthenticationPrincipal String email,
+      @PageableDefault(size = 10) Pageable pageable) {
     log.info("[GET /api/courses/{}] Fetching course detail", id);
-    return successSingle(courseService.getCourseDetail(id, email), "Course fetched successfully!");
+    Page<SubjectSummaryResponse> subjects = courseService.getCourseDetail(id, email, pageable);
+    // ponytail: learningProgress has no calculation yet; placeholder until progress tracking exists
+    return pagingData(
+        subjects,
+        CourseDetailResponse.of(subjects.getTotalElements(), 0f, subjects.getContent()),
+        "Course fetched successfully!");
   }
 
   @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -116,9 +128,7 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}")
   @PreAuthorize("hasRole('ADMIN')")
-  @Operation(
-      summary = "Delete Subject",
-      description = "Soft-delete a subject of a course (admin only)")
+  @Operation(summary = "Delete Subject", description = "Soft-delete a subject of a course (admin only)")
   public ResponseEntity<SuccessResponse> deleteSubject(
       @PathVariable UUID id, @PathVariable UUID subjectId) {
     log.info("[DELETE /api/courses/{}/subjects/{}] Deleting subject", id, subjectId);
@@ -127,25 +137,25 @@ public class CourseController extends AbstractBaseController {
   }
 
   @GetMapping("/{id}/subjects/{subjectId}/lessons")
-  @Operation(
-      summary = "List Lessons",
-      description = "List lessons of a subject; VIP lessons are hidden from non-VIP users")
-  public ResponseEntity<PageResponse<LessonSummaryResponse>> listLessons(
+  @Operation(summary = "List Lessons", description = "List all lessons of a subject; marks VIP lessons")
+  public ResponseEntity<PagedResponse<LessonSummaryResponse>> listLessons(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
-      @PageableDefault(size = 10) Pageable pageable,
-      @AuthenticationPrincipal String email) {
+      @AuthenticationPrincipal String email,
+      @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses/{}/subjects/{}/lessons] Listing lessons for {}", id, subjectId, email);
-    return paging(
-        courseService.listLessons(id, subjectId, pageable, email), "Lessons fetched successfully!");
+    Page<LessonSummaryResponse.LessonCardResponse> lessons =
+        courseService.listLessons(id, subjectId, email, pageable);
+    return pagingData(
+        lessons,
+        new LessonSummaryResponse((int) lessons.getTotalElements(), lessons.getContent()),
+        "Lessons fetched successfully!");
   }
 
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(
-      summary = "Create Lesson",
-      description = "Create a lesson for a subject (assistant only)")
+  @Operation(summary = "Create Lesson", description = "Create a lesson for a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse>> createLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -161,9 +171,7 @@ public class CourseController extends AbstractBaseController {
 
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(
-      summary = "Update Lesson",
-      description = "Update a lesson of a subject (assistant only)")
+  @Operation(summary = "Update Lesson", description = "Update a lesson of a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse>> updateLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -178,9 +186,7 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(
-      summary = "Delete Lesson",
-      description = "Soft-delete a lesson of a subject (assistant only)")
+  @Operation(summary = "Delete Lesson", description = "Soft-delete a lesson of a subject (assistant only)")
   public ResponseEntity<SuccessResponse> deleteLesson(
       @PathVariable UUID id, @PathVariable UUID subjectId, @PathVariable UUID lessonId) {
     log.info(

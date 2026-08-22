@@ -25,7 +25,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import studyweb.cus.config.S3Properties;
-import studyweb.cus.dto.UploadDocumentResult;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.file.impl.FileServiceImpl;
@@ -33,11 +33,12 @@ import studyweb.cus.service.file.impl.FileServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class FileServiceTest {
 
-  private static final String SIGNED_URL =
-      "https://minio.test.invalid:9000/bucket-vmt/signed?sig";
+  private static final String SIGNED_URL = "https://minio.test.invalid:9000/bucket-vmt/signed?sig";
 
-  @Mock private S3Client s3Client;
-  @Mock private S3Presigner s3Presigner;
+  @Mock
+  private S3Client s3Client;
+  @Mock
+  private S3Presigner s3Presigner;
 
   private final S3Properties properties = new S3Properties();
 
@@ -74,8 +75,7 @@ class FileServiceTest {
     stubPutObject();
     stubPresignedUrl();
 
-    UploadDocumentResult result =
-        fileService.uploadDocumentFile(file("lesson.pdf", "application/pdf", 1, 2, 3));
+    UploadDocumentResult result = fileService.uploadDocumentFile(file("lesson.pdf", "application/pdf", 1, 2, 3));
 
     assertThat(result.fileSize()).isEqualTo(3L);
     assertThat(result.fileUrl()).isEqualTo(SIGNED_URL);
@@ -88,8 +88,7 @@ class FileServiceTest {
     assertThat(captor.getValue().contentType()).isEqualTo("application/pdf");
     assertThat(bodyCaptor.getValue().contentLength()).isEqualTo(3L);
 
-    ArgumentCaptor<GetObjectPresignRequest> urlCaptor =
-        ArgumentCaptor.forClass(GetObjectPresignRequest.class);
+    ArgumentCaptor<GetObjectPresignRequest> urlCaptor = ArgumentCaptor.forClass(GetObjectPresignRequest.class);
     verify(s3Presigner).presignGetObject(urlCaptor.capture());
     GetObjectRequest getRequest = urlCaptor.getValue().getObjectRequest();
     assertThat(getRequest.bucket()).isEqualTo("bucket-vmt");
@@ -147,9 +146,8 @@ class FileServiceTest {
     stubPutObject();
     stubPresignedUrl();
 
-    List<UploadDocumentResult> results =
-        fileService.uploadMultipleDocuments(
-            List.of(file("a.pdf", "application/pdf", 1), file("b.docx", "application/docx", 2)));
+    List<UploadDocumentResult> results = fileService.uploadMultipleDocuments(
+        List.of(file("a.pdf", "application/pdf", 1), file("b.docx", "application/docx", 2)));
 
     assertThat(results).hasSize(2);
     assertThat(results).allMatch(r -> r.fileUrl().equals(SIGNED_URL));
@@ -165,11 +163,10 @@ class FileServiceTest {
     stubPresignedUrl();
 
     assertThatThrownBy(
-            () ->
-                fileService.uploadMultipleDocuments(
-                    List.of(
-                        file("a.pdf", "application/pdf", 1),
-                        file("bad.exe", "application/octet-stream", 1))))
+        () -> fileService.uploadMultipleDocuments(
+            List.of(
+                file("a.pdf", "application/pdf", 1),
+                file("bad.exe", "application/octet-stream", 1))))
         .isInstanceOf(FileException.class)
         .hasMessage(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.message());
   }
