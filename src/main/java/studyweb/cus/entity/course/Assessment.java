@@ -1,7 +1,5 @@
 package studyweb.cus.entity.course;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,7 +68,6 @@ public class Assessment extends AbstractAuditEntity {
   @Column(name = "file_type", length = 20)
   private AssessmentFileType fileType;
 
-  
   @Column(name = "file_key", length = 500)
   private String fileKey;
 

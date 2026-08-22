@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,8 +34,8 @@ import studyweb.cus.exception.admin.AdminException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
-import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
+import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.admin.SystemManagementService;
@@ -311,10 +310,12 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public void createAssistant(CreateAssistantRequest request) {
-    userRepository.findByGmail(request.gmail())
-              .ifPresent(user -> { 
-                  throw new AdminException(AdminErrorCode.USER_EXISTED); 
-              });
+    userRepository
+        .findByGmail(request.gmail())
+        .ifPresent(
+            user -> {
+              throw new AdminException(AdminErrorCode.USER_EXISTED);
+            });
 
     String encodedPassword = passwordEncoder.encode(request.password());
 

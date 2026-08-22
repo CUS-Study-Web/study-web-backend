@@ -142,7 +142,6 @@ public class SystemManagementController extends AbstractBaseController {
         "Assistants fetched successfully!");
   }
 
-
   @PostMapping("/assistants")
   @Operation(summary = "Create Assistant", description = "Create a new assistant account")
   public ResponseEntity<SuccessResponse> createAssistant(

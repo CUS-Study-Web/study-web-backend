@@ -38,7 +38,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
       @Param("search") String search, @Param("status") UserStatus status, Pageable pageable);
 
   Optional<User> findByIdAndRole(UUID id, UserRole role);
-  
+
   @Query(
       value =
           """
