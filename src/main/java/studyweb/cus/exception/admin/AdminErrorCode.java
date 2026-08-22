@@ -1,10 +1,9 @@
 package studyweb.cus.exception.admin;
 
-import org.springframework.http.HttpStatus;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import org.springframework.http.HttpStatus;
 import studyweb.cus.exception.BaseErrorCode;
 
 @Getter

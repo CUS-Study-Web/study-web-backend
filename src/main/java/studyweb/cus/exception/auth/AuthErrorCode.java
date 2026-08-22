@@ -1,10 +1,9 @@
 package studyweb.cus.exception.auth;
 
-import org.springframework.http.HttpStatus;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import org.springframework.http.HttpStatus;
 import studyweb.cus.exception.BaseErrorCode;
 
 @Getter
@@ -28,7 +27,7 @@ public enum AuthErrorCode implements BaseErrorCode {
   EMAIL_SEND_FAILED("AUTH_011", "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
   USER_NOT_FOUND("AUTH_012", "User not found", HttpStatus.NOT_FOUND);
 
-    private final String code;
-    private final String message;
-    private final HttpStatus httpStatus;
+  private final String code;
+  private final String message;
+  private final HttpStatus httpStatus;
 }

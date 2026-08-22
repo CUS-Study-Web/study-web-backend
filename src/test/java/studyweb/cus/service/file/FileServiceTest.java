@@ -33,8 +33,7 @@ import studyweb.cus.service.file.impl.FileServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class FileServiceTest {
 
-  private static final String SIGNED_URL =
-      "https://minio.test.invalid:9000/bucket-vmt/signed?sig";
+  private static final String SIGNED_URL = "https://minio.test.invalid:9000/bucket-vmt/signed?sig";
 
   @Mock private S3Client s3Client;
   @Mock private S3Presigner s3Presigner;

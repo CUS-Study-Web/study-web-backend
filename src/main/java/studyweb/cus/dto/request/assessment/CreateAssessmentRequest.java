@@ -35,4 +35,3 @@ public record CreateAssessmentRequest(
                 "Answer keys as JSON array, e.g. [{\"questionNumber\":1,\"correctAnswer\":\"A\"}]")
         String answerKeys,
     @Schema(description = "DRAFT or PUBLISHED (default DRAFT)") AssessmentStatus status) {}
-

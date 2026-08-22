@@ -114,12 +114,13 @@ public class FileServiceImpl implements FileService {
   @Override
   public String generatePresignedUrl(String objectKey) {
     try {
-      GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey)
-          .build();
-      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-          .signatureDuration(PRESIGN_EXPIRY)
-          .getObjectRequest(getObjectRequest)
-          .build();
+      GetObjectRequest getObjectRequest =
+          GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey).build();
+      GetObjectPresignRequest presignRequest =
+          GetObjectPresignRequest.builder()
+              .signatureDuration(PRESIGN_EXPIRY)
+              .getObjectRequest(getObjectRequest)
+              .build();
       PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
       return presigned.url().toString();
     } catch (Exception e) {
@@ -145,10 +146,8 @@ public class FileServiceImpl implements FileService {
       return;
     }
     try {
-      s3Client.deleteObject(DeleteObjectRequest.builder()
-          .bucket(s3Properties.getBucket())
-          .key(fileKey)
-          .build());
+      s3Client.deleteObject(
+          DeleteObjectRequest.builder().bucket(s3Properties.getBucket()).key(fileKey).build());
       log.info("Deleted file from S3: {}", fileKey);
     } catch (Exception e) {
       log.error("Failed to delete file {} from S3", fileKey, e);

@@ -6,15 +6,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
@@ -60,8 +58,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     List<UUID> userIds = learnerPage.map(User::getId).toList();
 
     if (userIds.isEmpty()) {
-      return learnerPage.map(
-          user -> systemManagementMapper.toLearnerSummary(user, null, 0.0, 0));
+      return learnerPage.map(user -> systemManagementMapper.toLearnerSummary(user, null, 0.0, 0));
     }
 
     Map<UUID, UserCourseProgress> maxProgressByUser =
@@ -163,8 +160,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         });
   }
 
-
-
   @Override
   @Transactional
   public void lockLearner(UUID id) {
@@ -200,10 +195,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   @Override
   @Transactional
   public void createVipAccount(CreateVipAccountRequest request) {
-    userRepository.findByGmail(request.gmail())
-              .ifPresent(user -> { 
-                  throw new AdminException(AdminErrorCode.USER_EXISTED, "Create VIP accounts only for CUS pre-registered learners"); 
-              });
+    userRepository
+        .findByGmail(request.gmail())
+        .ifPresent(
+            user -> {
+              throw new AdminException(
+                  AdminErrorCode.USER_EXISTED,
+                  "Create VIP accounts only for CUS pre-registered learners");
+            });
 
     Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
 
@@ -283,4 +282,3 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     return ((double) numCorrect / totalQuestions) * maxScore;
   }
 }
-

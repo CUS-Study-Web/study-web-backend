@@ -19,8 +19,8 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import studyweb.cus.constant.RedisConstants;
 import studyweb.cus.entity.redis.RefreshToken;
-import studyweb.cus.repository.auth.RefreshTokenRepository;
 import studyweb.cus.enums.UserRole;
+import studyweb.cus.repository.auth.RefreshTokenRepository;
 import studyweb.cus.security.JwtUtils;
 
 @Component
@@ -55,11 +55,12 @@ public class JwtUtilsImpl implements JwtUtils {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + expiration);
 
-    JwtBuilder builder = Jwts.builder()
-        .setSubject(email)
-        .setIssuedAt(now)
-        .setExpiration(expiryDate)
-        .signWith(secretKey, SignatureAlgorithm.HS512);
+    JwtBuilder builder =
+        Jwts.builder()
+            .setSubject(email)
+            .setIssuedAt(now)
+            .setExpiration(expiryDate)
+            .signWith(secretKey, SignatureAlgorithm.HS512);
     if (role != null) {
       builder.claim("role", role.name());
     }

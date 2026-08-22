@@ -13,4 +13,3 @@ public interface AnswerKeyRepository extends JpaRepository<AnswerKey, UUID> {
 
   void deleteByExamId(UUID examId);
 }
-

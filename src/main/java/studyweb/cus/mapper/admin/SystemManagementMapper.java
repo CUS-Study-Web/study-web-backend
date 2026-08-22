@@ -6,10 +6,10 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
+import studyweb.cus.constant.admin.SystemManagementConstants;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
-import studyweb.cus.constant.admin.SystemManagementConstants;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface SystemManagementMapper {
@@ -33,15 +33,18 @@ public interface SystemManagementMapper {
       User user, UserCourseProgress progress, Double averageScore, int numExams);
 
   default String resolvePrimaryCourse(User user, UserCourseProgress progress) {
-    if (user != null && user.getPrimaryCourse() != null && user.getPrimaryCourse().getTitle() != null) {
+    if (user != null
+        && user.getPrimaryCourse() != null
+        && user.getPrimaryCourse().getTitle() != null) {
       return user.getPrimaryCourse().getTitle();
     }
-    if (progress != null && progress.getCourse() != null && progress.getCourse().getTitle() != null) {
+    if (progress != null
+        && progress.getCourse() != null
+        && progress.getCourse().getTitle() != null) {
       return progress.getCourse().getTitle();
     }
     return "N/A";
   }
-
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {

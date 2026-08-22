@@ -15,20 +15,18 @@ import studyweb.cus.exception.assessment.AssessmentException;
 
 public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
-    Page<Assessment> findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
-            UUID courseId, AssessmentType assessmentType, Pageable pageable);
+  Page<Assessment> findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+      UUID courseId, AssessmentType assessmentType, Pageable pageable);
 
-    Page<Assessment> findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
-            UUID subjectId, AssessmentType assessmentType, Pageable pageable);
+  Page<Assessment> findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
+      UUID subjectId, AssessmentType assessmentType, Pageable pageable);
 
-    Optional<Assessment> findByIdAndDeletedAtIsNull(UUID id);
+  Optional<Assessment> findByIdAndDeletedAtIsNull(UUID id);
 
-    List<Assessment> findByStatusAndCreatedAtBefore(
-            AssessmentStatus status, LocalDateTime createdAt);
+  List<Assessment> findByStatusAndCreatedAtBefore(AssessmentStatus status, LocalDateTime createdAt);
 
-    default Assessment requireAssessment(UUID id) {
-        return findByIdAndDeletedAtIsNull(id)
-                .orElseThrow(() -> new AssessmentException(
-                        AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
-    }
+  default Assessment requireAssessment(UUID id) {
+    return findByIdAndDeletedAtIsNull(id)
+        .orElseThrow(() -> new AssessmentException(AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
+  }
 }

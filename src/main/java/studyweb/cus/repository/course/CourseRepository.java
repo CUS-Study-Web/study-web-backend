@@ -6,7 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import studyweb.cus.entity.course.Course;
-
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 

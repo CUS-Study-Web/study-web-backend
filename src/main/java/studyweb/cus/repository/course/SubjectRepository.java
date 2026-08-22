@@ -5,7 +5,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import studyweb.cus.entity.course.Subject;
-
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 

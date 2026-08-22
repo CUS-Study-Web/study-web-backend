@@ -41,11 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         User user = userRepository.findByGmail(email).orElse(null);
         if (user != null && user.getStatus() == UserStatus.ACTIVE) {
           this.userJwt = jwt;
-          List<SimpleGrantedAuthority> authorities = List
-              .of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+          List<SimpleGrantedAuthority> authorities =
+              List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
-          UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email, null,
-              authorities);
+          UsernamePasswordAuthenticationToken authentication =
+              new UsernamePasswordAuthenticationToken(email, null, authorities);
           authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
           SecurityContextHolder.getContext().setAuthentication(authentication);

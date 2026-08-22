@@ -29,7 +29,8 @@ public interface CourseService {
 
   void deleteSubject(UUID courseId, UUID subjectId);
 
-  Page<LessonSummaryResponse> listLessons(UUID courseId, UUID subjectId, Pageable pageable, String email);
+  Page<LessonSummaryResponse> listLessons(
+      UUID courseId, UUID subjectId, Pageable pageable, String email);
 
   LessonSummaryResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
 

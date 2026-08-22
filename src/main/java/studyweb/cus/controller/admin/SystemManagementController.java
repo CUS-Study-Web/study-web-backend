@@ -1,7 +1,11 @@
 package studyweb.cus.controller.admin;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.UUID;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SuccessResponse;
@@ -72,7 +70,8 @@ public class SystemManagementController extends AbstractBaseController {
       summary = "Unlock a specific Learner",
       description = "Unlock a specific Learner with ACTIVE status from an INACTIVE status")
   public ResponseEntity<SuccessResponse> unlockLearner(@PathVariable UUID id) {
-    log.info("[PATCH /api/system-management/learners/{id}/unlock] Unlock a learner with id: {}", id);
+    log.info(
+        "[PATCH /api/system-management/learners/{id}/unlock] Unlock a learner with id: {}", id);
     systemManagementService.unlockLearner(id);
     return success("Unlock learner successfully.");
   }
@@ -89,7 +88,9 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PostMapping("/learners/create-vip-account")
-  @Operation(summary = "Create VIP accounts for learners", description="Create VIP accounts for only learners who pre-register CUS courses")
+  @Operation(
+      summary = "Create VIP accounts for learners",
+      description = "Create VIP accounts for only learners who pre-register CUS courses")
   public ResponseEntity<SuccessResponse> createVipAccount(
       @Valid @RequestBody CreateVipAccountRequest request) {
     log.info(

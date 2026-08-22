@@ -2,13 +2,11 @@ package studyweb.cus.repository.user;
 
 import java.util.Optional;
 import java.util.UUID;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;

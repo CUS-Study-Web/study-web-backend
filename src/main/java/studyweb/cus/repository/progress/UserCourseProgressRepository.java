@@ -24,4 +24,3 @@ public interface UserCourseProgressRepository extends JpaRepository<UserCoursePr
   @Query("SELECT ucp FROM UserCourseProgress ucp WHERE ucp.user.id IN :userIds")
   List<UserCourseProgress> findByUserIds(@Param("userIds") List<UUID> userIds);
 }
-
