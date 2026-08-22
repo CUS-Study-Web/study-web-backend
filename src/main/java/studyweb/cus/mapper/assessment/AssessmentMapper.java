@@ -13,9 +13,10 @@ import studyweb.cus.entity.course.Assessment;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AssessmentMapper {
 
-  @Mapping(source = "access", target = "accessTier")
-  @Mapping(source = "fileType", target = "fileType")
-  AssessmentSummaryResponse toSummary(Assessment assessment);
+  @Mapping(source = "assessment.access", target = "accessTier")
+  @Mapping(source = "assessment.fileType", target = "fileType")
+  @Mapping(source = "totalTakes", target = "totalTakes")
+  AssessmentSummaryResponse toSummary(Assessment assessment, long totalTakes);
 
   @Mapping(source = "assessment.access", target = "accessTier")
   @Mapping(source = "assessment.fileType", target = "fileType")

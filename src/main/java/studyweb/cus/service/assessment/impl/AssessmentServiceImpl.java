@@ -41,6 +41,8 @@ import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
 
+import studyweb.cus.repository.course.AssessmentAttemptRepository;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,6 +50,7 @@ public class AssessmentServiceImpl implements AssessmentService {
 
   private final TransactionTemplate transactionTemplate;
   private final AssessmentRepository assessmentRepository;
+  private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final CourseRepository courseRepository;
   private final SubjectRepository subjectRepository;
@@ -128,7 +131,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         subjectId,
         page.getNumber(),
         page.getSize());
-    return page.map(assessmentMapper::toSummary);
+    return page.map(this::mapToSummary);
   }
 
   @Override
@@ -144,7 +147,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         courseId,
         page.getNumber(),
         page.getSize());
-    return page.map(assessmentMapper::toSummary);
+    return page.map(this::mapToSummary);
   }
 
   @Override
@@ -161,7 +164,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     updateAnswerKeys(assessment, assessmentId, request.answerKeys());
 
     log.info("Updated assessment {}", assessmentId);
-    return assessmentMapper.toSummary(assessment);
+    return mapToSummary(assessment);
   }
 
   @Override
@@ -387,7 +390,12 @@ public class AssessmentServiceImpl implements AssessmentService {
       }
 
       Assessment finalAssessment = assessmentRepository.save(savedAssessment);
-      return assessmentMapper.toSummary(finalAssessment);
+      return mapToSummary(finalAssessment);
     });
+  }
+
+  private AssessmentSummaryResponse mapToSummary(Assessment assessment) {
+    long totalTakes = assessmentAttemptRepository.countByExamId(assessment.getId());
+    return assessmentMapper.toSummary(assessment, totalTakes);
   }
 }
