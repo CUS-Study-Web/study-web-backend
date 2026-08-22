@@ -38,8 +38,6 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
-import studyweb.cus.exception.system.SystemErrorCode;
-import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
@@ -394,10 +392,13 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     validateVipRequestBeforeSwitchStatus(vipRequest);
 
-    User user = vipRequest.getUser();
+    int rowsUpdated = vipRequestRepository.approveVip(id);
+    if (rowsUpdated == 0) {
+      throw new AdminException(AdminErrorCode.STATUS_TRANSITION_INVALID);
+    }
 
+    User user = vipRequest.getUser();
     LocalDateTime now = LocalDateTime.now();
-    vipRequest.setStatus(VipRequestStatus.APPROVED);
     user.setTier(UserTier.VIP);
     user.setVipStartDate(now);
 
@@ -415,11 +416,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     VipRequest vipRequest =
         vipRequestRepository
             .findById(id)
-            .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
+            .orElseThrow(() -> new AdminException(AdminErrorCode.VIP_REQUEST_NOT_FOUND));
 
     validateVipRequestBeforeSwitchStatus(vipRequest);
 
-    vipRequest.setStatus(VipRequestStatus.DECLINED);
+    int rowsUpdated = vipRequestRepository.disapproveVip(id);
+    if (rowsUpdated == 0) {
+      throw new AdminException(AdminErrorCode.STATUS_TRANSITION_INVALID);
+    }
   }
 
   private void validateVipRequestBeforeSwitchStatus(VipRequest request) {

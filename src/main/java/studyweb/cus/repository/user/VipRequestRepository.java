@@ -4,6 +4,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import studyweb.cus.entity.user.VipRequest;
@@ -55,4 +56,16 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
         AND vr.status = :status
       """)
   int countByStatus(@Param("status") VipRequestStatus status);
+
+  @Modifying
+  @Query(
+      "UPDATE VipRequest vr SET vr.status = studyweb.cus.enums.VipRequestStatus.APPROVED "
+          + "WHERE vr.id = :id AND vr.status = studyweb.cus.enums.VipRequestStatus.WAITING")
+  int approveVip(@Param("id") UUID id);
+
+  @Modifying
+  @Query(
+      "UPDATE VipRequest vr SET vr.status = studyweb.cus.enums.VipRequestStatus.DECLINED "
+          + "WHERE vr.id = :id AND vr.status = studyweb.cus.enums.VipRequestStatus.WAITING")
+  int disapproveVip(@Param("id") UUID id);
 }

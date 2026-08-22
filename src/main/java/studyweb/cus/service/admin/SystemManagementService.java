@@ -1,10 +1,8 @@
 package studyweb.cus.service.admin;
 
 import java.util.UUID;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
@@ -29,7 +27,6 @@ public interface SystemManagementService {
       String search, UserStatus status, Pageable pageable);
 
   void createAssistant(CreateAssistantRequest request);
-
 
   Page<VipRequestResponse> getVipRequests(
       String search, VipRequestStatus status, Pageable pageable);
