@@ -383,14 +383,11 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     VipRequest vipRequest =
         vipRequestRepository
             .findById(id)
-            .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
+            .orElseThrow(() -> new AdminException(AdminErrorCode.VIP_REQUEST_NOT_FOUND));
 
-    validateStatusBeforeSwitchStatus(vipRequest.getStatus());
+    validateVipRequestBeforeSwitchStatus(vipRequest);
 
     User user = vipRequest.getUser();
-    if (user == null || user.getStatus() == UserStatus.INACTIVE) {
-      throw new UserException(UserErrorCode.USER_NOT_FOUND);
-    }
 
     vipRequest.setStatus(VipRequestStatus.APPROVED);
     user.setTier(UserTier.VIP);
@@ -405,20 +402,28 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             .findById(id)
             .orElseThrow(() -> new SystemException(SystemErrorCode.RESOURCE_NOT_FOUND));
 
-    validateStatusBeforeSwitchStatus(vipRequest.getStatus());
-
-    User user = vipRequest.getUser();
-    if (user == null || user.getStatus() == UserStatus.INACTIVE) {
-      throw new UserException(UserErrorCode.USER_NOT_FOUND);
-    }
+    validateVipRequestBeforeSwitchStatus(vipRequest);
 
     vipRequest.setStatus(VipRequestStatus.DECLINED);
   }
 
-  private void validateStatusBeforeSwitchStatus(VipRequestStatus status) {
-    if (status != VipRequestStatus.WAITING) {
-      throw new SystemException(
-          SystemErrorCode.FORBIDDEN, "Vip status can only be changed from WAITING.");
+  private void validateVipRequestBeforeSwitchStatus(VipRequest request) {
+    if (request.getStatus() != VipRequestStatus.WAITING) {
+      throw new AdminException(AdminErrorCode.STATUS_TRANSITION_INVALID);
+    }
+
+    User user = request.getUser();
+    if (user == null) {
+      throw new AdminException(AdminErrorCode.USER_NOT_FOUND);
+    }
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new AdminException(AdminErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new AdminException(AdminErrorCode.USER_BANNED);
+    }
+    if (user.getRole() != UserRole.LEARNER) {
+      throw new AdminException(AdminErrorCode.ROLE_NOT_ALLOWED);
     }
   }
 }
