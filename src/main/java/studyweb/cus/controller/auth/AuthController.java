@@ -38,6 +38,10 @@ public class AuthController extends AbstractBaseController {
       description = "Register a new learner account and return access and refresh tokens")
   public ResponseEntity<SingleResponse<AuthResponse>> register(
       @Valid @RequestBody RegisterRequest request) {
+    if (request.gmail() == null || request.gmail().isBlank())
+      throw new AuthException(AuthErrorCode.INVALID_GMAIL);
+    if (request.password() == null || request.password().isBlank())
+      throw new AuthException(AuthErrorCode.INVALID_PASSWORD);
     log.info("[POST /api/auth/register] Registering account for email: {}", request.gmail());
     AuthResponse response = authService.register(request);
     return successSingle(response, "Sign up successful!");
@@ -49,6 +53,10 @@ public class AuthController extends AbstractBaseController {
       description = "Authenticate with email and password and return access and refresh tokens")
   public ResponseEntity<SingleResponse<AuthResponse>> login(
       @Valid @RequestBody LoginRequest request) {
+    if (request.gmail() == null || request.gmail().isBlank())
+      throw new AuthException(AuthErrorCode.INVALID_GMAIL);
+    if (request.password() == null || request.password().isBlank())
+      throw new AuthException(AuthErrorCode.INVALID_PASSWORD);
     log.info("[POST /api/auth/login] Logging in for email: {}", request.gmail());
     AuthResponse response = authService.login(request);
     return successSingle(response, "Sign in successful!");

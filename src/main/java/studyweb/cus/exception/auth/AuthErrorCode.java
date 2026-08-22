@@ -10,6 +10,7 @@ import studyweb.cus.exception.BaseErrorCode;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public enum AuthErrorCode implements BaseErrorCode {
+  INVALID_GMAIL("AUTH_000", "Invalid gmail", HttpStatus.BAD_REQUEST),
   EMAIL_ALREADY_EXISTS("AUTH_001", "Email already exists", HttpStatus.CONFLICT),
   INVALID_PASSWORD("AUTH_002", "Password must contain 8 characters", HttpStatus.BAD_REQUEST),
   INVALID_CREDENTIALS("AUTH_003", "Invalid email or password", HttpStatus.UNAUTHORIZED),

@@ -1,41 +1,71 @@
 package studyweb.cus.controller.user;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.lang.reflect.Field;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.ResponseEntity;
-import studyweb.cus.controller.AbstractBaseController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import studyweb.cus.controller.ResponseFactory;
-import studyweb.cus.dto.base.SingleResponse;
-import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.enums.Gender;
-import studyweb.cus.exception.user.UserErrorCode;
-import studyweb.cus.exception.user.UserException;
+import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.user.UserService;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(
+    controllers = UserController.class,
+    excludeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = JwtAuthenticationFilter.class))
+@Import(ResponseFactory.class)
 class UserControllerTest {
 
   private static final String GMAIL = "learner@studyweb.edu";
 
-  @Mock private UserService userService;
+  @Autowired private MockMvc mockMvc;
 
-  @InjectMocks private UserController userController;
+  @MockitoBean private UserService userService;
+
+  @TestConfiguration
+  @EnableMethodSecurity
+  static class SliceSecurityConfig {
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+      http.csrf(AbstractHttpConfigurer::disable)
+          .authorizeHttpRequests(
+              auth -> auth.requestMatchers("/api/auth/**").permitAll().anyRequest().authenticated())
+          .httpBasic(Customizer.withDefaults());
+      return http.build();
+    }
+  }
 
   private UserResponse userResponse() {
     return new UserResponse(
@@ -48,57 +78,72 @@ class UserControllerTest {
         "StudyWeb");
   }
 
-  @BeforeEach
-  void setUp() throws Exception {
-    Field field = AbstractBaseController.class.getDeclaredField("responseFactory");
-    field.setAccessible(true);
-    field.set(userController, new ResponseFactory());
+  private static RequestPostProcessor authenticated() {
+    return authentication(
+        new UsernamePasswordAuthenticationToken(
+            GMAIL, null, List.of(new SimpleGrantedAuthority("ROLE_USER"))));
   }
 
   @Test
-  void me_nullEmailThrowsUserNotAuthenticated() {
-    assertThatThrownBy(() -> userController.me(null))
-        .isInstanceOf(UserException.class)
-        .satisfies(
-            ex ->
-                assertThat(((UserException) ex).getCode())
-                    .isEqualTo(UserErrorCode.USER_NOT_AUTHENTICATED.code()));
-
-    verify(userService, never()).getCurrentUser(any());
+  void me_unauthenticatedReturns401() throws Exception {
+    mockMvc.perform(get("/api/user/me")).andExpect(status().isUnauthorized());
   }
 
   @Test
-  void me_authenticatedDelegatesToService() {
+  void me_authenticatedReturnsProfile() throws Exception {
     when(userService.getCurrentUser(GMAIL)).thenReturn(userResponse());
 
-    ResponseEntity<SingleResponse<UserResponse>> response = userController.me(GMAIL);
+    mockMvc
+        .perform(get("/api/user/me").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.gmail").value(GMAIL));
 
-    assertThat(response.getStatusCode().value()).isEqualTo(200);
-    assertThat(response.getBody()).isNotNull();
-    assertThat(response.getBody().data().gmail()).isEqualTo(GMAIL);
     verify(userService).getCurrentUser(GMAIL);
   }
 
   @Test
-  void changePassword_nullEmailThrowsUserNotAuthenticated() {
-    assertThatThrownBy(
-            () -> userController.changePassword(null, new ChangePasswordRequest("password1")))
-        .isInstanceOf(UserException.class)
-        .satisfies(
-            ex ->
-                assertThat(((UserException) ex).getCode())
-                    .isEqualTo(UserErrorCode.USER_NOT_AUTHENTICATED.code()));
-
-    verify(userService, never()).changePassword(any(), any());
+  void changePassword_unauthenticatedReturns401() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/change-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"password1\"}"))
+        .andExpect(status().isUnauthorized());
   }
 
   @Test
-  void changePassword_authenticatedDelegatesToService() {
-    ChangePasswordRequest request = new ChangePasswordRequest("password1");
+  void changePassword_authenticatedReturns200() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/change-password")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"password1\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Password changed successfully!"));
 
-    ResponseEntity<SuccessResponse> response = userController.changePassword(GMAIL, request);
+    verify(userService).changePassword(eq(GMAIL), any(ChangePasswordRequest.class));
+  }
 
-    assertThat(response.getStatusCode().value()).isEqualTo(200);
-    verify(userService).changePassword(GMAIL, request);
+  @Test
+  void changePassword_invalidPayloadReturns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/change-password")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"newPassword\":\"short\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errorCode").value("SYS_002"));
+  }
+
+  @Test
+  void changePassword_getMethodNotAllowed() throws Exception {
+    mockMvc
+        .perform(get("/api/user/change-password").with(authenticated()))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(jsonPath("$.statusCode").value(405));
   }
 }

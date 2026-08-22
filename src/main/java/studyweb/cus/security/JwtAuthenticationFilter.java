@@ -5,15 +5,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.repository.user.UserRepository;
 
 @Component
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   private final JwtUtils jwtUtils;
+  private final UserRepository userRepository;
 
   private String userJwt;
 
@@ -33,14 +38,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       String jwt = extractJwtFromRequest(request);
       if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
         String email = jwtUtils.getEmailFromToken(jwt);
-        this.userJwt = jwt;
+        User user = userRepository.findByGmail(email).orElse(null);
+        if (user != null && user.getStatus() == UserStatus.ACTIVE) {
+          this.userJwt = jwt;
+          List<SimpleGrantedAuthority> authorities =
+              List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
-        UsernamePasswordAuthenticationToken authentication =
-            new UsernamePasswordAuthenticationToken(email, null, Collections.emptyList());
-        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+          UsernamePasswordAuthenticationToken authentication =
+              new UsernamePasswordAuthenticationToken(email, null, authorities);
+          authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        log.debug("Set authentication for email: {}", email);
+          SecurityContextHolder.getContext().setAuthentication(authentication);
+          log.debug("Set authentication for email: {}", email);
+        }
       }
     } catch (Exception e) {
       log.warn("Authentication binding failed: {}", e.getMessage());

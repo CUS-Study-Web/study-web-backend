@@ -15,7 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.AnswerChoice;
+import studyweb.cus.enums.QuestionType;
 
 @Entity
 @Table(
@@ -35,11 +36,12 @@ public class AnswerKey extends AbstractAuditEntity {
   @Column(name = "question_number", nullable = false)
   private Integer questionNumber;
 
-  @Column(name = "question_type", length = 50)
+  @Enumerated(EnumType.STRING)
+  @Column(name = "question_type", length = 50, nullable = false)
   @Builder.Default
-  private String questionType = "MULTIPLE_CHOICE";
+  private QuestionType questionType = QuestionType.SINGLE_CHOICE;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "correct_answer", nullable = false, length = 10)
-  private CorrectAnswer correctAnswer;
+  private AnswerChoice correctAnswer;
 }

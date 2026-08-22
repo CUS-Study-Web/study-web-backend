@@ -3,6 +3,7 @@ package studyweb.cus.exception;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import studyweb.cus.dto.base.ErrorResponse;
 import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.user.UserErrorCode;
 
 @RestControllerAdvice
 @Slf4j
@@ -51,12 +53,31 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(BindException.class)
   public ResponseEntity<ErrorResponse> handleBindException(BindException ex) {
     log.warn("Binding validation failed: {}", ex.getMessage());
+    Map<String, String> errors = new HashMap<>();
+    ex.getBindingResult()
+        .getAllErrors()
+        .forEach(
+            error -> {
+              String field = error instanceof FieldError fe ? fe.getField() : error.getObjectName();
+              errors.put(field, error.getDefaultMessage());
+            });
+    String firstError =
+        errors.values().stream().findFirst().orElse(SystemErrorCode.VALIDATION_ERROR.message());
     ErrorResponse response =
         new ErrorResponse(
-            SystemErrorCode.VALIDATION_ERROR.httpStatus().value(),
-            SystemErrorCode.VALIDATION_ERROR.message(),
-            SystemErrorCode.VALIDATION_ERROR.code());
-    return ResponseEntity.status(SystemErrorCode.VALIDATION_ERROR.httpStatus()).body(response);
+            HttpStatus.BAD_REQUEST.value(), firstError, SystemErrorCode.VALIDATION_ERROR.code());
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+  }
+
+  @ExceptionHandler(TypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(TypeMismatchException ex) {
+    log.warn("Type mismatch: {}", ex.getMessage());
+    ErrorResponse response =
+        new ErrorResponse(
+            UserErrorCode.INVALID_USER_INPUT.httpStatus().value(),
+            UserErrorCode.INVALID_USER_INPUT.message(),
+            UserErrorCode.INVALID_USER_INPUT.code());
+    return ResponseEntity.status(UserErrorCode.INVALID_USER_INPUT.httpStatus()).body(response);
   }
 
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
@@ -26,7 +27,8 @@ import studyweb.cus.enums.AssessmentType;
     name = "assessments",
     indexes = {
       @Index(name = "idx_assessments_course", columnList = "course_id"),
-      @Index(name = "idx_assessments_lesson", columnList = "lesson_id")
+      @Index(name = "idx_assessments_subject", columnList = "subject_id"),
+      @Index(name = "idx_assessments_uploaded_by", columnList = "uploaded_by_id")
     })
 @Getter
 @Setter
@@ -40,8 +42,12 @@ public class Assessment extends AbstractAuditEntity {
   private Course course;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "lesson_id")
-  private Lesson lesson;
+  @JoinColumn(name = "subject_id")
+  private Subject subject;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "uploaded_by_id")
+  private User uploadedBy;
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;
@@ -62,8 +68,8 @@ public class Assessment extends AbstractAuditEntity {
   @Column(name = "file_type", length = 20)
   private AssessmentFileType fileType;
 
-  @Column(name = "file_url", length = 500)
-  private String fileUrl;
+  @Column(name = "file_key", length = 500)
+  private String fileKey;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "access", nullable = false, length = 20)
@@ -82,10 +88,6 @@ public class Assessment extends AbstractAuditEntity {
 
   @Column(name = "explanation_url", length = 500)
   private String explanationUrl;
-
-  @Column(name = "is_draft", nullable = false)
-  @Builder.Default
-  private Boolean isDraft = true;
 
   @Column(name = "published_at")
   private LocalDateTime publishedAt;

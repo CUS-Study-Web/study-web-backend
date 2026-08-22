@@ -19,10 +19,11 @@ import studyweb.cus.entity.course.Subject;
 import studyweb.cus.entity.course.TeacherProfile;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
-import studyweb.cus.enums.CorrectAnswer;
+import studyweb.cus.enums.QuestionType;
 
 @DisplayName("Course Domain Entities Test")
 class CourseEntityTest {
@@ -104,11 +105,10 @@ class CourseEntityTest {
             .numQuestions(30)
             .maxScore(100)
             .fileType(AssessmentFileType.PDF)
-            .fileUrl("https://cdn.studyweb.edu/exam.pdf")
+            .fileKey("exams/exam.pdf")
             .access(AccessTier.PUBLIC)
             .assessmentType(AssessmentType.EXAM)
             .status(AssessmentStatus.PUBLISHED)
-            .isDraft(false)
             .publishedAt(LocalDateTime.now())
             .build();
 
@@ -116,7 +116,6 @@ class CourseEntityTest {
     assertThat(assessment.getTitle()).isEqualTo("Midterm Exam");
     assertThat(assessment.getAssessmentType()).isEqualTo(AssessmentType.EXAM);
     assertThat(assessment.getFileType()).isEqualTo(AssessmentFileType.PDF);
-    assertThat(assessment.getIsDraft()).isFalse();
   }
 
   @Test
@@ -129,13 +128,13 @@ class CourseEntityTest {
         AnswerKey.builder()
             .exam(exam)
             .questionNumber(1)
-            .questionType("MULTIPLE_CHOICE")
-            .correctAnswer(CorrectAnswer.B)
+            .questionType(QuestionType.SINGLE_CHOICE)
+            .correctAnswer(AnswerChoice.B)
             .build();
 
     assertThat(key.getExam()).isEqualTo(exam);
     assertThat(key.getQuestionNumber()).isEqualTo(1);
-    assertThat(key.getCorrectAnswer()).isEqualTo(CorrectAnswer.B);
+    assertThat(key.getCorrectAnswer()).isEqualTo(AnswerChoice.B);
   }
 
   @Test
@@ -147,21 +146,12 @@ class CourseEntityTest {
     exam.setId(UUID.randomUUID());
 
     AssessmentAttempt attempt =
-        AssessmentAttempt.builder()
-            .user(user)
-            .exam(exam)
-            .attemptNumber(1)
-            .score(new BigDecimal("95.50"))
-            .numCorrect(28)
-            .numWrong(2)
-            .durationMin(40)
-            .build();
+        AssessmentAttempt.builder().user(user).exam(exam).attemptNumber(1).durationMin(40).build();
 
     assertThat(attempt.getUser()).isEqualTo(user);
     assertThat(attempt.getExam()).isEqualTo(exam);
-    assertThat(attempt.getScore()).isEqualTo(new BigDecimal("95.50"));
-    assertThat(attempt.getNumCorrect()).isEqualTo(28);
-    assertThat(attempt.getNumWrong()).isEqualTo(2);
+    assertThat(attempt.getAttemptNumber()).isEqualTo(1);
+    assertThat(attempt.getDurationMin()).isEqualTo(40);
   }
 
   @Test

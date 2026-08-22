@@ -38,6 +38,9 @@ public class VipRequest extends AbstractBaseEntity {
   @Builder.Default
   private VipRequestStatus status = VipRequestStatus.WAITING;
 
+  @Column(name = "note", columnDefinition = "TEXT")
+  private String note;
+
   @Column(name = "request_date", nullable = false)
   @Builder.Default
   private LocalDateTime requestDate = LocalDateTime.now();

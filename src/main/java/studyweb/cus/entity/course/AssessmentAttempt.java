@@ -1,14 +1,17 @@
 package studyweb.cus.entity.course;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -43,18 +46,6 @@ public class AssessmentAttempt extends AbstractBaseEntity {
   @Builder.Default
   private Integer attemptNumber = 1;
 
-  @Column(name = "score", precision = 5, scale = 2, nullable = false)
-  @Builder.Default
-  private BigDecimal score = BigDecimal.ZERO;
-
-  @Column(name = "num_correct", nullable = false)
-  @Builder.Default
-  private Integer numCorrect = 0;
-
-  @Column(name = "num_wrong", nullable = false)
-  @Builder.Default
-  private Integer numWrong = 0;
-
   @Column(name = "duration_min", nullable = false)
   @Builder.Default
   private Integer durationMin = 0;
@@ -62,4 +53,8 @@ public class AssessmentAttempt extends AbstractBaseEntity {
   @Column(name = "completed_at", nullable = false)
   @Builder.Default
   private LocalDateTime completedAt = LocalDateTime.now();
+
+  @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
+  @Builder.Default
+  private List<AssessmentAttemptDetail> details = new ArrayList<>();
 }

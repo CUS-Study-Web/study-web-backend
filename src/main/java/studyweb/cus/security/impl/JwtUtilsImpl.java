@@ -1,6 +1,7 @@
 package studyweb.cus.security.impl;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -18,6 +19,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import studyweb.cus.constant.RedisConstants;
 import studyweb.cus.entity.redis.RefreshToken;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.repository.auth.RefreshTokenRepository;
 import studyweb.cus.security.JwtUtils;
 
@@ -49,28 +51,32 @@ public class JwtUtilsImpl implements JwtUtils {
     log.info("JwtUtils initialized successfully with Lua script support");
   }
 
-  private String createToken(String email, long expiration) {
+  private String createToken(String email, UserRole role, long expiration) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + expiration);
 
-    return Jwts.builder()
-        .setSubject(email)
-        .setIssuedAt(now)
-        .setExpiration(expiryDate)
-        .signWith(secretKey, SignatureAlgorithm.HS512)
-        .compact();
+    JwtBuilder builder =
+        Jwts.builder()
+            .setSubject(email)
+            .setIssuedAt(now)
+            .setExpiration(expiryDate)
+            .signWith(secretKey, SignatureAlgorithm.HS512);
+    if (role != null) {
+      builder.claim("role", role.name());
+    }
+    return builder.compact();
   }
 
   @Override
-  public String generateAccessToken(String email) {
-    return createToken(email, accessTokenExpiration);
+  public String generateAccessToken(String email, UserRole role) {
+    return createToken(email, role, accessTokenExpiration);
   }
 
   @Override
   public String generateRefreshToken(String email) {
     refreshTokenRepository.deleteByEmail(email);
 
-    String refreshToken = createToken(email, refreshTokenExpiration);
+    String refreshToken = createToken(email, null, refreshTokenExpiration);
 
     RefreshToken token =
         RefreshToken.builder()
