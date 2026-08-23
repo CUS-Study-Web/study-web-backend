@@ -13,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
-import studyweb.cus.dto.response.course.CourseDetailResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
@@ -40,6 +39,7 @@ public class CourseServiceImpl implements CourseService {
   private final CourseRepository courseRepository;
   private final SubjectRepository subjectRepository;
   private final LessonRepository lessonRepository;
+  private final studyweb.cus.repository.course.AssessmentRepository assessmentRepository;
   private final UserRepository userRepository;
   private final CourseMapper courseMapper;
   private final FileService fileService;
@@ -48,7 +48,12 @@ public class CourseServiceImpl implements CourseService {
   @Transactional(readOnly = true)
   public Page<CourseSummaryResponse> listCourses(Pageable pageable) {
     Page<Course> page = courseRepository.findByDeletedAtIsNull(pageable);
-    Page<CourseSummaryResponse> result = page.map(courseMapper::toCourseSummary);
+    Page<CourseSummaryResponse> result = page.map(course -> {
+      long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
+      long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+          course.getId(), studyweb.cus.enums.AssessmentType.EXAM);
+      return courseMapper.toCourseSummary(course, subjectCount, examCount);
+    });
     log.info(
         "Listed {} courses (page {}, size {})",
         result.getNumberOfElements(), page.getNumber(), page.getSize());
@@ -57,16 +62,30 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   @Transactional(readOnly = true)
-  public CourseDetailResponse getCourseDetail(UUID id, String email) {
+  public Page<SubjectSummaryResponse> getCourseDetail(UUID id, String email, Pageable pageable) {
     Course course = requireCourse(id);
-    List<Subject> subjects = subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId());
+    List<AccessTier> visibleTiers = visibleTiers(email);
 
-    Integer learningProgress = null;
+    Page<SubjectSummaryResponse> subjects =
+        subjectRepository
+            .findByCourseIdAndDeletedAtIsNull(course.getId(), pageable)
+            .map(
+                subject ->
+                    courseMapper.toSubjectSummary(
+                        subject,
+                        assessmentRepository
+                            .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
+                                subject.getId(),
+                                studyweb.cus.enums.AssessmentType.HOMEWORK,
+                                visibleTiers)));
 
-    List<SubjectSummaryResponse> summaries = subjects.stream().map(courseMapper::toSubjectSummary).toList();
-    long totalSubjects = subjects.size();
-    log.info("Fetched course detail {} with {} subject(s)", course.getId(), totalSubjects);
-    return CourseDetailResponse.of(totalSubjects, learningProgress, summaries);
+    log.info(
+        "Fetched course detail {} with {} subject(s) (page {}, size {})",
+        course.getId(),
+        subjects.getTotalElements(),
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return subjects;
   }
 
   @Override
@@ -81,20 +100,35 @@ public class CourseServiceImpl implements CourseService {
         .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
-    return courseMapper.toCourseSummary(saved);
+    return courseMapper.toCourseSummary(saved, 0L, 0L);
   }
 
   @Override
   @Transactional
   public CourseSummaryResponse updateCourse(UUID id, CourseRequest request) {
     Course course = requireCourse(id);
-    course.setTitle(request.title());
-    course.setSubtitle(request.subtitle());
-    course.setBadgeTitle(request.badgeTitle());
-    course.setDescription(request.description());
-    course.setThumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()));
+    if (request.title().trim() != null && !request.title().trim().isEmpty()) {
+      course.setTitle(request.title());
+    }
+    if (request.subtitle().trim() != null && !request.subtitle().trim().isEmpty()) {
+      course.setSubtitle(request.subtitle());
+    }
+    if (request.badgeTitle().trim() != null && !request.badgeTitle().trim().isEmpty()) {
+      course.setBadgeTitle(request.badgeTitle());
+    }
+    if (request.description().trim() != null && !request.description().trim().isEmpty()) {
+      course.setDescription(request.description());
+    }
+    if (request.thumbnailImage() != null && !request.thumbnailImage().isEmpty()) {
+      course.setThumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()));
+    }
     log.info("Updated course {}", id);
-    return courseMapper.toCourseSummary(course);
+
+    long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
+    long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+        course.getId(), studyweb.cus.enums.AssessmentType.EXAM);
+
+    return courseMapper.toCourseSummary(course, subjectCount, examCount);
   }
 
   @Override
@@ -146,22 +180,24 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<LessonSummaryResponse> listLessons(
-      UUID courseId, UUID subjectId, Pageable pageable, String email) {
+  public Page<LessonSummaryResponse.LessonCardResponse> listLessons(
+      UUID courseId, UUID subjectId, String email, Pageable pageable) {
     requireCourse(courseId);
     requireSubject(courseId, subjectId);
 
-    List<AccessTier> visibleTiers = visibleTiers(email);
-    Page<Lesson> page = lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-        subjectId, visibleTiers, pageable);
-    Page<LessonSummaryResponse> result = page.map(courseMapper::toLessonSummary);
+    Page<LessonSummaryResponse.LessonCardResponse> lessons =
+        lessonRepository
+            .findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable)
+            .map(courseMapper::toLessonCardResponse);
+
     log.info(
-        "Listed {} lessons for subject {} (user: {}, tiers {})",
-        result.getNumberOfElements(),
+        "Listed {} lessons for subject {} (user: {}, page {}, size {})",
+        lessons.getNumberOfElements(),
         subjectId,
         email,
-        visibleTiers);
-    return result;
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return lessons;
   }
 
   @Override
@@ -183,7 +219,8 @@ public class CourseServiceImpl implements CourseService {
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
-    return courseMapper.toLessonSummary(saved);
+    LessonSummaryResponse.LessonCardResponse card = courseMapper.toLessonCardResponse(saved);
+    return new LessonSummaryResponse(1, List.of(card));
   }
 
   @Override
@@ -208,7 +245,8 @@ public class CourseServiceImpl implements CourseService {
       lesson.setAccess(request.access());
     }
     log.info("Updated lesson {} of subject {}", lessonId, subjectId);
-    return courseMapper.toLessonSummary(lesson);
+    LessonSummaryResponse.LessonCardResponse card = courseMapper.toLessonCardResponse(lesson);
+    return new LessonSummaryResponse(1, List.of(card));
   }
 
   @Override

@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +42,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         User user = userRepository.findByGmail(email).orElse(null);
         if (user != null && user.getStatus() == UserStatus.ACTIVE) {
           this.userJwt = jwt;
-          List<SimpleGrantedAuthority> authorities = List
-              .of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+          List<SimpleGrantedAuthority> authorities =
+              new ArrayList<>(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
+          if (jwtUtils.getIsVipFromToken(jwt)) {
+            authorities.add(new SimpleGrantedAuthority("TIER_VIP"));
+          }
 
           UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email, null,
               authorities);

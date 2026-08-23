@@ -14,4 +14,6 @@ public interface AssessmentAttemptRepository extends JpaRepository<AssessmentAtt
       UUID userId, UUID examId, Pageable pageable);
 
   int countByUserIdAndExamId(UUID userId, UUID examId);
+
+  long countByExamId(UUID examId);
 }

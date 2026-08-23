@@ -17,13 +17,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import studyweb.cus.dto.UploadDocumentResult;
+
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
 import studyweb.cus.dto.request.assessment.CreateAssessmentRequest;
 import studyweb.cus.dto.request.assessment.UpdateAssessmentRequest;
 import studyweb.cus.dto.response.assessment.AnswerKeyResponse;
 import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.Course;
@@ -33,6 +34,8 @@ import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
 import studyweb.cus.mapper.assessment.AssessmentMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
@@ -41,6 +44,8 @@ import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
 
+import studyweb.cus.repository.course.AssessmentAttemptRepository;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -48,6 +53,7 @@ public class AssessmentServiceImpl implements AssessmentService {
 
   private final TransactionTemplate transactionTemplate;
   private final AssessmentRepository assessmentRepository;
+  private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final CourseRepository courseRepository;
   private final SubjectRepository subjectRepository;
@@ -105,8 +111,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     List<AnswerKey> keys = answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
     List<AnswerKeyResponse> keyResponses = keys.stream().map(assessmentMapper::toAnswerKeyResponse).toList();
 
-    String presignedUrl = assessment.getFileKey() != null 
-        ? fileService.generatePresignedUrl(assessment.getFileKey()) 
+    String presignedUrl = assessment.getFileKey() != null
+        ? fileService.generatePresignedUrl(assessment.getFileKey())
         : null;
 
     log.info("Fetched assessment detail {}", assessmentId);
@@ -128,7 +134,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         subjectId,
         page.getNumber(),
         page.getSize());
-    return page.map(assessmentMapper::toSummary);
+    return page.map(this::mapToSummary);
   }
 
   @Override
@@ -144,7 +150,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         courseId,
         page.getNumber(),
         page.getSize());
-    return page.map(assessmentMapper::toSummary);
+    return page.map(this::mapToSummary);
   }
 
   @Override
@@ -161,7 +167,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     updateAnswerKeys(assessment, assessmentId, request.answerKeys());
 
     log.info("Updated assessment {}", assessmentId);
-    return assessmentMapper.toSummary(assessment);
+    return mapToSummary(assessment);
   }
 
   @Override
@@ -349,7 +355,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   private AssessmentFileType detectFileType(MultipartFile file) {
     String originalFilename = file.getOriginalFilename();
     if (originalFilename == null) {
-      throw new AssessmentException(AssessmentErrorCode.UNSUPPORTED_FILE_TYPE);
+      throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     }
     String extension = originalFilename.substring(
         originalFilename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
@@ -357,7 +363,7 @@ public class AssessmentServiceImpl implements AssessmentService {
       case "pdf" -> AssessmentFileType.PDF;
       case "doc", "docx" -> AssessmentFileType.DOCX;
       case "xls", "xlsx" -> AssessmentFileType.XLSX;
-      default -> throw new AssessmentException(AssessmentErrorCode.UNSUPPORTED_FILE_TYPE);
+      default -> throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     };
   }
 
@@ -368,7 +374,8 @@ public class AssessmentServiceImpl implements AssessmentService {
    *
    * @param savedAssessment the pending assessment entity previously saved
    * @param uploadedFileUrl the URL of the file uploaded to S3
-   * @param request         the original creation request containing answer keys and status
+   * @param request         the original creation request containing answer keys
+   *                        and status
    * @return the summary of the finalized assessment
    */
   private AssessmentSummaryResponse finalizeAssessmentCreation(
@@ -387,7 +394,12 @@ public class AssessmentServiceImpl implements AssessmentService {
       }
 
       Assessment finalAssessment = assessmentRepository.save(savedAssessment);
-      return assessmentMapper.toSummary(finalAssessment);
+      return mapToSummary(finalAssessment);
     });
+  }
+
+  private AssessmentSummaryResponse mapToSummary(Assessment assessment) {
+    long totalTakes = assessmentAttemptRepository.countByExamId(assessment.getId());
+    return assessmentMapper.toSummary(assessment, totalTakes);
   }
 }
