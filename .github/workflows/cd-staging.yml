@@ -107,7 +107,7 @@ jobs:
           cp compose/docker.*.compose.yml ~/.config/systemd/user/git-ops/
           
           echo "Copy service files..."
-          cp services/study-*.service ~/.config/systemd/user/git-ops/
+          cp service/study-*.service ~/.config/systemd/user/git-ops/
 
 
       - name: Check infra
