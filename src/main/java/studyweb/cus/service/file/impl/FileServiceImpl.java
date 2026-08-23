@@ -115,7 +115,7 @@ public class FileServiceImpl implements FileService {
           .build();
       GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
           .getObjectRequest(getObjectRequest)
-          .signatureDuration(Duration.ZERO).build();
+          .signatureDuration(Duration.ofDays(7)).build();
       PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
       return presigned.url().toString();
     } catch (Exception e) {
