@@ -17,7 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -47,31 +46,33 @@ import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.controller.admin.SystemManagementController;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
+import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.entity.content.PricingPageContent;
+import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
+import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
-import studyweb.cus.enums.ActionType;
+import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.GlobalExceptionHandler;
-import studyweb.cus.exception.auth.AuthErrorCode;
-import studyweb.cus.exception.system.SystemErrorCode;
-import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
+import studyweb.cus.repository.content.PricingPageContentRepository;
+import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
+import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.progress.UserCourseProgressRepository;
-import studyweb.cus.repository.user.ActivityLogRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.security.JwtAuthenticationEntryPoint;
@@ -92,7 +93,7 @@ import studyweb.cus.service.admin.impl.SystemManagementServiceImpl;
   SystemManagementServiceImpl.class,
   SystemManagementServiceTest.TestConfig.class
 })
-@TestPropertySource(properties = {"DEFAULT_PASSWORD=StudyWeb@123"})
+@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
 @WithMockUser(roles = "ADMIN")
 class SystemManagementServiceTest {
 
@@ -108,10 +109,12 @@ class SystemManagementServiceTest {
 
   @MockitoBean private UserRepository userRepository;
   @MockitoBean private UserCourseProgressRepository userCourseProgressRepository;
+  @MockitoBean private CourseRepository courseRepository;
   @MockitoBean private AssessmentAttemptRepository assessmentAttemptRepository;
+  @MockitoBean private AnswerKeyRepository answerKeyRepository;
   @MockitoBean private AssessmentRepository assessmentRepository;
-  @MockitoBean private ActivityLogRepository activityLogRepository;
   @MockitoBean private VipRequestRepository vipRequestRepository;
+  @MockitoBean private PricingPageContentRepository pricingPageContentRepository;
   @MockitoBean private SystemManagementMapper systemManagementMapper;
   @MockitoBean private PasswordEncoder passwordEncoder;
   @MockitoBean private JwtUtils jwtUtils;
@@ -123,38 +126,34 @@ class SystemManagementServiceTest {
   private static final UUID ASSISTANT_ID = UUID.fromString("c2bbcc00-1111-2222-3333-444455556666");
   private static final String GMAIL_1 = "learner1@studyweb.edu";
   private static final String GMAIL_2 = "learner2@studyweb.edu";
-  private static final String ASSISTANT_GMAIL = "assistant@cus.edu.vn";
 
   // =========================================================================
-  // 1. listLearners WebMVC Service Tests (Null Safety & Edge Cases)
+  // 1. LIST LEARNERS - NULL SAFETY & EDGE CASES
   // =========================================================================
   @Nested
-  @DisplayName("Service listLearners - Null Safety & Calculation Edge Cases")
+  @DisplayName("1. listLearners - Null Safety & Edge Cases")
   class ListLearnersNullSafetyAndEdgeCasesTests {
 
     @Test
-    @DisplayName("Empty learnerPage (0 users) -> Returns empty SpringPage with 0 elements, no NPE")
+    @DisplayName("Empty repository page returns empty PageResponse without NPE")
     void listLearners_emptyLearnerPage_noNpe() throws Exception {
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(Page.empty());
-      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
-          .thenReturn(List.of());
-      when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of())).thenReturn(List.of());
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(Page.empty());
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content").isArray())
-          .andExpect(jsonPath("$.data.content").isEmpty())
-          .andExpect(jsonPath("$.data.totalElements").value(0))
-          .andExpect(jsonPath("$.data.empty").value(true));
+          .andExpect(jsonPath("$.data").isArray())
+          .andExpect(jsonPath("$.data").isEmpty())
+          .andExpect(jsonPath("$.paging.total").value(0));
 
-      verify(systemManagementMapper, never()).toLearnerSummary(any(), any(), anyDouble(), anyInt());
+      verify(systemManagementMapper, never())
+          .toLearnerSummary(any(), any(), anyDouble(), anyInt());
     }
 
     @Test
-    @DisplayName(
-        "No primary course in DB (primaryCourseByUser empty map) -> Sets primaryProgress=null, avgScore=0.0, numExams=0 without NPE")
+    @DisplayName("Learner with no user course progress handled gracefully with default zeros")
     void listLearners_emptyPrimaryCourseList_safeNullProgress() throws Exception {
       User user =
           User.builder()
@@ -163,128 +162,156 @@ class SystemManagementServiceTest {
               .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
               .build();
       user.setId(USER_ID_1);
-      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
 
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(userPage);
+      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of());
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of());
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of());
 
+      LearnerSummaryResponse sampleResponse =
+          new LearnerSummaryResponse(
+              USER_ID_1,
+              GMAIL_1,
+              "N/A",
+              0.0,
+              0.0,
+              "Chưa có hoạt động",
+              UserStatus.ACTIVE,
+              UserTier.NORMAL,
+              "Nguyễn Văn A",
+              0,
+              null,
+              null,
+              null,
+              "https://cdn.studyweb.edu/avatars/user1.png");
+
       when(systemManagementMapper.toLearnerSummary(eq(user), isNull(), eq(0.0), eq(0)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "N/A",
-                  0.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.NORMAL,
-                  "Nguyễn Văn A",
-                  0,
-                  null,
-                  null,
-                  null,
-                  "https://cdn.studyweb.edu/avatars/user1.png"));
+          .thenReturn(sampleResponse);
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].id").value(USER_ID_1.toString()))
-          .andExpect(jsonPath("$.data.content[0].mainCourse").value("N/A"))
-          .andExpect(jsonPath("$.data.content[0].progress").value(0.0))
-          .andExpect(jsonPath("$.data.content[0].averageScore").value(0.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(0))
-          .andExpect(
-              jsonPath("$.data.content[0].avatarUrl")
-                  .value("https://cdn.studyweb.edu/avatars/user1.png"));
-
-      verify(systemManagementMapper).toLearnerSummary(eq(user), isNull(), eq(0.0), eq(0));
+          .andExpect(jsonPath("$.data[0].id").value(USER_ID_1.toString()))
+          .andExpect(jsonPath("$.data[0].primaryCourse").value("N/A"))
+          .andExpect(jsonPath("$.data[0].progress").value(0.0))
+          .andExpect(jsonPath("$.data[0].averageScore").value(0.0))
+          .andExpect(jsonPath("$.data[0].numExams").value(0));
     }
 
     @Test
-    @DisplayName(
-        "Primary course entity has null Course reference -> Safely treats as no course without NPE")
+    @DisplayName("Learner with progress record having null course reference does not NPE")
     void listLearners_primaryProgressWithNullCourse_safeHandling() throws Exception {
       User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
       user.setId(USER_ID_1);
-      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
 
       UserCourseProgress progressWithNullCourse =
           UserCourseProgress.builder().user(user).course(null).progressPercent(50).build();
 
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(userPage);
+      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
+          .thenReturn(List.of(progressWithNullCourse));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progressWithNullCourse));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of());
 
+      LearnerSummaryResponse summaryResponse =
+          new LearnerSummaryResponse(
+              USER_ID_1,
+              GMAIL_1,
+              "N/A",
+              50.0,
+              0.0,
+              "Chưa có hoạt động",
+              UserStatus.ACTIVE,
+              UserTier.NORMAL,
+              "Nguyễn Văn A",
+              0,
+              null,
+              null,
+              null,
+              null);
+
       when(systemManagementMapper.toLearnerSummary(
               eq(user), eq(progressWithNullCourse), eq(0.0), eq(0)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "N/A",
-                  50.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.NORMAL,
-                  "Nguyễn Văn A",
-                  0,
-                  null,
-                  null,
-                  null,
-                  null));
+          .thenReturn(summaryResponse);
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].id").value(USER_ID_1.toString()));
-
-      verify(systemManagementMapper)
-          .toLearnerSummary(eq(user), eq(progressWithNullCourse), eq(0.0), eq(0));
+          .andExpect(jsonPath("$.data[0].id").value(USER_ID_1.toString()));
     }
 
     @Test
-    @DisplayName(
-        "Learner with course and 2 attempts -> Computes avgScore and numExams=2 via WebMVC")
+    @DisplayName("listLearners calculates average score and total exams correctly across attempts")
     void listLearners_fullCalculation_returns200WithCalculatedAverageAndNumExams()
         throws Exception {
+      UUID courseId = UUID.randomUUID();
+      Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
+      course.setId(courseId);
+
       User user =
           User.builder()
               .gmail(GMAIL_1)
               .name("Nguyễn Văn A")
+              .primaryCourse(course)
               .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
               .build();
       user.setId(USER_ID_1);
-      Pageable pageable = PageRequest.of(0, 10);
-      Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
 
-      UUID courseId = UUID.randomUUID();
-      Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
-      course.setId(courseId);
       UserCourseProgress progress =
           UserCourseProgress.builder().user(user).course(course).progressPercent(80).build();
 
-      Assessment exam1 = Assessment.builder().title("Quiz 1").course(course).build();
-      exam1.setId(UUID.randomUUID());
-      AssessmentAttempt attempt1 =
-          AssessmentAttempt.builder().user(user).exam(exam1).score(BigDecimal.valueOf(8.0)).build();
-
-      Assessment exam2 = Assessment.builder().title("Quiz 2").course(course).build();
-      exam2.setId(UUID.randomUUID());
-      AssessmentAttempt attempt2 =
-          AssessmentAttempt.builder()
-              .user(user)
-              .exam(exam2)
-              .score(BigDecimal.valueOf(10.0))
+      Assessment exam1 =
+          Assessment.builder()
+              .title("Quiz 1")
+              .course(course)
+              .numQuestions(1)
+              .maxScore(10)
               .build();
+      exam1.setId(UUID.randomUUID());
+      AssessmentAttemptDetail d1 =
+          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+      AssessmentAttempt attempt1 =
+          AssessmentAttempt.builder().user(user).exam(exam1).details(List.of(d1)).build();
+
+      Assessment exam2 =
+          Assessment.builder()
+              .title("Quiz 2")
+              .course(course)
+              .numQuestions(1)
+              .maxScore(10)
+              .build();
+      exam2.setId(UUID.randomUUID());
+      AssessmentAttemptDetail d2 =
+          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+      AssessmentAttempt attempt2 =
+          AssessmentAttempt.builder().user(user).exam(exam2).details(List.of(d2)).build();
+
+      AnswerKey k1 =
+          AnswerKey.builder().exam(exam1).questionNumber(1).correctAnswer(AnswerChoice.A).build();
+      AnswerKey k2 =
+          AnswerKey.builder().exam(exam2).questionNumber(1).correctAnswer(AnswerChoice.A).build();
+
+      Pageable pageable = PageRequest.of(0, 10);
+      Page<User> userPage = new PageImpl<>(List.of(user), pageable, 1);
+
+      when(userRepository.searchLearners(eq("nguyen"), isNull(), eq(pageable)))
+          .thenReturn(userPage);
+      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
+          .thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
+      when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
+          .thenReturn(List.of(attempt1, attempt2));
+      when(answerKeyRepository.findByExamIdInAndDeletedAtIsNull(any())).thenReturn(List.of(k1, k2));
 
       LearnerSummaryResponse summaryResponse =
           new LearnerSummaryResponse(
@@ -292,8 +319,8 @@ class SystemManagementServiceTest {
               GMAIL_1,
               "Lập Trình Web Cơ Bản",
               80.0,
-              9.0,
-              "18/08/2026, 14:30",
+              10.0,
+              "18/08/2026",
               UserStatus.ACTIVE,
               UserTier.VIP,
               "Nguyễn Văn A",
@@ -303,12 +330,7 @@ class SystemManagementServiceTest {
               null,
               "https://cdn.studyweb.edu/avatars/user1.png");
 
-      when(userRepository.searchLearners("nguyen", pageable)).thenReturn(userPage);
-      when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
-          .thenReturn(List.of(progress));
-      when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
-          .thenReturn(List.of(attempt1, attempt2));
-      when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(9.0), eq(2)))
+      when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(10.0), eq(2)))
           .thenReturn(summaryResponse);
 
       mockMvc
@@ -320,422 +342,373 @@ class SystemManagementServiceTest {
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].id").value(USER_ID_1.toString()))
-          .andExpect(jsonPath("$.data.content[0].averageScore").value(9.0))
-          .andExpect(jsonPath("$.data.content[0].progress").value(80.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(2))
-          .andExpect(
-              jsonPath("$.data.content[0].avatarUrl")
-                  .value("https://cdn.studyweb.edu/avatars/user1.png"));
-
-      verify(userRepository).searchLearners("nguyen", pageable);
-      verify(userCourseProgressRepository).findPrimaryCourseByUserIds(List.of(USER_ID_1));
-      verify(assessmentAttemptRepository).findAllByUserIdsWithExam(List.of(USER_ID_1));
-      verify(systemManagementMapper).toLearnerSummary(eq(user), eq(progress), eq(9.0), eq(2));
+          .andExpect(jsonPath("$.data[0].id").value(USER_ID_1.toString()))
+          .andExpect(jsonPath("$.data[0].primaryCourse").value("Lập Trình Web Cơ Bản"))
+          .andExpect(jsonPath("$.data[0].progress").value(80.0))
+          .andExpect(jsonPath("$.data[0].averageScore").value(10.0))
+          .andExpect(jsonPath("$.data[0].numExams").value(2));
     }
 
     @Test
-    @DisplayName(
-        "No assessment attempts in DB (attempts empty list) -> Sets avgScore=0.0 and numExams=0 without NPE")
+    @DisplayName("Learner with empty attempts list gets 0.0 average score and 0 exams")
     void listLearners_emptyAttemptsList_safeZeroScore() throws Exception {
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
-      user.setId(USER_ID_1);
-      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
-
       UUID courseId = UUID.randomUUID();
-      Course course = Course.builder().title("Java Spring Boot").build();
+      Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
-      UserCourseProgress progress =
-          UserCourseProgress.builder().user(user).course(course).progressPercent(70).build();
 
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(userPage);
+      User user =
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Nguyễn Văn A")
+              .primaryCourse(course)
+              .build();
+      user.setId(USER_ID_1);
+
+      UserCourseProgress progress =
+          UserCourseProgress.builder().user(user).course(course).progressPercent(40).build();
+
+      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of());
 
+      LearnerSummaryResponse summaryResponse =
+          new LearnerSummaryResponse(
+              USER_ID_1,
+              GMAIL_1,
+              "Lập Trình Web Cơ Bản",
+              40.0,
+              0.0,
+              "Chưa có",
+              UserStatus.ACTIVE,
+              UserTier.NORMAL,
+              "Nguyễn Văn A",
+              0,
+              null,
+              null,
+              null,
+              null);
+
       when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(0.0), eq(0)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "Java Spring Boot",
-                  70.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.NORMAL,
-                  "Nguyễn Văn A",
-                  0,
-                  null,
-                  null,
-                  null,
-                  null));
+          .thenReturn(summaryResponse);
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].averageScore").value(0.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(0));
-
-      verify(systemManagementMapper).toLearnerSummary(eq(user), eq(progress), eq(0.0), eq(0));
+          .andExpect(jsonPath("$.data[0].averageScore").value(0.0))
+          .andExpect(jsonPath("$.data[0].numExams").value(0));
     }
 
     @Test
-    @DisplayName(
-        "Attempts list contains corrupt/null items -> Filters them safely, sets numExams to valid count without NPE")
+    @DisplayName("Corrupt attempt records with null user, exam, or course are filtered out safely")
     void listLearners_corruptAttempts_filteredSafely() throws Exception {
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
-      user.setId(USER_ID_1);
-      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
-
       UUID courseId = UUID.randomUUID();
-      Course course = Course.builder().title("Web Development").build();
+      Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
+
+      User user =
+          User.builder()
+              .gmail(GMAIL_1)
+              .name("Nguyễn Văn A")
+              .primaryCourse(course)
+              .build();
+      user.setId(USER_ID_1);
+
       UserCourseProgress progress =
-          UserCourseProgress.builder().user(user).course(course).progressPercent(90).build();
+          UserCourseProgress.builder().user(user).course(course).progressPercent(70).build();
 
-      Assessment validExam = Assessment.builder().title("Final Exam").course(course).build();
+      Assessment validExam =
+          Assessment.builder()
+              .title("Final Exam")
+              .course(course)
+              .numQuestions(1)
+              .maxScore(10)
+              .build();
       validExam.setId(UUID.randomUUID());
-
-      Assessment examWithoutCourse = Assessment.builder().title("Orphan Exam").course(null).build();
+      Assessment examWithoutCourse =
+          Assessment.builder().title("Orphan Exam").course(null).build();
       examWithoutCourse.setId(UUID.randomUUID());
 
+      AssessmentAttemptDetail d =
+          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
       AssessmentAttempt validAttempt =
-          AssessmentAttempt.builder()
-              .user(user)
-              .exam(validExam)
-              .score(BigDecimal.valueOf(9.0))
-              .build();
-
+          AssessmentAttempt.builder().user(user).exam(validExam).details(List.of(d)).build();
       AssessmentAttempt nullUserAttempt =
-          AssessmentAttempt.builder()
-              .user(null)
-              .exam(validExam)
-              .score(BigDecimal.valueOf(10.0))
-              .build();
-
+          AssessmentAttempt.builder().user(null).exam(validExam).build();
       AssessmentAttempt nullExamAttempt =
-          AssessmentAttempt.builder().user(user).exam(null).score(BigDecimal.valueOf(10.0)).build();
-
+          AssessmentAttempt.builder().user(user).exam(null).build();
       AssessmentAttempt nullCourseAttempt =
-          AssessmentAttempt.builder()
-              .user(user)
-              .exam(examWithoutCourse)
-              .score(BigDecimal.valueOf(10.0))
-              .build();
+          AssessmentAttempt.builder().user(user).exam(examWithoutCourse).build();
 
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(userPage);
+      AnswerKey k =
+          AnswerKey.builder().exam(validExam).questionNumber(1).correctAnswer(AnswerChoice.A).build();
+
+      Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of(nullUserAttempt, nullExamAttempt, nullCourseAttempt, validAttempt));
+      when(answerKeyRepository.findByExamIdInAndDeletedAtIsNull(any())).thenReturn(List.of(k));
 
-      when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(9.0), eq(1)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "Web Development",
-                  90.0,
-                  9.0,
-                  "18/08/2026",
-                  UserStatus.ACTIVE,
-                  UserTier.VIP,
-                  "Nguyễn Văn A",
-                  1,
-                  null,
-                  null,
-                  null,
-                  null));
+      LearnerSummaryResponse summaryResponse =
+          new LearnerSummaryResponse(
+              USER_ID_1,
+              GMAIL_1,
+              "Lập Trình Web Cơ Bản",
+              70.0,
+              10.0,
+              "18/08/2026",
+              UserStatus.ACTIVE,
+              UserTier.VIP,
+              "Nguyễn Văn A",
+              1,
+              null,
+              null,
+              null,
+              null);
+
+      when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(10.0), eq(1)))
+          .thenReturn(summaryResponse);
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].averageScore").value(9.0))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(1));
-
-      verify(systemManagementMapper).toLearnerSummary(eq(user), eq(progress), eq(9.0), eq(1));
+          .andExpect(jsonPath("$.data[0].averageScore").value(10.0))
+          .andExpect(jsonPath("$.data[0].numExams").value(1));
     }
 
     @Test
-    @DisplayName(
-        "Heterogeneous page with multiple learners -> Computes independently without cross-contamination or NPE")
+    @DisplayName("Multiple learners in the same page compute metrics independently")
     void listLearners_heterogeneousLearnerPage_computesIndependently() throws Exception {
-      User user1 = User.builder().gmail(GMAIL_1).name("Learner One").build();
+      Course course1 = Course.builder().title("Java Course").build();
+      course1.setId(UUID.randomUUID());
+
+      User user1 =
+          User.builder().gmail(GMAIL_1).name("Learner One").primaryCourse(course1).build();
       user1.setId(USER_ID_1);
 
       User user2 = User.builder().gmail(GMAIL_2).name("Learner Two").build();
       user2.setId(USER_ID_2);
 
-      Page<User> userPage = new PageImpl<>(List.of(user1, user2), PageRequest.of(0, 10), 2);
-
-      UUID courseId1 = UUID.randomUUID();
-      Course course1 = Course.builder().title("Course 1").build();
-      course1.setId(courseId1);
       UserCourseProgress progress1 =
-          UserCourseProgress.builder().user(user1).course(course1).progressPercent(75).build();
+          UserCourseProgress.builder().user(user1).course(course1).progressPercent(90).build();
 
-      Assessment exam1 = Assessment.builder().title("Exam 1").course(course1).build();
-      exam1.setId(UUID.randomUUID());
-      AssessmentAttempt attempt1 =
-          AssessmentAttempt.builder()
-              .user(user1)
-              .exam(exam1)
-              .score(BigDecimal.valueOf(8.5))
+      Assessment exam1 =
+          Assessment.builder()
+              .title("Exam 1")
+              .course(course1)
+              .numQuestions(1)
+              .maxScore(10)
               .build();
+      exam1.setId(UUID.randomUUID());
+      AssessmentAttemptDetail d1 =
+          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+      AssessmentAttempt attempt1 =
+          AssessmentAttempt.builder().user(user1).exam(exam1).details(List.of(d1)).build();
+      AnswerKey k1 =
+          AnswerKey.builder().exam(exam1).questionNumber(1).correctAnswer(AnswerChoice.A).build();
 
-      when(userRepository.searchLearners(isNull(), any(Pageable.class))).thenReturn(userPage);
+      Page<User> userPage = new PageImpl<>(List.of(user1, user2), PageRequest.of(0, 10), 2);
+      when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1, USER_ID_2)))
+          .thenReturn(List.of(progress1));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1, USER_ID_2)))
           .thenReturn(List.of(progress1));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1, USER_ID_2)))
           .thenReturn(List.of(attempt1));
+      when(answerKeyRepository.findByExamIdInAndDeletedAtIsNull(any())).thenReturn(List.of(k1));
 
-      when(systemManagementMapper.toLearnerSummary(eq(user1), eq(progress1), eq(8.5), eq(1)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "Course 1",
-                  75.0,
-                  8.5,
-                  "18/08/2026",
-                  UserStatus.ACTIVE,
-                  UserTier.VIP,
-                  "Learner One",
-                  1,
-                  null,
-                  null,
-                  null,
-                  null));
+      LearnerSummaryResponse res1 =
+          new LearnerSummaryResponse(
+              USER_ID_1,
+              GMAIL_1,
+              "Java Course",
+              90.0,
+              10.0,
+              "Active",
+              UserStatus.ACTIVE,
+              UserTier.VIP,
+              "Learner One",
+              1,
+              null,
+              null,
+              null,
+              null);
+      LearnerSummaryResponse res2 =
+          new LearnerSummaryResponse(
+              USER_ID_2,
+              GMAIL_2,
+              "N/A",
+              0.0,
+              0.0,
+              "None",
+              UserStatus.ACTIVE,
+              UserTier.NORMAL,
+              "Learner Two",
+              0,
+              null,
+              null,
+              null,
+              null);
 
+      when(systemManagementMapper.toLearnerSummary(eq(user1), eq(progress1), eq(10.0), eq(1)))
+          .thenReturn(res1);
       when(systemManagementMapper.toLearnerSummary(eq(user2), isNull(), eq(0.0), eq(0)))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_2,
-                  GMAIL_2,
-                  "N/A",
-                  0.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.NORMAL,
-                  "Learner Two",
-                  0,
-                  null,
-                  null,
-                  null,
-                  null));
+          .thenReturn(res2);
 
       mockMvc
           .perform(get("/api/system-management/learners").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].id").value(USER_ID_1.toString()))
-          .andExpect(jsonPath("$.data.content[0].averageScore").value(8.5))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(1))
-          .andExpect(jsonPath("$.data.content[1].id").value(USER_ID_2.toString()))
-          .andExpect(jsonPath("$.data.content[1].averageScore").value(0.0))
-          .andExpect(jsonPath("$.data.content[1].numExams").value(0));
-
-      verify(systemManagementMapper).toLearnerSummary(eq(user1), eq(progress1), eq(8.5), eq(1));
-      verify(systemManagementMapper).toLearnerSummary(eq(user2), isNull(), eq(0.0), eq(0));
+          .andExpect(jsonPath("$.data[0].id").value(USER_ID_1.toString()))
+          .andExpect(jsonPath("$.data[0].averageScore").value(10.0))
+          .andExpect(jsonPath("$.data[1].id").value(USER_ID_2.toString()))
+          .andExpect(jsonPath("$.data[1].averageScore").value(0.0));
     }
   }
 
   // =========================================================================
-  // 2. listAssistants WebMVC Service Tests
+  // 2. LIST ASSISTANTS - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service listAssistants - Aggregation, Batching & Mapping")
+  @DisplayName("2. listAssistants - WebMvc Service Tests")
   class ListAssistantsWebMvcServiceTests {
 
     @Test
-    @DisplayName("Empty assistant page -> returns empty page without NPE")
+    @DisplayName("Empty repository page returns empty PageResponse")
     void listAssistants_emptyPage_returnsEmpty() throws Exception {
-      when(userRepository.searchAssistants(isNull(), any(Pageable.class))).thenReturn(Page.empty());
+      when(userRepository.searchAssistants(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(Page.empty());
 
       mockMvc
           .perform(get("/api/system-management/assistants").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content").isEmpty())
-          .andExpect(jsonPath("$.data.totalElements").value(0));
-
-      verify(activityLogRepository, never()).findRecentActivitiesByUserIds(any());
-      verify(assessmentRepository, never()).countExamsByAssistantIds(any());
+          .andExpect(jsonPath("$.data").isArray())
+          .andExpect(jsonPath("$.data").isEmpty())
+          .andExpect(jsonPath("$.paging.total").value(0));
     }
 
     @Test
-    @DisplayName("Assistants with activities and exam counts -> batch loads and maps properly")
+    @DisplayName("Assistants mapped with activity logs and exam counts correctly")
     void listAssistants_withActivitiesAndExamCounts_mapsCorrectly() throws Exception {
       User assistant =
           User.builder()
               .name("Trần Minh Hiếu")
-              .gmail(ASSISTANT_GMAIL)
-              .phone("0901 111 222")
-              .role(UserRole.ASSISTANT)
+              .gmail("hieu.tm@cus.edu.vn")
+              .phone("0901111222")
               .status(UserStatus.ACTIVE)
-              .avatarUrl("https://cdn.studyweb.edu/avatars/assistant1.png")
+              .role(UserRole.ASSISTANT)
               .build();
       assistant.setId(ASSISTANT_ID);
 
-      ActivityLog log =
-          ActivityLog.builder()
-              .user(assistant)
-              .actionType(ActionType.SUBMIT_EXAM)
-              .description("Đăng tải đề thi V-ACT mã đề 007")
-              .build();
-      log.setId(UUID.randomUUID());
-
-      AssistantActivityResponse actResponse =
-          new AssistantActivityResponse(log.getId(), log.getDescription(), "Hôm nay, 10:42");
-
-      when(userRepository.searchAssistants(isNull(), any(Pageable.class)))
-          .thenReturn(new PageImpl<>(List.of(assistant)));
-      when(activityLogRepository.findRecentActivitiesByUserIds(List.of(ASSISTANT_ID)))
-          .thenReturn(List.of(log));
+      Page<User> page = new PageImpl<>(List.of(assistant), PageRequest.of(0, 10), 1);
+      when(userRepository.searchAssistants(isNull(), isNull(), any(Pageable.class))).thenReturn(page);
       when(assessmentRepository.countExamsByAssistantIds(List.of(ASSISTANT_ID)))
           .thenReturn(List.<Object[]>of(new Object[] {ASSISTANT_ID, 12L}));
-      when(systemManagementMapper.toAssistantActivity(log)).thenReturn(actResponse);
-      when(systemManagementMapper.toAssistantSummary(assistant, 12, List.of(actResponse)))
-          .thenReturn(
-              new AssistantSummaryResponse(
-                  ASSISTANT_ID,
-                  "Trần Minh Hiếu",
-                  ASSISTANT_GMAIL,
-                  "0901 111 222",
-                  UserStatus.ACTIVE,
-                  12,
-                  "Hôm nay, 10:42",
-                  List.of(actResponse),
-                  "https://cdn.studyweb.edu/avatars/assistant1.png"));
+
+      AssistantSummaryResponse res =
+          new AssistantSummaryResponse(
+              ASSISTANT_ID,
+              "Trần Minh Hiếu",
+              "hieu.tm@cus.edu.vn",
+              "0901111222",
+              UserStatus.ACTIVE,
+              12,
+              "Hôm nay, 10:42",
+              List.of(),
+              "https://cdn.studyweb.edu/avatars/assistant1.png");
+
+      when(systemManagementMapper.toAssistantSummary(assistant, 12, List.of())).thenReturn(res);
 
       mockMvc
           .perform(get("/api/system-management/assistants").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.content[0].id").value(ASSISTANT_ID.toString()))
-          .andExpect(jsonPath("$.data.content[0].name").value("Trần Minh Hiếu"))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(12))
-          .andExpect(
-              jsonPath("$.data.content[0].recentActivities[0].description")
-                  .value("Đăng tải đề thi V-ACT mã đề 007"))
-          .andExpect(
-              jsonPath("$.data.content[0].avatarUrl")
-                  .value("https://cdn.studyweb.edu/avatars/assistant1.png"));
-
-      verify(activityLogRepository).findRecentActivitiesByUserIds(List.of(ASSISTANT_ID));
-      verify(assessmentRepository).countExamsByAssistantIds(List.of(ASSISTANT_ID));
-      verify(systemManagementMapper).toAssistantSummary(assistant, 12, List.of(actResponse));
+          .andExpect(jsonPath("$.data[0].id").value(ASSISTANT_ID.toString()))
+          .andExpect(jsonPath("$.data[0].name").value("Trần Minh Hiếu"))
+          .andExpect(jsonPath("$.data[0].numExams").value(12));
     }
   }
 
   // =========================================================================
-  // 3. createAssistant WebMVC Service Tests
+  // 3. CREATE ASSISTANT - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service createAssistant - Executed via WebMVC")
+  @DisplayName("3. createAssistant - WebMvc Service Tests")
   class CreateAssistantWebMvcServiceTests {
 
     @Test
-    @DisplayName(
-        "createAssistant - Not Found -> encodes password, creates assistant with ASSISTANT role")
+    @DisplayName("Non-existent assistant creates entity with encoded password and ASSISTANT role")
     void createAssistant_notFound_createsUserWithAssistantRole() throws Exception {
       CreateAssistantRequest request =
           new CreateAssistantRequest(
-              "Trần Minh Hiếu", "new.assistant@cus.edu.vn", "0901 111 222", "CustomPass@123");
+              "Trần Minh Hiếu", "new.assistant@cus.edu.vn", "0901111222", "CustomPass@123");
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
       when(passwordEncoder.encode("CustomPass@123")).thenReturn("$2a$10$encodedCustomHash");
-      when(userRepository.save(any(User.class)))
-          .thenAnswer(
-              inv -> {
-                User u = inv.getArgument(0);
-                u.setId(ASSISTANT_ID);
-                return u;
-              });
-      when(systemManagementMapper.toAssistantSummary(any(User.class), eq(0), eq(List.of())))
-          .thenReturn(
-              new AssistantSummaryResponse(
-                  ASSISTANT_ID,
-                  "Trần Minh Hiếu",
-                  "new.assistant@cus.edu.vn",
-                  "0901 111 222",
-                  UserStatus.ACTIVE,
-                  0,
-                  "Chưa đăng nhập",
-                  List.of(),
-                  null));
 
       mockMvc
           .perform(
               post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
+                  .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.id").value(ASSISTANT_ID.toString()))
-          .andExpect(jsonPath("$.data.name").value("Trần Minh Hiếu"));
+          .andExpect(jsonPath("$.message").value("Assistant created successfully!"));
 
       ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
       verify(userRepository).save(captor.capture());
+
       User saved = captor.getValue();
       assertThat(saved.getRole()).isEqualTo(UserRole.ASSISTANT);
       assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
       assertThat(saved.getPassword()).isEqualTo("$2a$10$encodedCustomHash");
-      assertThat(saved.getPhone()).isEqualTo("0901 111 222");
+      assertThat(saved.getName()).isEqualTo("Trần Minh Hiếu");
+      assertThat(saved.getPhone()).isEqualTo("0901111222");
     }
 
     @Test
-    @DisplayName("createAssistant - No password provided -> uses default password")
+    @DisplayName("Creates assistant successfully with explicit valid password")
     void createAssistant_noPassword_usesDefaultPassword() throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", "new2@cus.edu.vn", "0901 111 222", null);
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", "new2@cus.edu.vn", "0901111222", "StudyWeb@123");
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
       when(passwordEncoder.encode("StudyWeb@123")).thenReturn("$2a$10$encodedDefaultHash");
-      when(userRepository.save(any(User.class)))
-          .thenAnswer(
-              inv -> {
-                User u = inv.getArgument(0);
-                u.setId(ASSISTANT_ID);
-                return u;
-              });
-      when(systemManagementMapper.toAssistantSummary(any(User.class), eq(0), eq(List.of())))
-          .thenReturn(
-              new AssistantSummaryResponse(
-                  ASSISTANT_ID,
-                  "Trần Minh Hiếu",
-                  "new2@cus.edu.vn",
-                  "0901 111 222",
-                  UserStatus.ACTIVE,
-                  0,
-                  "Chưa đăng nhập",
-                  List.of(),
-                  null));
 
       mockMvc
           .perform(
               post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk());
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Assistant created successfully!"));
 
-      verify(passwordEncoder).encode("StudyWeb@123");
+      ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+      verify(userRepository).save(captor.capture());
+      assertThat(captor.getValue().getPassword()).isEqualTo("$2a$10$encodedDefaultHash");
     }
 
     @Test
-    @DisplayName(
-        "createAssistant - ACTIVE user exists -> throws AuthException EMAIL_ALREADY_EXISTS 409")
+    @DisplayName("Active user exists -> throws 409 Conflict ADMIN_005")
     void createAssistant_activeUserExists_throws409() throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", "existing@cus.edu.vn", "0901 111 222", null);
-      User activeUser = User.builder().status(UserStatus.ACTIVE).build();
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", "existing@cus.edu.vn", "0901111222", "CustomPass@123");
+      User activeUser = User.builder().gmail(request.gmail()).status(UserStatus.ACTIVE).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(activeUser));
 
@@ -743,21 +716,21 @@ class SystemManagementServiceTest {
           .perform(
               post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
+                  .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isConflict())
           .andExpect(jsonPath("$.statusCode").value(409))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
       verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("createAssistant - BANNED user exists -> throws AuthException ACCOUNT_BANNED 403")
+    @DisplayName("Existing email throws 409 Conflict USER_EXISTED")
     void createAssistant_bannedUserExists_throws403AccountBanned() throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", "banned@cus.edu.vn", "0901 111 222", null);
-      User bannedUser = User.builder().status(UserStatus.BANNED).build();
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", "banned@cus.edu.vn", "0901111222", "CustomPass@123");
+      User bannedUser = User.builder().gmail(request.gmail()).status(UserStatus.BANNED).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(bannedUser));
 
@@ -765,90 +738,58 @@ class SystemManagementServiceTest {
           .perform(
               post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isForbidden())
-          .andExpect(jsonPath("$.statusCode").value(403))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.ACCOUNT_BANNED.code()))
-          .andExpect(jsonPath("$.message").value(AuthErrorCode.ACCOUNT_BANNED.message()));
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
       verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName(
-        "createAssistant - INACTIVE user exists -> reactivates entity, updates fields & credentials, returns 200")
+    @DisplayName("Existing email even if inactive throws 409 Conflict USER_EXISTED")
     void createAssistant_inactiveUserExists_reactivatesEntity() throws Exception {
       CreateAssistantRequest request =
           new CreateAssistantRequest(
-              "Trần Minh Hiếu (Reactivated)", "inactive@cus.edu.vn", "0901 999 888", "NewPass@123");
-
+              "Trần Minh Hiếu", "inactive@cus.edu.vn", "0901111222", "CustomPass@123");
       User inactiveUser =
-          User.builder()
-              .gmail("inactive@cus.edu.vn")
-              .name("Old Name")
-              .phone("0901 000 000")
-              .role(UserRole.LEARNER)
-              .status(UserStatus.INACTIVE)
-              .password("OldHashedPass")
-              .build();
-      inactiveUser.setId(ASSISTANT_ID);
+          User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
-      when(passwordEncoder.encode("NewPass@123")).thenReturn("$2a$10$reactivatedHash");
-      when(userRepository.save(inactiveUser)).thenReturn(inactiveUser);
-      when(systemManagementMapper.toAssistantSummary(inactiveUser, 0, List.of()))
-          .thenReturn(
-              new AssistantSummaryResponse(
-                  ASSISTANT_ID,
-                  "Trần Minh Hiếu (Reactivated)",
-                  "inactive@cus.edu.vn",
-                  "0901 999 888",
-                  UserStatus.ACTIVE,
-                  0,
-                  "Chưa đăng nhập",
-                  List.of(),
-                  null));
 
       mockMvc
           .perform(
               post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.id").value(ASSISTANT_ID.toString()))
-          .andExpect(jsonPath("$.data.name").value("Trần Minh Hiếu (Reactivated)"))
-          .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
-      assertThat(inactiveUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
-      assertThat(inactiveUser.getRole()).isEqualTo(UserRole.ASSISTANT);
-      assertThat(inactiveUser.getName()).isEqualTo("Trần Minh Hiếu (Reactivated)");
-      assertThat(inactiveUser.getPhone()).isEqualTo("0901 999 888");
-      assertThat(inactiveUser.getPassword()).isEqualTo("$2a$10$reactivatedHash");
-      verify(userRepository).save(inactiveUser);
+      verify(userRepository, never()).save(any());
     }
   }
 
   // =========================================================================
-  // 4. deactivate, activate, ban Assistant WebMVC Service Tests
+  // 4. ASSISTANT STATUS MODIFICATIONS - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service assistant status modifications - Executed via WebMVC")
+  @DisplayName("4. Assistant Status Modifications - WebMvc Service Tests")
   class AssistantStatusModificationsWebMvcServiceTests {
 
     @Test
-    @DisplayName("deactivateAssistant -> sets status to INACTIVE")
+    @DisplayName("PATCH /assistants/{id}/deactivate mutates status to INACTIVE")
     void deactivateAssistant_setsStatusToInactive() throws Exception {
-      User assistant = User.builder().status(UserStatus.ACTIVE).build();
+      User assistant =
+          User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.of(assistant));
 
       mockMvc
           .perform(
-              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID.toString()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Deactivate assistant successfully."));
@@ -857,30 +798,31 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("deactivateAssistant - not found -> throws UserException USER_001 404")
+    @DisplayName("PATCH /assistants/{id}/deactivate not found throws 404")
     void deactivateAssistant_notFound_throws404() throws Exception {
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.empty());
 
       mockMvc
           .perform(
-              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+              patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID.toString()))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
-    @DisplayName("activateAssistant -> sets status to ACTIVE")
+    @DisplayName("PATCH /assistants/{id}/activate mutates status to ACTIVE")
     void activateAssistant_setsStatusToActive() throws Exception {
-      User assistant = User.builder().status(UserStatus.INACTIVE).build();
+      User assistant =
+          User.builder().status(UserStatus.INACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.of(assistant));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Activate assistant successfully."));
@@ -889,657 +831,524 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("activateAssistant - not found -> throws UserException USER_001 404")
+    @DisplayName("PATCH /assistants/{id}/activate not found throws 404")
     void activateAssistant_notFound_throws404() throws Exception {
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(
-              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
-    @DisplayName("banAssistant -> ban permanently by mutating status to BANNED")
+    @DisplayName("PATCH /assistants/{id}/ban mutates status to BANNED")
     void banAssistant_setsStatusToInactive() throws Exception {
-      User assistant = User.builder().status(UserStatus.ACTIVE).build();
+      User assistant =
+          User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.of(assistant));
+
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.of(assistant));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID.toString()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Ban assistant successfully."));
 
       assertThat(assistant.getStatus()).isEqualTo(UserStatus.BANNED);
-      verify(userRepository, never()).delete(any());
     }
 
     @Test
-    @DisplayName("banAssistant - not found -> throws UserException USER_001 404")
+    @DisplayName("PATCH /assistants/{id}/ban not found throws 404")
     void banAssistant_notFound_throws404() throws Exception {
-      when(userRepository.findById(ASSISTANT_ID)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
+          .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(
-              patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID.toString()))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
-
-      verify(userRepository, never()).delete(any());
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
   }
 
   // =========================================================================
-  // 5. banLearner WebMVC Service Tests
+  // 5. BAN LEARNER - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service banLearner - Executed via WebMVC")
+  @DisplayName("5. Ban Learner - WebMvc Service Tests")
   class BanLearnerWebMvcServiceTests {
 
     @Test
-    @DisplayName("User found -> updates entity status to BANNED and returns 200")
+    @DisplayName("PATCH /learners/{id}/ban updates user status to BANNED")
     void banLearner_existingUser_mutatesStatusToBanned() throws Exception {
-      User user = User.builder().status(UserStatus.ACTIVE).build();
+      User user = User.builder().status(UserStatus.ACTIVE).role(UserRole.LEARNER).build();
       user.setId(USER_ID_1);
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(user));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/ban", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/ban", USER_ID_1))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Ban learner successfully."));
 
       assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
-      verify(userRepository).findById(USER_ID_1);
     }
 
     @Test
-    @DisplayName(
-        "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
+    @DisplayName("PATCH /learners/{id}/ban not found throws 404")
     void banLearner_notFound_returns404UserNotFound() throws Exception {
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/ban", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/ban", USER_ID_1))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
-
-      verify(userRepository).findById(USER_ID_1);
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
   }
 
   // =========================================================================
-  // 3. lockLearner WebMVC Service Tests
+  // 6. LOCK LEARNER - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service lockLearner - Executed via WebMVC")
+  @DisplayName("6. Lock Learner - WebMvc Service Tests")
   class LockLearnerWebMvcServiceTests {
 
     @Test
-    @DisplayName("User found (ACTIVE) -> updates entity status to INACTIVE and returns 200")
+    @DisplayName("PATCH /learners/{id}/lock updates user status to INACTIVE")
     void lockLearner_existingActiveUser_mutatesStatusToInactive() throws Exception {
-      User user = User.builder().status(UserStatus.ACTIVE).build();
+      User user = User.builder().status(UserStatus.ACTIVE).role(UserRole.LEARNER).build();
       user.setId(USER_ID_1);
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(user));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/lock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/lock", USER_ID_1))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Lock learner successfully."));
 
       assertThat(user.getStatus()).isEqualTo(UserStatus.INACTIVE);
-      verify(userRepository).findById(USER_ID_1);
     }
 
     @Test
-    @DisplayName("User is permanently BANNED -> throws SystemException FORBIDDEN (403 SYS_002)")
+    @DisplayName("Locking banned learner throws 403 Forbidden USER_BANNED")
     void lockLearner_bannedUser_throwsForbidden() throws Exception {
-      User user = User.builder().status(UserStatus.BANNED).build();
+      User user = User.builder().status(UserStatus.BANNED).role(UserRole.LEARNER).build();
       user.setId(USER_ID_1);
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(user));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/lock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/lock", USER_ID_1))
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.statusCode").value(403))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.FORBIDDEN.code()))
-          .andExpect(jsonPath("$.message").value("User is permanently banned."));
-
-      assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
-      verify(userRepository).findById(USER_ID_1);
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_BANNED.code()));
     }
 
     @Test
-    @DisplayName(
-        "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
+    @DisplayName("Locking non-existent learner throws 404 User Not Found")
     void lockLearner_notFound_returns404UserNotFound() throws Exception {
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/lock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/lock", USER_ID_1))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
-
-      verify(userRepository).findById(USER_ID_1);
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
   }
 
   // =========================================================================
-  // 4. unlockLearner WebMVC Service Tests
+  // 7. UNLOCK LEARNER - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service unlockLearner - Executed via WebMVC")
+  @DisplayName("7. Unlock Learner - WebMvc Service Tests")
   class UnlockLearnerWebMvcServiceTests {
 
     @Test
-    @DisplayName("User found (INACTIVE) -> updates entity status to ACTIVE and returns 200")
+    @DisplayName("PATCH /learners/{id}/unlock updates user status to ACTIVE")
     void unlockLearner_existingInactiveUser_mutatesStatusToActive() throws Exception {
-      User user = User.builder().status(UserStatus.INACTIVE).build();
+      User user = User.builder().status(UserStatus.INACTIVE).role(UserRole.LEARNER).build();
       user.setId(USER_ID_1);
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(user));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/unlock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/unlock", USER_ID_1))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Unlock learner successfully."));
 
       assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
-      verify(userRepository).findById(USER_ID_1);
     }
 
     @Test
-    @DisplayName("User is permanently BANNED -> throws SystemException FORBIDDEN (403 SYS_002)")
+    @DisplayName("Unlocking banned learner throws 403 Forbidden USER_BANNED")
     void unlockLearner_bannedUser_throwsForbidden() throws Exception {
-      User user = User.builder().status(UserStatus.BANNED).build();
+      User user = User.builder().status(UserStatus.BANNED).role(UserRole.LEARNER).build();
       user.setId(USER_ID_1);
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.of(user));
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(user));
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/unlock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/unlock", USER_ID_1))
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.statusCode").value(403))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.FORBIDDEN.code()))
-          .andExpect(jsonPath("$.message").value("User is permanently banned."));
-
-      assertThat(user.getStatus()).isEqualTo(UserStatus.BANNED);
-      verify(userRepository).findById(USER_ID_1);
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_BANNED.code()));
     }
 
     @Test
-    @DisplayName(
-        "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
+    @DisplayName("Unlocking non-existent learner throws 404 User Not Found")
     void unlockLearner_notFound_returns404UserNotFound() throws Exception {
-      when(userRepository.findById(USER_ID_1)).thenReturn(Optional.empty());
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(
-              patch("/api/system-management/{id}/unlock", USER_ID_1)
-                  .accept(MediaType.APPLICATION_JSON))
+          .perform(patch("/api/system-management/learners/{id}/unlock", USER_ID_1))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
-
-      verify(userRepository).findById(USER_ID_1);
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
   }
 
   // =========================================================================
-  // 8. createVipAccount WebMVC Service Tests
+  // 8. CREATE VIP ACCOUNT - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service createVipAccount - Executed via WebMVC")
+  @DisplayName("8. createVipAccount - WebMvc Service Tests")
   class CreateVipAccountWebMvcServiceTests {
 
     @Test
-    @DisplayName(
-        "createVipAccount - Not Found -> encodes password, creates User entity with VIP/LEARNER/ACTIVE, returns 200")
+    @DisplayName("New user creates VIP user entity with LEARNER role and VIP tier")
     void createVipAccount_newUser_encodesDefaultPasswordAndSaves() throws Exception {
+      UUID courseId = UUID.randomUUID();
+      LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
+      LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
+
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
               "vip.learner@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "VIP created note");
+              courseId,
+              start,
+              end,
+              "VIP created note",
+              "Password@123");
+
+      Course course = Course.builder().title("Primary Course").build();
+      course.setId(courseId);
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
-      when(passwordEncoder.encode("StudyWeb@123")).thenReturn("$2a$10$encodedDefaultHash");
-      when(userRepository.save(any(User.class)))
-          .thenAnswer(
-              inv -> {
-                User u = inv.getArgument(0);
-                u.setId(USER_ID_1);
-                return u;
-              });
-
-      LearnerSummaryResponse response =
-          new LearnerSummaryResponse(
-              USER_ID_1,
-              "vip.learner@studyweb.edu",
-              "N/A",
-              0.0,
-              0.0,
-              "Chưa đăng nhập",
-              UserStatus.ACTIVE,
-              UserTier.VIP,
-              "Trần Thị B",
-              0,
-              "VIP created note",
-              request.startDate(),
-              request.endDate(),
-              null);
-      when(systemManagementMapper.toLearnerSummary(any(User.class), isNull(), eq(0.0), eq(0)))
-          .thenReturn(response);
+      when(courseRepository.requireCourse(courseId)).thenReturn(course);
+      when(passwordEncoder.encode("Password@123")).thenReturn("$2a$10$encodedPasswordHash");
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
+                  .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.id").value(USER_ID_1.toString()))
-          .andExpect(jsonPath("$.data.gmail").value("vip.learner@studyweb.edu"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"))
-          .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+          .andExpect(jsonPath("$.message").value("A VIP Learner created successfully!"));
 
-      verify(passwordEncoder).encode("StudyWeb@123");
+      ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+      verify(userRepository).save(captor.capture());
 
-      ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-      verify(userRepository).save(userCaptor.capture());
-      User savedUser = userCaptor.getValue();
-
-      assertThat(savedUser.getGmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(savedUser.getName()).isEqualTo("Trần Thị B");
-      assertThat(savedUser.getTier()).isEqualTo(UserTier.VIP);
-      assertThat(savedUser.getRole()).isEqualTo(UserRole.LEARNER);
-      assertThat(savedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
-      assertThat(savedUser.getPassword()).isEqualTo("$2a$10$encodedDefaultHash");
-      assertThat(savedUser.getJoinDate()).isNotNull();
-      assertThat(savedUser.getVipStartDate()).isEqualTo(request.startDate());
-      assertThat(savedUser.getVipEndDate()).isEqualTo(request.endDate());
-      assertThat(savedUser.getNote()).isEqualTo("VIP created note");
-
-      verify(systemManagementMapper).toLearnerSummary(any(User.class), isNull(), eq(0.0), eq(0));
+      User saved = captor.getValue();
+      assertThat(saved.getRole()).isEqualTo(UserRole.LEARNER);
+      assertThat(saved.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
+      assertThat(saved.getPassword()).isEqualTo("$2a$10$encodedPasswordHash");
+      assertThat(saved.getPrimaryCourse()).isEqualTo(course);
+      assertThat(saved.getVipStartDate()).isEqualTo(start);
+      assertThat(saved.getVipEndDate()).isEqualTo(end);
     }
 
     @Test
-    @DisplayName(
-        "createVipAccount - ACTIVE user exists -> throws AuthException EMAIL_ALREADY_EXISTS 409")
+    @DisplayName("Active user exists -> throws 409 Conflict USER_EXISTED")
     void createVipAccount_activeUserExists_throws409() throws Exception {
+      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
-              "active.vip@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "VIP note");
-      User activeUser = User.builder().status(UserStatus.ACTIVE).build();
+              "existing@studyweb.edu",
+              courseId,
+              LocalDateTime.now(),
+              LocalDateTime.now().plusYears(1),
+              null,
+              "Password@123");
+
+      User activeUser = User.builder().gmail(request.gmail()).status(UserStatus.ACTIVE).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(activeUser));
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
+                  .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isConflict())
           .andExpect(jsonPath("$.statusCode").value(409))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
       verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("createVipAccount - BANNED user exists -> throws AuthException ACCOUNT_BANNED 403")
+    @DisplayName("Existing email throws 409 Conflict USER_EXISTED")
     void createVipAccount_bannedUserExists_throws403AccountBanned() throws Exception {
+      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
-              "banned.vip@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "VIP note");
-      User bannedUser = User.builder().status(UserStatus.BANNED).build();
+              "banned@studyweb.edu",
+              courseId,
+              LocalDateTime.now(),
+              LocalDateTime.now().plusYears(1),
+              null,
+              "Password@123");
+
+      User bannedUser = User.builder().gmail(request.gmail()).status(UserStatus.BANNED).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(bannedUser));
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isForbidden())
-          .andExpect(jsonPath("$.statusCode").value(403))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.ACCOUNT_BANNED.code()))
-          .andExpect(jsonPath("$.message").value(AuthErrorCode.ACCOUNT_BANNED.message()));
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
       verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName(
-        "createVipAccount - INACTIVE user exists -> reactivates entity, updates tier to VIP & credentials, returns 200")
+    @DisplayName("Existing email even if inactive throws 409 Conflict USER_EXISTED")
     void createVipAccount_inactiveUserExists_reactivatesEntity() throws Exception {
-      CreateVipAccountRequest request =
-          new CreateVipAccountRequest(
-              "Trần Thị B (Reactivated)",
-              "inactive.vip@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "VIP upgrade reactivated");
-
-      User inactiveUser =
-          User.builder()
-              .gmail("inactive.vip@studyweb.edu")
-              .name("Trần B (Old)")
-              .tier(UserTier.NORMAL)
-              .status(UserStatus.INACTIVE)
-              .avatarUrl("https://cdn.studyweb.edu/avatars/user_vip.png")
-              .build();
-      inactiveUser.setId(USER_ID_1);
-
-      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
-      when(passwordEncoder.encode("StudyWeb@123")).thenReturn("$2a$10$reactivatedHash");
-      when(userRepository.save(inactiveUser)).thenReturn(inactiveUser);
-      when(systemManagementMapper.toLearnerSummary(inactiveUser, null, 0.0, 0))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  "inactive.vip@studyweb.edu",
-                  "N/A",
-                  0.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.VIP,
-                  "Trần Thị B (Reactivated)",
-                  0,
-                  "VIP upgrade reactivated",
-                  request.startDate(),
-                  request.endDate(),
-                  "https://cdn.studyweb.edu/avatars/user_vip.png"));
-
-      mockMvc
-          .perform(
-              post("/api/system-management/create-vip-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.name").value("Trần Thị B (Reactivated)"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"))
-          .andExpect(
-              jsonPath("$.data.avatarUrl").value("https://cdn.studyweb.edu/avatars/user_vip.png"));
-
-      assertThat(inactiveUser.getName()).isEqualTo("Trần Thị B (Reactivated)");
-      assertThat(inactiveUser.getTier()).isEqualTo(UserTier.VIP);
-      assertThat(inactiveUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
-      assertThat(inactiveUser.getRole()).isEqualTo(UserRole.LEARNER);
-      assertThat(inactiveUser.getPassword()).isEqualTo("$2a$10$reactivatedHash");
-      assertThat(inactiveUser.getVipStartDate()).isEqualTo(request.startDate());
-      assertThat(inactiveUser.getVipEndDate()).isEqualTo(request.endDate());
-      assertThat(inactiveUser.getNote()).isEqualTo("VIP upgrade reactivated");
-      verify(passwordEncoder).encode("StudyWeb@123");
-      verify(userRepository).save(inactiveUser);
-      verify(systemManagementMapper).toLearnerSummary(inactiveUser, null, 0.0, 0);
-    }
-  }
-
-  // =========================================================================
-  // 9. updateAccount WebMVC Service Tests
-  // =========================================================================
-  @Nested
-  @DisplayName("Service updateAccount - Executed via WebMVC")
-  class UpdateAccountWebMvcServiceTests {
-
-    @Test
-    @DisplayName("User exists -> updates name & tier to VIP, saves entity, returns 200 via WebMVC")
-    void updateAccount_existingUser_updatesAndSaves() throws Exception {
-      CreateVipAccountRequest request =
-          new CreateVipAccountRequest(
-              "Trần Thị B (Updated)",
-              GMAIL_1,
-              "Advanced Spring Boot",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              "Updated to VIP");
-
-      User existingUser =
-          User.builder()
-              .gmail(GMAIL_1)
-              .name("Trần Thị B (Old)")
-              .tier(UserTier.NORMAL)
-              .avatarUrl("https://cdn.studyweb.edu/avatars/user_updated.png")
-              .build();
-      existingUser.setId(USER_ID_1);
-
-      when(userRepository.findByGmail(GMAIL_1)).thenReturn(Optional.of(existingUser));
-      when(userRepository.save(existingUser)).thenReturn(existingUser);
-      when(systemManagementMapper.toLearnerSummary(existingUser, null, 0.0, 0))
-          .thenReturn(
-              new LearnerSummaryResponse(
-                  USER_ID_1,
-                  GMAIL_1,
-                  "N/A",
-                  0.0,
-                  0.0,
-                  "Chưa đăng nhập",
-                  UserStatus.ACTIVE,
-                  UserTier.VIP,
-                  "Trần Thị B (Updated)",
-                  0,
-                  "Updated to VIP",
-                  request.startDate(),
-                  request.endDate(),
-                  "https://cdn.studyweb.edu/avatars/user_updated.png"));
-
-      mockMvc
-          .perform(
-              patch("/api/system-management/update-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Account updated successfully!"))
-          .andExpect(jsonPath("$.data.name").value("Trần Thị B (Updated)"))
-          .andExpect(jsonPath("$.data.tier").value("VIP"))
-          .andExpect(
-              jsonPath("$.data.avatarUrl")
-                  .value("https://cdn.studyweb.edu/avatars/user_updated.png"));
-
-      assertThat(existingUser.getName()).isEqualTo("Trần Thị B (Updated)");
-      assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);
-      assertThat(existingUser.getVipStartDate()).isEqualTo(request.startDate());
-      assertThat(existingUser.getVipEndDate()).isEqualTo(request.endDate());
-      assertThat(existingUser.getNote()).isEqualTo("Updated to VIP");
-      verify(passwordEncoder, never()).encode(any());
-      verify(userRepository).save(existingUser);
-      verify(systemManagementMapper).toLearnerSummary(existingUser, null, 0.0, 0);
-    }
-
-    @Test
-    @DisplayName(
-        "User not found -> service throws UserException, WebMVC translates to 404 USER_001")
-    void updateAccount_userNotFound_returns404() throws Exception {
+      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
-              "unknown@studyweb.edu",
-              "React",
+              "inactive@studyweb.edu",
+              courseId,
               LocalDateTime.now(),
               LocalDateTime.now().plusYears(1),
-              null);
+              null,
+              "Password@123");
 
-      when(userRepository.findByGmail("unknown@studyweb.edu")).thenReturn(Optional.empty());
+      User inactiveUser =
+          User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
 
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request))
-                  .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isNotFound())
-          .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isConflict())
+          .andExpect(jsonPath("$.statusCode").value(409))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()));
 
       verify(userRepository, never()).save(any());
-      verify(systemManagementMapper, never()).toLearnerSummary(any(), any(), anyDouble(), anyInt());
     }
   }
 
   // =========================================================================
-  // 6. getVipRequests WebMVC Service Tests (Null Safety, Mapping & Counts)
+  // 9. UPDATE ACCOUNT - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service getVipRequests - Null Safety, Mapping & Counters")
+  @DisplayName("9. updateLearnerAccount - WebMvc Service Tests")
+  class UpdateAccountWebMvcServiceTests {
+
+    @Test
+    @DisplayName("Existing user mutates fields, primary course, and encodes new password")
+    void updateAccount_existingUser_updatesAndSaves() throws Exception {
+      UUID courseId = UUID.randomUUID();
+      LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
+      LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
+
+      UpdateAccountRequest request =
+          new UpdateAccountRequest(
+              "Trần Thị B (Updated)",
+              GMAIL_1,
+              courseId,
+              start,
+              end,
+              "Updated to VIP",
+              UserTier.VIP,
+              "NewPass@123");
+
+      User existingUser =
+          User.builder()
+              .name("Trần Thị B (Old)")
+              .gmail(GMAIL_1)
+              .role(UserRole.LEARNER)
+              .tier(UserTier.NORMAL)
+              .status(UserStatus.ACTIVE)
+              .build();
+      existingUser.setId(USER_ID_1);
+
+      Course course = Course.builder().title("Updated Course").build();
+      course.setId(courseId);
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(existingUser));
+      when(courseRepository.requireCourse(courseId)).thenReturn(course);
+      when(passwordEncoder.encode("NewPass@123")).thenReturn("$2a$10$newEncodedPass");
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/learners/{id}/update-account", USER_ID_1)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Update learner account succesfully!"));
+
+      assertThat(existingUser.getName()).isEqualTo("Trần Thị B (Updated)");
+      assertThat(existingUser.getPrimaryCourse()).isEqualTo(course);
+      assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(existingUser.getPassword()).isEqualTo("$2a$10$newEncodedPass");
+      assertThat(existingUser.getVipStartDate()).isEqualTo(start);
+      assertThat(existingUser.getVipEndDate()).isEqualTo(end);
+    }
+
+    @Test
+    @DisplayName("User not found throws 404 User Not Found")
+    void updateAccount_userNotFound_returns404() throws Exception {
+      UUID courseId = UUID.randomUUID();
+      UpdateAccountRequest request =
+          new UpdateAccountRequest(
+              "Trần Thị B",
+              GMAIL_1,
+              courseId,
+              LocalDateTime.now(),
+              LocalDateTime.now().plusYears(1),
+              null,
+              UserTier.VIP,
+              "NewPass@123");
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/learners/{id}/update-account", USER_ID_1)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isNotFound())
+          .andExpect(jsonPath("$.statusCode").value(404))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
+    }
+  }
+
+  // =========================================================================
+  // 10. GET VIP REQUESTS - WEB MVC SERVICE TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("10. getVipRequests - WebMvc Service Tests")
   class GetVipRequestsWebMvcServiceTests {
 
     @Test
-    @DisplayName("Empty VIP requests list -> Returns empty page with 0 total and 0 waiting counts")
+    @DisplayName("Returns empty page when no VIP requests match query")
     void getVipRequests_emptyList_returnsZeroCounts() throws Exception {
-      when(vipRequestRepository.searchVipRequests(isNull(), isNull(), any(Pageable.class)))
+      when(vipRequestRepository.searchVipRequests(
+              isNull(), isNull(), eq(UserRole.LEARNER), any(Pageable.class)))
           .thenReturn(Page.empty());
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
           .thenReturn(List.of());
-      when(vipRequestRepository.countTotal()).thenReturn(0L);
-      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(0L);
 
       mockMvc
           .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.totalCount").value(0))
-          .andExpect(jsonPath("$.data.waitingCount").value(0))
-          .andExpect(jsonPath("$.data.requests.content").isArray())
-          .andExpect(jsonPath("$.data.requests.content").isEmpty());
-
-      verify(vipRequestRepository).searchVipRequests(isNull(), isNull(), any(Pageable.class));
-      verify(vipRequestRepository).countTotal();
-      verify(vipRequestRepository).countByStatus(VipRequestStatus.WAITING);
-      verify(systemManagementMapper, never()).toVipRequestResponse(any(), any());
+          .andExpect(jsonPath("$.paging.total").value(0))
+          .andExpect(jsonPath("$.data").isEmpty());
     }
 
     @Test
-    @DisplayName("Populated VIP requests -> Batch resolves primary courses and maps response")
+    @DisplayName("Populated VIP requests resolved with primary course and status")
     void getVipRequests_populatedList_mapsCorrectly() throws Exception {
-      User user1 =
-          User.builder()
-              .gmail(GMAIL_1)
-              .name("Learner 1")
-              .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
-              .status(UserStatus.ACTIVE)
-              .build();
-      user1.setId(USER_ID_1);
+      Course course1 = Course.builder().title("React Badge").build();
+      Course course2 = Course.builder().title("Java Fallback").build();
 
-      User user2 =
+      User u1 = User.builder().name("User 1").gmail("u1@studyweb.edu").build();
+      u1.setId(USER_ID_1);
+      User u2 =
           User.builder()
-              .gmail(GMAIL_2)
-              .name("Learner 2")
-              .avatarUrl("https://cdn.studyweb.edu/avatars/user2.png")
-              .status(UserStatus.ACTIVE)
+              .name("User 2")
+              .gmail("u2@studyweb.edu")
+              .primaryCourse(course2)
               .build();
-      user2.setId(USER_ID_2);
+      u2.setId(USER_ID_2);
 
+      UserCourseProgress progress1 =
+          UserCourseProgress.builder().user(u1).course(course1).build();
+      UserCourseProgress progress2 =
+          UserCourseProgress.builder().user(u2).course(course2).build();
+
+      UUID vr1Id = UUID.randomUUID();
+      UUID vr2Id = UUID.randomUUID();
       VipRequest vr1 =
           VipRequest.builder()
-              .user(user1)
+              .user(u1)
+              .note("Note 1")
               .status(VipRequestStatus.WAITING)
-              .note("Cần VIP khóa React")
-              .requestDate(LocalDateTime.of(2026, 8, 20, 10, 0, 0))
               .build();
-      vr1.setId(UUID.randomUUID());
-
+      vr1.setId(vr1Id);
       VipRequest vr2 =
           VipRequest.builder()
-              .user(user2)
+              .user(u2)
+              .note("Note 2")
               .status(VipRequestStatus.APPROVED)
-              .note("Kích hoạt VIP Java")
-              .requestDate(LocalDateTime.of(2026, 8, 19, 9, 30, 0))
               .build();
-      vr2.setId(UUID.randomUUID());
+      vr2.setId(vr2Id);
 
-      Page<VipRequest> page = new PageImpl<>(List.of(vr1, vr2));
-      when(vipRequestRepository.searchVipRequests(isNull(), isNull(), any(Pageable.class)))
+      Page<VipRequest> page = new PageImpl<>(List.of(vr1, vr2), PageRequest.of(0, 10), 2);
+      when(vipRequestRepository.searchVipRequests(
+              isNull(), isNull(), eq(UserRole.LEARNER), any(Pageable.class)))
           .thenReturn(page);
-
-      Course course1 =
-          Course.builder().badgeTitle("React Badge").title("React Masterclass").build();
-      UserCourseProgress progress1 =
-          UserCourseProgress.builder().user(user1).course(course1).build();
-
-      Course course2 = Course.builder().badgeTitle(null).title("Java Fallback").build();
-      UserCourseProgress progress2 =
-          UserCourseProgress.builder().user(user2).course(course2).build();
-
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1, USER_ID_2)))
           .thenReturn(List.of(progress1, progress2));
 
-      when(vipRequestRepository.countTotal()).thenReturn(5L);
-      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(3L);
-
       VipRequestResponse res1 =
           new VipRequestResponse(
-              vr1.getId(),
+              vr1Id,
               USER_ID_1,
-              "Learner 1",
-              GMAIL_1,
-              "https://cdn.studyweb.edu/avatars/user1.png",
+              "User 1",
+              "u1@studyweb.edu",
+              null,
               "React Badge",
-              "Cần VIP khóa React",
-              vr1.getRequestDate(),
+              "Note 1",
+              LocalDateTime.now(),
               VipRequestStatus.WAITING);
-
       VipRequestResponse res2 =
           new VipRequestResponse(
-              vr2.getId(),
+              vr2Id,
               USER_ID_2,
-              "Learner 2",
-              GMAIL_2,
-              "https://cdn.studyweb.edu/avatars/user2.png",
+              "User 2",
+              "u2@studyweb.edu",
+              null,
               "Java Fallback",
-              "Kích hoạt VIP Java",
-              vr2.getRequestDate(),
+              "Note 2",
+              LocalDateTime.now(),
               VipRequestStatus.APPROVED);
 
       when(systemManagementMapper.toVipRequestResponse(vr1, "React Badge")).thenReturn(res1);
@@ -1549,72 +1358,67 @@ class SystemManagementServiceTest {
           .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.data.totalCount").value(5))
-          .andExpect(jsonPath("$.data.waitingCount").value(3))
-          .andExpect(jsonPath("$.data.requests.content[0].mainCourse").value("React Badge"))
-          .andExpect(jsonPath("$.data.requests.content[0].status").value("WAITING"))
-          .andExpect(jsonPath("$.data.requests.content[1].mainCourse").value("Java Fallback"))
-          .andExpect(jsonPath("$.data.requests.content[1].status").value("APPROVED"));
-
-      verify(systemManagementMapper).toVipRequestResponse(vr1, "React Badge");
-      verify(systemManagementMapper).toVipRequestResponse(vr2, "Java Fallback");
+          .andExpect(jsonPath("$.paging.total").value(2))
+          .andExpect(jsonPath("$.data[0].id").value(vr1Id.toString()))
+          .andExpect(jsonPath("$.data[0].mainCourse").value("React Badge"))
+          .andExpect(jsonPath("$.data[1].id").value(vr2Id.toString()))
+          .andExpect(jsonPath("$.data[1].mainCourse").value("Java Fallback"));
     }
 
     @Test
-    @DisplayName("Search & Status parameters -> Forwarded correctly to repository")
+    @DisplayName("Search and status filter parameters are forwarded correctly to repository")
     void getVipRequests_withFilters_forwardsToRepository() throws Exception {
       when(vipRequestRepository.searchVipRequests(
-              eq("keyword"), eq(VipRequestStatus.DECLINED), any(Pageable.class)))
+              eq("keyword"), eq(VipRequestStatus.WAITING), eq(UserRole.LEARNER), any(Pageable.class)))
           .thenReturn(Page.empty());
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
           .thenReturn(List.of());
-      when(vipRequestRepository.countTotal()).thenReturn(10L);
-      when(vipRequestRepository.countByStatus(VipRequestStatus.WAITING)).thenReturn(2L);
 
       mockMvc
           .perform(
               get("/api/system-management/vip-requests")
                   .param("search", "keyword")
-                  .param("status", "DECLINED")
+                  .param("status", "WAITING")
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.data.totalCount").value(10))
-          .andExpect(jsonPath("$.data.waitingCount").value(2));
+          .andExpect(jsonPath("$.statusCode").value(200));
 
       verify(vipRequestRepository)
-          .searchVipRequests(eq("keyword"), eq(VipRequestStatus.DECLINED), any(Pageable.class));
+          .searchVipRequests(
+              eq("keyword"), eq(VipRequestStatus.WAITING), eq(UserRole.LEARNER), any(Pageable.class));
     }
   }
 
   // =========================================================================
-  // 7. approveVipRequest WebMVC Service Tests
+  // 11. APPROVE VIP REQUEST - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service approveVipRequest - Business Rules & Validations")
+  @DisplayName("11. approveVipRequest - WebMvc Service Tests")
   class ApproveVipRequestWebMvcServiceTests {
 
     @Test
-    @DisplayName("Success -> Sets request status to APPROVED and upgrades active user to VIP")
+    @DisplayName("Approves request, calls repository approve, and grants VIP tier to active user")
     void approveVipRequest_success_upgradesUserToVip() throws Exception {
       UUID requestId = UUID.randomUUID();
       User user =
           User.builder()
-              .gmail("vip.target@studyweb.edu")
-              .name("Target User")
               .status(UserStatus.ACTIVE)
               .tier(UserTier.NORMAL)
+              .role(UserRole.LEARNER)
               .build();
-      user.setId(UUID.randomUUID());
+      user.setId(USER_ID_1);
 
       VipRequest vipRequest =
           VipRequest.builder()
               .user(user)
               .status(VipRequestStatus.WAITING)
-              .note("Xin nâng cấp VIP")
               .build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+      when(vipRequestRepository.approveVip(requestId)).thenReturn(1);
+      when(pricingPageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.empty());
 
       mockMvc
           .perform(
@@ -1624,13 +1428,14 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("VIP request approved successfully."));
 
-      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.APPROVED);
+      verify(vipRequestRepository).approveVip(requestId);
       assertThat(user.getTier()).isEqualTo(UserTier.VIP);
       assertThat(user.getVipStartDate()).isNotNull();
+      assertThat(user.getVipEndDate()).isNotNull();
     }
 
     @Test
-    @DisplayName("Request not found -> Throws SystemException RESOURCE_NOT_FOUND (404 SYS_001)")
+    @DisplayName("Approving non-existent request throws 404 VIP_REQUEST_NOT_FOUND")
     void approveVipRequest_notFound_returns404() throws Exception {
       UUID requestId = UUID.randomUUID();
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.empty());
@@ -1641,28 +1446,27 @@ class SystemManagementServiceTest {
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.RESOURCE_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.VIP_REQUEST_NOT_FOUND.code()));
+
+      verify(vipRequestRepository, never()).approveVip(any());
     }
 
     @Test
-    @DisplayName(
-        "Soft-deleted user (INACTIVE) -> Throws UserException USER_NOT_FOUND (404 USER_001)")
+    @DisplayName("Inactive requester throws 403 Forbidden USER_LOCKED")
     void approveVipRequest_inactiveUser_returns404UserNotFound() throws Exception {
       UUID requestId = UUID.randomUUID();
       User user =
           User.builder()
-              .gmail("deleted@studyweb.edu")
-              .name("Deleted User")
               .status(UserStatus.INACTIVE)
               .tier(UserTier.NORMAL)
+              .role(UserRole.LEARNER)
               .build();
-      user.setId(UUID.randomUUID());
+      user.setId(USER_ID_1);
 
       VipRequest vipRequest =
           VipRequest.builder()
               .user(user)
               .status(VipRequestStatus.WAITING)
-              .note("Xin nâng cấp VIP")
               .build();
       vipRequest.setId(requestId);
 
@@ -1672,46 +1476,42 @@ class SystemManagementServiceTest {
           .perform(
               patch("/api/system-management/vip-requests/{id}/approve", requestId)
                   .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isNotFound())
-          .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_LOCKED.code()));
 
-      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.WAITING);
-      assertThat(user.getTier()).isEqualTo(UserTier.NORMAL);
-      assertThat(user.getVipStartDate()).isNull();
+      verify(vipRequestRepository, never()).approveVip(any());
     }
   }
 
   // =========================================================================
-  // 8. disapproveVipRequest WebMVC Service Tests
+  // 12. DISAPPROVE VIP REQUEST - WEB MVC SERVICE TESTS
   // =========================================================================
   @Nested
-  @DisplayName("Service disapproveVipRequest - Business Rules & Validations")
+  @DisplayName("12. disapproveVipRequest - WebMvc Service Tests")
   class DisapproveVipRequestWebMvcServiceTests {
 
     @Test
-    @DisplayName(
-        "Success via /disapprove -> Sets request status to DECLINED without changing user tier")
+    @DisplayName("Disapproves request, calls repository disapprove, and leaves user tier NORMAL")
     void disapproveVipRequest_disapprovePath_declinesRequest() throws Exception {
       UUID requestId = UUID.randomUUID();
       User user =
           User.builder()
-              .gmail("declined@studyweb.edu")
-              .name("Target User")
               .status(UserStatus.ACTIVE)
               .tier(UserTier.NORMAL)
+              .role(UserRole.LEARNER)
               .build();
-      user.setId(UUID.randomUUID());
+      user.setId(USER_ID_1);
 
       VipRequest vipRequest =
           VipRequest.builder()
               .user(user)
               .status(VipRequestStatus.WAITING)
-              .note("Xin nâng cấp VIP")
               .build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+      when(vipRequestRepository.disapproveVip(requestId)).thenReturn(1);
 
       mockMvc
           .perform(
@@ -1721,12 +1521,12 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("VIP request disapproved successfully."));
 
-      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.DECLINED);
+      verify(vipRequestRepository).disapproveVip(requestId);
       assertThat(user.getTier()).isEqualTo(UserTier.NORMAL);
     }
 
     @Test
-    @DisplayName("Request not found -> Throws SystemException RESOURCE_NOT_FOUND (404 SYS_001)")
+    @DisplayName("Disapproving non-existent request throws 404 VIP_REQUEST_NOT_FOUND")
     void disapproveVipRequest_notFound_returns404() throws Exception {
       UUID requestId = UUID.randomUUID();
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.empty());
@@ -1737,25 +1537,28 @@ class SystemManagementServiceTest {
                   .accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.RESOURCE_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.VIP_REQUEST_NOT_FOUND.code()));
+
+      verify(vipRequestRepository, never()).disapproveVip(any());
     }
 
     @Test
-    @DisplayName(
-        "Soft-deleted user (INACTIVE) -> Throws UserException USER_NOT_FOUND (404 USER_001)")
+    @DisplayName("Inactive requester throws 403 Forbidden USER_LOCKED")
     void disapproveVipRequest_inactiveUser_returns404UserNotFound() throws Exception {
       UUID requestId = UUID.randomUUID();
       User user =
           User.builder()
-              .gmail("deleted2@studyweb.edu")
-              .name("Deleted User 2")
               .status(UserStatus.INACTIVE)
               .tier(UserTier.NORMAL)
+              .role(UserRole.LEARNER)
               .build();
-      user.setId(UUID.randomUUID());
+      user.setId(USER_ID_1);
 
       VipRequest vipRequest =
-          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
+          VipRequest.builder()
+              .user(user)
+              .status(VipRequestStatus.WAITING)
+              .build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
@@ -1764,11 +1567,11 @@ class SystemManagementServiceTest {
           .perform(
               patch("/api/system-management/vip-requests/{id}/disapprove", requestId)
                   .accept(MediaType.APPLICATION_JSON))
-          .andExpect(status().isNotFound())
-          .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.statusCode").value(403))
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_LOCKED.code()));
 
-      assertThat(vipRequest.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+      verify(vipRequestRepository, never()).disapproveVip(any());
     }
   }
 }

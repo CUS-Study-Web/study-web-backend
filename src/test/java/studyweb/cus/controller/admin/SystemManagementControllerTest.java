@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -42,27 +43,29 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import studyweb.cus.config.SecurityConfig;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
+import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
-import studyweb.cus.dto.response.admin.VipRequestListResponse;
+import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.GlobalExceptionHandler;
-import studyweb.cus.exception.auth.AuthErrorCode;
-import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.admin.AdminErrorCode;
+import studyweb.cus.exception.admin.AdminException;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
-import studyweb.cus.exception.user.UserErrorCode;
-import studyweb.cus.exception.user.UserException;
+import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.security.JwtAuthenticationEntryPoint;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.security.JwtUtils;
@@ -80,6 +83,7 @@ import studyweb.cus.service.admin.SystemManagementService;
   ResponseFactory.class,
   SystemManagementControllerTest.TestConfig.class
 })
+@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
 class SystemManagementControllerTest {
 
   @TestConfiguration
@@ -93,23 +97,37 @@ class SystemManagementControllerTest {
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private SystemManagementService systemManagementService;
+  @MockitoBean private UserRepository userRepository;
   @MockitoBean private JwtUtils jwtUtils;
 
   private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
   private static final UUID LEARNER_ID = UUID.fromString("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11");
   private static final String LEARNER_EMAIL = "learner@studyweb.edu";
-
+  private static final UUID COURSE_ID = UUID.fromString("b1ffca88-1234-4ef8-bb6d-6bb9bd380b22");
   private static final UUID ASSISTANT_ID = UUID.fromString("c2bbcc00-1111-2222-3333-444455556666");
 
   private CreateVipAccountRequest sampleVipRequest() {
     return new CreateVipAccountRequest(
         "Trần Thị B",
         "vip.learner@studyweb.edu",
-        "React & TypeScript Masterclass",
+        COURSE_ID,
         LocalDateTime.of(2026, 8, 18, 0, 0, 0),
         LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-        "Kích hoạt gói VIP 1 năm qua admin");
+        "Kích hoạt gói VIP 1 năm qua admin",
+        "Password@123");
+  }
+
+  private UpdateAccountRequest sampleUpdateAccountRequest() {
+    return new UpdateAccountRequest(
+        "Trần Thị B",
+        "vip.learner@studyweb.edu",
+        COURSE_ID,
+        LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+        LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+        "Ghi chú cập nhật",
+        UserTier.VIP,
+        "Password@123");
   }
 
   private LearnerSummaryResponse sampleLearnerResponse() {
@@ -132,7 +150,7 @@ class SystemManagementControllerTest {
 
   private CreateAssistantRequest sampleCreateAssistantRequest() {
     return new CreateAssistantRequest(
-        "Trần Minh Hiếu", "hieu.tm@cus.edu.vn", "0901 111 222", "CustomPass@123");
+        "Trần Minh Hiếu", "hieu.tm@cus.edu.vn", "0901111222", "CustomPass@123");
   }
 
   private AssistantSummaryResponse sampleAssistantSummaryResponse() {
@@ -140,7 +158,7 @@ class SystemManagementControllerTest {
         ASSISTANT_ID,
         "Trần Minh Hiếu",
         "hieu.tm@cus.edu.vn",
-        "0901 111 222",
+        "0901111222",
         UserStatus.ACTIVE,
         12,
         "Hôm nay, 10:42",
@@ -171,18 +189,8 @@ class SystemManagementControllerTest {
         status);
   }
 
-  private VipRequestListResponse sampleVipRequestListResponse() {
-    VipRequestResponse res1 =
-        sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
-    VipRequestResponse res2 =
-        sampleVipRequestResponse(VIP_REQUEST_ID_2, LEARNER_ID, VipRequestStatus.APPROVED);
-    Page<VipRequestResponse> page = new PageImpl<>(List.of(res1, res2), PageRequest.of(0, 10), 2);
-    return new VipRequestListResponse(page, 2L, 1L);
-  }
-
   // =========================================================================
   // 1. REQUEST BINDING & DESERIALIZATION
-
   // =========================================================================
   @Nested
   @DisplayName("1. Request Binding & Deserialization")
@@ -192,13 +200,13 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("GET /learners - Default pagination binds page=0, size=10")
     void getLearners_bindsDefaultPagination() throws Exception {
-      when(systemManagementService.listLearners(isNull(), any(Pageable.class)))
+      when(systemManagementService.listLearners(isNull(), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listLearners(isNull(), pageableCaptor.capture());
+      verify(systemManagementService).listLearners(isNull(), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(0);
@@ -208,7 +216,7 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("GET /learners - Custom query params bind page, size, search, and sort")
     void getLearners_bindsCustomQueryParams() throws Exception {
-      when(systemManagementService.listLearners(eq("nguyen"), any(Pageable.class)))
+      when(systemManagementService.listLearners(eq("nguyen"), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
       mockMvc
@@ -221,7 +229,7 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listLearners(eq("nguyen"), pageableCaptor.capture());
+      verify(systemManagementService).listLearners(eq("nguyen"), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(2);
@@ -233,13 +241,13 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("GET /assistants - Default pagination binds page=0, size=10")
     void getAssistants_bindsDefaultPagination() throws Exception {
-      when(systemManagementService.listAssistants(isNull(), any(Pageable.class)))
+      when(systemManagementService.listAssistants(isNull(), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
       mockMvc.perform(get("/api/system-management/assistants")).andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listAssistants(isNull(), pageableCaptor.capture());
+      verify(systemManagementService).listAssistants(isNull(), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(0);
@@ -249,7 +257,7 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("GET /assistants - Custom query params bind page, size, search, and sort")
     void getAssistants_bindsCustomQueryParams() throws Exception {
-      when(systemManagementService.listAssistants(eq("hieu"), any(Pageable.class)))
+      when(systemManagementService.listAssistants(eq("hieu"), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
       mockMvc
@@ -262,7 +270,7 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listAssistants(eq("hieu"), pageableCaptor.capture());
+      verify(systemManagementService).listAssistants(eq("hieu"), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(1);
@@ -274,34 +282,42 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("Assistant path endpoints - Path variable string binds to UUID")
     void assistantPathEndpoints_bindPathVariableToUuid() throws Exception {
-      doNothing().when(systemManagementService).deactivateAssistant(ASSISTANT_ID);
-      doNothing().when(systemManagementService).activateAssistant(ASSISTANT_ID);
-      doNothing().when(systemManagementService).banAssistant(ASSISTANT_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.INACTIVE, UserRole.ASSISTANT);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.ACTIVE, UserRole.ASSISTANT);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.BANNED, UserRole.ASSISTANT);
 
       mockMvc
           .perform(
               patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).deactivateAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.INACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(
               patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).activateAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.ACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).banAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.BANNED, UserRole.ASSISTANT);
     }
 
     @Test
     @DisplayName("POST /assistants - JSON body deserializes all fields")
     void createAssistant_deserializesAllFields() throws Exception {
       CreateAssistantRequest request = sampleCreateAssistantRequest();
-      when(systemManagementService.createAssistant(any(CreateAssistantRequest.class)))
-          .thenReturn(sampleAssistantSummaryResponse());
+      doNothing().when(systemManagementService).createAssistant(any(CreateAssistantRequest.class));
 
       mockMvc
           .perform(
@@ -317,36 +333,45 @@ class SystemManagementControllerTest {
       CreateAssistantRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Minh Hiếu");
       assertThat(bound.gmail()).isEqualTo("hieu.tm@cus.edu.vn");
-      assertThat(bound.phone()).isEqualTo("0901 111 222");
+      assertThat(bound.phone()).isEqualTo("0901111222");
       assertThat(bound.password()).isEqualTo("CustomPass@123");
     }
 
     @Test
     @DisplayName("PATCH /{id}/lock, /{id}/unlock, /{id}/ban - Path variable string binds to UUID")
     void pathEndpoints_bindPathVariableToUuid() throws Exception {
-      doNothing().when(systemManagementService).lockLearner(LEARNER_ID);
-      doNothing().when(systemManagementService).unlockLearner(LEARNER_ID);
-      doNothing().when(systemManagementService).banLearner(LEARNER_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.ACTIVE, UserRole.LEARNER);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.BANNED, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID.toString()))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).lockLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID.toString()))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).unlockLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.ACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID.toString()))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID.toString()))
           .andExpect(status().isOk());
-      verify(systemManagementService).banLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.BANNED, UserRole.LEARNER);
     }
 
     @Test
     @DisplayName(
-        "POST /create-vip-account - JSON body deserializes all fields including ISO LocalDateTime")
+        "POST /learners/create-vip-account - JSON body deserializes all fields including ISO LocalDateTime")
     void createVipAccount_deserializesAllFields() throws Exception {
       LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
       LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
@@ -355,17 +380,17 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Trần Thị B",
               "vip.learner@studyweb.edu",
-              "React & TypeScript",
+              COURSE_ID,
               start,
               end,
-              "Ghi chú kích hoạt");
+              "Ghi chú kích hoạt",
+              "Password@123");
 
-      when(systemManagementService.createVipAccount(any(CreateVipAccountRequest.class)))
-          .thenReturn(sampleLearnerResponse());
+      doNothing().when(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk());
@@ -377,33 +402,38 @@ class SystemManagementControllerTest {
       CreateVipAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(bound.mainCourse()).isEqualTo("React & TypeScript");
+      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
       assertThat(bound.startDate()).isEqualTo(start);
       assertThat(bound.endDate()).isEqualTo(end);
       assertThat(bound.note()).isEqualTo("Ghi chú kích hoạt");
+      assertThat(bound.password()).isEqualTo("Password@123");
     }
 
     @Test
-    @DisplayName("PATCH /update-account - JSON body deserializes all fields for update")
+    @DisplayName("PATCH /learners/{id}/update-account - JSON body deserializes all fields for update")
     void updateAccount_deserializesAllFields() throws Exception {
-      CreateVipAccountRequest request = sampleVipRequest();
-      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
-          .thenReturn(sampleLearnerResponse());
+      UpdateAccountRequest request = sampleUpdateAccountRequest();
+      doNothing()
+          .when(systemManagementService)
+          .updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
 
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk());
 
-      ArgumentCaptor<CreateVipAccountRequest> captor =
-          ArgumentCaptor.forClass(CreateVipAccountRequest.class);
-      verify(systemManagementService).updateAccount(captor.capture());
+      ArgumentCaptor<UpdateAccountRequest> captor =
+          ArgumentCaptor.forClass(UpdateAccountRequest.class);
+      verify(systemManagementService).updateLearnerAccount(eq(LEARNER_ID), captor.capture());
 
-      CreateVipAccountRequest bound = captor.getValue();
+      UpdateAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
+      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
+      assertThat(bound.tier()).isEqualTo(UserTier.VIP);
+      assertThat(bound.note()).isEqualTo("Ghi chú cập nhật");
     }
   }
 
@@ -421,7 +451,7 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects blank or empty name")
     void createAssistant_rejectsBlankName(String invalidName) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest(invalidName, "assistant@cus.edu.vn", "0901111222", null);
+          new CreateAssistantRequest(invalidName, "assistant@cus.edu.vn", "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -441,7 +471,7 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects null or empty email")
     void createAssistant_rejectsNullOrEmptyEmail(String invalidGmail) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", invalidGmail, "0901111222", null);
+          new CreateAssistantRequest("Trần Minh Hiếu", invalidGmail, "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -468,7 +498,7 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects invalid email format")
     void createAssistant_rejectsInvalidEmailFormat(String invalidEmail) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", invalidEmail, "0901111222", null);
+          new CreateAssistantRequest("Trần Minh Hiếu", invalidEmail, "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -486,77 +516,114 @@ class SystemManagementControllerTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "\t", "\n"})
-    @DisplayName("POST & PATCH createVipAccount - Rejects blank or empty name")
-    void createAndUpdate_rejectsBlankName(String invalidName) throws Exception {
-      CreateVipAccountRequest request =
-          new CreateVipAccountRequest(
-              invalidName,
-              "valid@studyweb.edu",
-              "React",
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              null);
+    @DisplayName("POST /assistants - Rejects blank password")
+    void createAssistant_rejectsBlankPassword(String invalidPassword) throws Exception {
+      CreateAssistantRequest request =
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu",
+              "assistant@cus.edu.vn",
+              "0901111222",
+              invalidPassword);
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/assistants")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.statusCode").value(400))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("Name is required"));
+          .andExpect(
+              jsonPath("$.message")
+                  .value(
+                      Matchers.anyOf(
+                          Matchers.is("Password is required"),
+                          Matchers.is("Password must contain 8 characters"))));
 
-      mockMvc
-          .perform(
-              patch("/api/system-management/update-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request)))
-          .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$.statusCode").value(400))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("Name is required"));
-
-      verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).createAssistant(any());
     }
 
     @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   ", "\t", "\n"})
-    @DisplayName("POST & PATCH createVipAccount - Rejects blank or empty gmail")
-    void createAndUpdate_rejectsBlankGmail(String invalidGmail) throws Exception {
+    @ValueSource(strings = {"short", "1234567"})
+    @DisplayName("POST & PATCH createVipAccount - Rejects invalid password size")
+    void createAndUpdate_rejectsInvalidPasswordSize(String invalidPassword) throws Exception {
+      CreateVipAccountRequest request =
+          new CreateVipAccountRequest(
+              "Nguyễn Văn A",
+              "valid@studyweb.edu",
+              COURSE_ID,
+              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              null,
+              invalidPassword);
+
+      mockMvc
+          .perform(
+              post("/api/system-management/learners/create-vip-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
+          .andExpect(jsonPath("$.message").value("Password must contain 8 characters"));
+
+      verify(systemManagementService, never()).createVipAccount(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = {
+          "invalid-email-string",
+          "user@",
+          "@domain.com",
+          "user@domain..com",
+          "plainaddress"
+        })
+    @DisplayName("POST & PATCH createVipAccount - Rejects invalid email format")
+    void createAndUpdate_rejectsInvalidEmail(String invalidGmail) throws Exception {
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               invalidGmail,
-              "React",
+              COURSE_ID,
               LocalDateTime.of(2026, 8, 18, 0, 0, 0),
               LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              null);
+              null,
+              "Password@123");
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.statusCode").value(400))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("Email is required"));
+          .andExpect(jsonPath("$.message").value("Invalid email format"));
+
+      UpdateAccountRequest updateReq =
+          new UpdateAccountRequest(
+              "Nguyễn Văn A",
+              invalidGmail,
+              COURSE_ID,
+              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              null,
+              UserTier.VIP,
+              "Password@123");
 
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request)))
+                  .content(objectMapper.writeValueAsString(updateReq)))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.statusCode").value(400))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("Email is required"));
+          .andExpect(jsonPath("$.message").value("Invalid email format"));
 
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).updateLearnerAccount(any(), any());
     }
 
     @Test
@@ -566,24 +633,15 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              "React",
+              COURSE_ID,
               null,
               LocalDateTime.of(2027, 8, 18, 23, 59, 59),
-              null);
+              null,
+              "Password@123");
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request)))
-          .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$.statusCode").value(400))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("Start date is required"));
-
-      mockMvc
-          .perform(
-              patch("/api/system-management/update-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
@@ -592,7 +650,6 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.message").value("Start date is required"));
 
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
     }
 
     @Test
@@ -602,24 +659,15 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              "React",
+              COURSE_ID,
               LocalDateTime.of(2026, 8, 18, 0, 0, 0),
               null,
-              null);
+              null,
+              "Password@123");
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(request)))
-          .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$.statusCode").value(400))
-          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.VALIDATION_ERROR.code()))
-          .andExpect(jsonPath("$.message").value("End date is required"));
-
-      mockMvc
-          .perform(
-              patch("/api/system-management/update-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isBadRequest())
@@ -628,7 +676,6 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.message").value("End date is required"));
 
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
     }
   }
 
@@ -641,13 +688,13 @@ class SystemManagementControllerTest {
   class DelegationAndServiceInteractionTests {
 
     @Test
-    @DisplayName("GET /learners - Delegates exact search term and returns wrapped SingleResponse")
+    @DisplayName("GET /learners - Delegates exact search term and returns wrapped PageResponse")
     void getLearners_delegatesAndWrapsResponse() throws Exception {
       LearnerSummaryResponse item = sampleLearnerResponse();
       PageImpl<LearnerSummaryResponse> serviceResult =
           new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
-      when(systemManagementService.listLearners(eq("target_learner"), any(Pageable.class)))
+      when(systemManagementService.listLearners(eq("target_learner"), isNull(), any(Pageable.class)))
           .thenReturn(serviceResult);
 
       mockMvc
@@ -658,54 +705,60 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Learners fetched successfully!"))
-          .andExpect(jsonPath("$.data.content[0].id").value(LEARNER_ID.toString()))
-          .andExpect(jsonPath("$.data.content[0].name").value("Nguyễn Văn A"))
-          .andExpect(jsonPath("$.data.content[0].tier").value("VIP"))
+          .andExpect(jsonPath("$.data[0].id").value(LEARNER_ID.toString()))
+          .andExpect(jsonPath("$.data[0].name").value("Nguyễn Văn A"))
+          .andExpect(jsonPath("$.data[0].tier").value("VIP"))
           .andExpect(
-              jsonPath("$.data.content[0].avatarUrl")
+              jsonPath("$.data[0].avatarUrl")
                   .value("https://cdn.studyweb.edu/avatars/nguyenvana.png"))
-          .andExpect(jsonPath("$.data.totalElements").value(1));
+          .andExpect(jsonPath("$.paging.total").value(1));
 
-      verify(systemManagementService).listLearners(eq("target_learner"), any(Pageable.class));
+      verify(systemManagementService).listLearners(eq("target_learner"), isNull(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("PATCH /{id}/lock - Delegates to lockLearner and wraps in SuccessResponse")
+    @DisplayName("PATCH /learners/{id}/lock - Delegates to switchUserStatus and wraps in SuccessResponse")
     void lockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
-      doNothing().when(systemManagementService).lockLearner(LEARNER_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Lock learner successfully."));
 
-      verify(systemManagementService).lockLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
     }
 
     @Test
-    @DisplayName("PATCH /{id}/unlock - Delegates to unlockLearner and wraps in SuccessResponse")
+    @DisplayName("PATCH /learners/{id}/unlock - Delegates to switchUserStatus and wraps in SuccessResponse")
     void unlockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
-      doNothing().when(systemManagementService).unlockLearner(LEARNER_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.ACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Unlock learner successfully."));
 
-      verify(systemManagementService).unlockLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.ACTIVE, UserRole.LEARNER);
     }
 
     @Test
     @DisplayName(
-        "GET /assistants - Delegates search and returns wrapped SingleResponse with activities")
+        "GET /assistants - Delegates search and returns wrapped PageResponse with activities")
     void getAssistants_delegatesAndWrapsResponse() throws Exception {
       AssistantSummaryResponse item = sampleAssistantSummaryResponse();
       PageImpl<AssistantSummaryResponse> serviceResult =
           new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
-      when(systemManagementService.listAssistants(eq("hieu"), any(Pageable.class)))
+      when(systemManagementService.listAssistants(eq("hieu"), isNull(), any(Pageable.class)))
           .thenReturn(serviceResult);
 
       mockMvc
@@ -716,28 +769,26 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Assistants fetched successfully!"))
-          .andExpect(jsonPath("$.data.content[0].id").value(ASSISTANT_ID.toString()))
-          .andExpect(jsonPath("$.data.content[0].name").value("Trần Minh Hiếu"))
-          .andExpect(jsonPath("$.data.content[0].status").value("ACTIVE"))
-          .andExpect(jsonPath("$.data.content[0].numExams").value(12))
+          .andExpect(jsonPath("$.data[0].id").value(ASSISTANT_ID.toString()))
+          .andExpect(jsonPath("$.data[0].name").value("Trần Minh Hiếu"))
+          .andExpect(jsonPath("$.data[0].status").value("ACTIVE"))
+          .andExpect(jsonPath("$.data[0].numExams").value(12))
           .andExpect(
-              jsonPath("$.data.content[0].recentActivities[0].description")
+              jsonPath("$.data[0].recentActivities[0].description")
                   .value("Đăng tải đề thi V-ACT mã đề 007"))
           .andExpect(
-              jsonPath("$.data.content[0].avatarUrl")
-                  .value("https://cdn.studyweb.edu/avatars/assistant1.png"));
+              jsonPath("$.data[0].avatarUrl")
+                  .value("https://cdn.studyweb.edu/avatars/assistant1.png"))
+          .andExpect(jsonPath("$.paging.total").value(1));
 
-      verify(systemManagementService).listAssistants(eq("hieu"), any(Pageable.class));
+      verify(systemManagementService).listAssistants(eq("hieu"), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("POST /assistants - Delegates to createAssistant and wraps payload")
     void createAssistant_delegatesAndWrapsPayload() throws Exception {
       CreateAssistantRequest request = sampleCreateAssistantRequest();
-      AssistantSummaryResponse created = sampleAssistantSummaryResponse();
-
-      when(systemManagementService.createAssistant(any(CreateAssistantRequest.class)))
-          .thenReturn(created);
+      doNothing().when(systemManagementService).createAssistant(any(CreateAssistantRequest.class));
 
       mockMvc
           .perform(
@@ -746,17 +797,17 @@ class SystemManagementControllerTest {
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Assistant created successfully!"))
-          .andExpect(jsonPath("$.data.id").value(ASSISTANT_ID.toString()))
-          .andExpect(jsonPath("$.data.gmail").value("hieu.tm@cus.edu.vn"));
+          .andExpect(jsonPath("$.message").value("Assistant created successfully!"));
 
       verify(systemManagementService).createAssistant(any(CreateAssistantRequest.class));
     }
 
     @Test
-    @DisplayName("PATCH /assistants/{id}/deactivate - Delegates to deactivateAssistant")
+    @DisplayName("PATCH /assistants/{id}/deactivate - Delegates to switchUserStatus")
     void deactivateAssistant_delegatesAndWrapsResponse() throws Exception {
-      doNothing().when(systemManagementService).deactivateAssistant(ASSISTANT_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.INACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID))
@@ -764,13 +815,16 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Deactivate assistant successfully."));
 
-      verify(systemManagementService).deactivateAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.INACTIVE, UserRole.ASSISTANT);
     }
 
     @Test
-    @DisplayName("PATCH /assistants/{id}/activate - Delegates to activateAssistant")
+    @DisplayName("PATCH /assistants/{id}/activate - Delegates to switchUserStatus")
     void activateAssistant_delegatesAndWrapsResponse() throws Exception {
-      doNothing().when(systemManagementService).activateAssistant(ASSISTANT_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.ACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID))
@@ -778,13 +832,16 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Activate assistant successfully."));
 
-      verify(systemManagementService).activateAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.ACTIVE, UserRole.ASSISTANT);
     }
 
     @Test
-    @DisplayName("PATCH /assistants/{id}/ban - Delegates to banAssistant")
+    @DisplayName("PATCH /assistants/{id}/ban - Delegates to switchUserStatus")
     void banAssistant_delegatesAndWrapsResponse() throws Exception {
-      doNothing().when(systemManagementService).banAssistant(ASSISTANT_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.BANNED, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
@@ -792,68 +849,64 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Ban assistant successfully."));
 
-      verify(systemManagementService).banAssistant(ASSISTANT_ID);
+      verify(systemManagementService)
+          .switchUserStatus(ASSISTANT_ID, UserStatus.BANNED, UserRole.ASSISTANT);
     }
 
     @Test
-    @DisplayName("PATCH /{id}/ban - Delegates to banLearner and wraps in SuccessResponse")
+    @DisplayName("PATCH /learners/{id}/ban - Delegates to switchUserStatus and wraps in SuccessResponse")
     void banLearner_delegatesAndWrapsSuccessResponse() throws Exception {
-      doNothing().when(systemManagementService).banLearner(LEARNER_ID);
+      doNothing()
+          .when(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.BANNED, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Ban learner successfully."));
 
-      verify(systemManagementService).banLearner(LEARNER_ID);
+      verify(systemManagementService)
+          .switchUserStatus(LEARNER_ID, UserStatus.BANNED, UserRole.LEARNER);
     }
 
     @Test
     @DisplayName(
-        "POST /create-vip-account - Delegates request to createVipAccount and wraps payload")
+        "POST /learners/create-vip-account - Delegates request to createVipAccount and wraps payload")
     void createVipAccount_delegatesAndWrapsPayload() throws Exception {
       CreateVipAccountRequest request = sampleVipRequest();
-      LearnerSummaryResponse created = sampleLearnerResponse();
-
-      when(systemManagementService.createVipAccount(any(CreateVipAccountRequest.class)))
-          .thenReturn(created);
+      doNothing().when(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Learners fetched successfully!"))
-          .andExpect(jsonPath("$.data.id").value(LEARNER_ID.toString()))
-          .andExpect(jsonPath("$.data.gmail").value(LEARNER_EMAIL));
+          .andExpect(jsonPath("$.message").value("A VIP Learner created successfully!"));
 
       verify(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
     }
 
     @Test
-    @DisplayName("PATCH /update-account - Delegates request to updateAccount and wraps payload")
+    @DisplayName("PATCH /learners/{id}/update-account - Delegates request to updateLearnerAccount and wraps payload")
     void updateAccount_delegatesAndWrapsPayload() throws Exception {
-      CreateVipAccountRequest request = sampleVipRequest();
-      LearnerSummaryResponse updated = sampleLearnerResponse();
-
-      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
-          .thenReturn(updated);
+      UpdateAccountRequest request = sampleUpdateAccountRequest();
+      doNothing()
+          .when(systemManagementService)
+          .updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
 
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
-          .andExpect(jsonPath("$.message").value("Account updated successfully!"))
-          .andExpect(jsonPath("$.data.id").value(LEARNER_ID.toString()))
-          .andExpect(jsonPath("$.data.gmail").value(LEARNER_EMAIL));
+          .andExpect(jsonPath("$.message").value("Update learner account succesfully!"));
 
-      verify(systemManagementService).updateAccount(any(CreateVipAccountRequest.class));
+      verify(systemManagementService).updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
     }
   }
 
@@ -866,10 +919,11 @@ class SystemManagementControllerTest {
   class ExceptionTranslationTests {
 
     @Test
-    @DisplayName("AuthException(EMAIL_ALREADY_EXISTS) on createAssistant -> 409 CONFLICT AUTH_001")
+    @DisplayName("AdminException(USER_EXISTED) on createAssistant -> 409 CONFLICT ADMIN_005")
     void createAssistant_emailExists_translatesTo409() throws Exception {
-      when(systemManagementService.createAssistant(any(CreateAssistantRequest.class)))
-          .thenThrow(new AuthException(AuthErrorCode.EMAIL_ALREADY_EXISTS));
+      doThrow(new AdminException(AdminErrorCode.USER_EXISTED))
+          .when(systemManagementService)
+          .createAssistant(any(CreateAssistantRequest.class));
 
       mockMvc
           .perform(
@@ -878,15 +932,16 @@ class SystemManagementControllerTest {
                   .content(objectMapper.writeValueAsString(sampleCreateAssistantRequest())))
           .andExpect(status().isConflict())
           .andExpect(jsonPath("$.statusCode").value(409))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.code()))
-          .andExpect(jsonPath("$.message").value(AuthErrorCode.EMAIL_ALREADY_EXISTS.message()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_EXISTED.code()))
+          .andExpect(jsonPath("$.message").value(AdminErrorCode.USER_EXISTED.message()));
     }
 
     @Test
-    @DisplayName("AuthException(ACCOUNT_BANNED) on createAssistant -> 403 FORBIDDEN AUTH_013")
+    @DisplayName("AdminException(USER_BANNED) on createAssistant -> 403 FORBIDDEN ADMIN_001")
     void createAssistant_accountBanned_translatesTo403() throws Exception {
-      when(systemManagementService.createAssistant(any(CreateAssistantRequest.class)))
-          .thenThrow(new AuthException(AuthErrorCode.ACCOUNT_BANNED));
+      doThrow(new AdminException(AdminErrorCode.USER_BANNED))
+          .when(systemManagementService)
+          .createAssistant(any(CreateAssistantRequest.class));
 
       mockMvc
           .perform(
@@ -895,113 +950,115 @@ class SystemManagementControllerTest {
                   .content(objectMapper.writeValueAsString(sampleCreateAssistantRequest())))
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.statusCode").value(403))
-          .andExpect(jsonPath("$.errorCode").value(AuthErrorCode.ACCOUNT_BANNED.code()))
-          .andExpect(jsonPath("$.message").value(AuthErrorCode.ACCOUNT_BANNED.message()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_BANNED.code()))
+          .andExpect(jsonPath("$.message").value(AdminErrorCode.USER_BANNED.message()));
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on deactivateAssistant -> 404 NOT_FOUND USER_001")
+    @DisplayName("AdminException(USER_NOT_FOUND) on deactivateAssistant -> 404 NOT_FOUND ADMIN_003")
     void deactivateAssistant_notFound_translatesTo404() throws Exception {
-      doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .deactivateAssistant(ASSISTANT_ID);
+          .switchUserStatus(ASSISTANT_ID, UserStatus.INACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/deactivate", ASSISTANT_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on activateAssistant -> 404 NOT_FOUND USER_001")
+    @DisplayName("AdminException(USER_NOT_FOUND) on activateAssistant -> 404 NOT_FOUND ADMIN_003")
     void activateAssistant_notFound_translatesTo404() throws Exception {
-      doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .activateAssistant(ASSISTANT_ID);
+          .switchUserStatus(ASSISTANT_ID, UserStatus.ACTIVE, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on banAssistant -> 404 NOT_FOUND USER_001")
+    @DisplayName("AdminException(USER_NOT_FOUND) on banAssistant -> 404 NOT_FOUND ADMIN_003")
     void banAssistant_notFound_translatesTo404() throws Exception {
-      doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .banAssistant(ASSISTANT_ID);
+          .switchUserStatus(ASSISTANT_ID, UserStatus.BANNED, UserRole.ASSISTANT);
 
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
     @DisplayName(
-        "UserException(USER_NOT_FOUND) on ban -> 404 NOT_FOUND with ErrorResponse USER_001")
+        "AdminException(USER_NOT_FOUND) on ban -> 404 NOT_FOUND with ErrorResponse ADMIN_003")
     void ban_userNotFound_translatesTo404() throws Exception {
-      doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .banLearner(LEARNER_ID);
+          .switchUserStatus(LEARNER_ID, UserStatus.BANNED, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()))
+          .andExpect(jsonPath("$.message").value(AdminErrorCode.USER_NOT_FOUND.message()));
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on lock -> 404 NOT_FOUND with USER_001")
+    @DisplayName("AdminException(USER_NOT_FOUND) on lock -> 404 NOT_FOUND with ADMIN_003")
     void lock_userNotFound_translatesTo404() throws Exception {
-      doThrow(new UserException(UserErrorCode.USER_NOT_FOUND))
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
           .when(systemManagementService)
-          .lockLearner(LEARNER_ID);
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()))
+          .andExpect(jsonPath("$.message").value(AdminErrorCode.USER_NOT_FOUND.message()));
     }
 
     @Test
-    @DisplayName("UserException(USER_NOT_FOUND) on updateAccount -> 404 NOT_FOUND")
+    @DisplayName("AdminException(USER_NOT_FOUND) on updateAccount -> 404 NOT_FOUND")
     void updateAccount_userNotFound_translatesTo404() throws Exception {
-      when(systemManagementService.updateAccount(any(CreateVipAccountRequest.class)))
-          .thenThrow(new UserException(UserErrorCode.USER_NOT_FOUND));
+      doThrow(new AdminException(AdminErrorCode.USER_NOT_FOUND))
+          .when(systemManagementService)
+          .updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
 
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+                  .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
-          .andExpect(jsonPath("$.errorCode").value(UserErrorCode.USER_NOT_FOUND.code()))
-          .andExpect(jsonPath("$.message").value(UserErrorCode.USER_NOT_FOUND.message()));
+          .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()))
+          .andExpect(jsonPath("$.message").value(AdminErrorCode.USER_NOT_FOUND.message()));
     }
 
     @Test
     @DisplayName("SystemException(INTERNAL_ERROR) -> 500 INTERNAL_ERROR with ErrorResponse SYS_001")
     void systemException_translatesTo500() throws Exception {
-      when(systemManagementService.createVipAccount(any(CreateVipAccountRequest.class)))
-          .thenThrow(
+      doThrow(
               new SystemException(
-                  SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!"));
+                  SystemErrorCode.INTERNAL_ERROR, "No value provided for default password!"))
+          .when(systemManagementService)
+          .createVipAccount(any(CreateVipAccountRequest.class));
 
       CreateVipAccountRequest request = sampleVipRequest();
 
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(request)))
           .andExpect(status().isInternalServerError())
@@ -1014,7 +1071,7 @@ class SystemManagementControllerTest {
     @DisplayName("HttpRequestMethodNotSupportedException -> 405 METHOD_NOT_ALLOWED with SYS_004")
     void methodNotSupported_translatesTo405() throws Exception {
       mockMvc
-          .perform(put("/api/system-management/update-account"))
+          .perform(put("/api/system-management/learners/" + LEARNER_ID + "/update-account"))
           .andExpect(status().isMethodNotAllowed())
           .andExpect(jsonPath("$.statusCode").value(405))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.METHOD_NOT_ALLOWED.code()))
@@ -1026,10 +1083,10 @@ class SystemManagementControllerTest {
     void unhandledException_translatesTo500() throws Exception {
       doThrow(new RuntimeException("Unexpected fatal crash"))
           .when(systemManagementService)
-          .lockLearner(LEARNER_ID);
+          .switchUserStatus(LEARNER_ID, UserStatus.INACTIVE, UserRole.LEARNER);
 
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isInternalServerError())
           .andExpect(jsonPath("$.statusCode").value(500))
           .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.INTERNAL_ERROR.code()))
@@ -1050,10 +1107,10 @@ class SystemManagementControllerTest {
     void anonymousAccess_blockedWith401() throws Exception {
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isUnauthorized());
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
           .perform(get("/api/system-management/assistants"))
@@ -1074,32 +1131,27 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isUnauthorized());
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isUnauthorized());
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+                  .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isUnauthorized());
 
-      verify(systemManagementService, never()).listLearners(any(), any());
-      verify(systemManagementService, never()).lockLearner(any());
-      verify(systemManagementService, never()).unlockLearner(any());
-      verify(systemManagementService, never()).listAssistants(any(), any());
+      verify(systemManagementService, never()).listLearners(any(), any(), any());
+      verify(systemManagementService, never()).switchUserStatus(any(), any(), any());
+      verify(systemManagementService, never()).listAssistants(any(), any(), any());
       verify(systemManagementService, never()).createAssistant(any());
-      verify(systemManagementService, never()).deactivateAssistant(any());
-      verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).banAssistant(any());
-      verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).updateLearnerAccount(any(), any());
     }
 
     @Test
@@ -1124,38 +1176,33 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+                  .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isForbidden());
 
-      verify(systemManagementService, never()).listLearners(any(), any());
-      verify(systemManagementService, never()).lockLearner(any());
-      verify(systemManagementService, never()).unlockLearner(any());
-      verify(systemManagementService, never()).listAssistants(any(), any());
+      verify(systemManagementService, never()).listLearners(any(), any(), any());
+      verify(systemManagementService, never()).switchUserStatus(any(), any(), any());
+      verify(systemManagementService, never()).listAssistants(any(), any(), any());
       verify(systemManagementService, never()).createAssistant(any());
-      verify(systemManagementService, never()).deactivateAssistant(any());
-      verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).banAssistant(any());
-      verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).updateLearnerAccount(any(), any());
     }
 
     @Test
@@ -1180,25 +1227,25 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
-              post("/api/system-management/create-vip-account")
+              post("/api/system-management/learners/create-vip-account")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleVipRequest())))
           .andExpect(status().isForbidden());
       mockMvc
           .perform(
-              patch("/api/system-management/update-account")
+              patch("/api/system-management/learners/{id}/update-account", LEARNER_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(sampleVipRequest())))
+                  .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isForbidden());
       mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isForbidden());
       mockMvc
@@ -1208,17 +1255,12 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1))
           .andExpect(status().isForbidden());
 
-      verify(systemManagementService, never()).listLearners(any(), any());
-      verify(systemManagementService, never()).lockLearner(any());
-      verify(systemManagementService, never()).unlockLearner(any());
-      verify(systemManagementService, never()).listAssistants(any(), any());
+      verify(systemManagementService, never()).listLearners(any(), any(), any());
+      verify(systemManagementService, never()).switchUserStatus(any(), any(), any());
+      verify(systemManagementService, never()).listAssistants(any(), any(), any());
       verify(systemManagementService, never()).createAssistant(any());
-      verify(systemManagementService, never()).deactivateAssistant(any());
-      verify(systemManagementService, never()).activateAssistant(any());
-      verify(systemManagementService, never()).banAssistant(any());
-      verify(systemManagementService, never()).banLearner(any());
       verify(systemManagementService, never()).createVipAccount(any());
-      verify(systemManagementService, never()).updateAccount(any());
+      verify(systemManagementService, never()).updateLearnerAccount(any(), any());
       verify(systemManagementService, never()).getVipRequests(any(), any(), any());
       verify(systemManagementService, never()).approveVipRequest(any());
       verify(systemManagementService, never()).disapproveVipRequest(any());
@@ -1228,25 +1270,28 @@ class SystemManagementControllerTest {
     @DisplayName("ADMIN role is authorized -> 200 OK")
     @WithMockUser(roles = "ADMIN")
     void adminRole_authorized200() throws Exception {
-      when(systemManagementService.listLearners(isNull(), any(Pageable.class)))
+      when(systemManagementService.listLearners(isNull(), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
-      when(systemManagementService.listAssistants(isNull(), any(Pageable.class)))
+      when(systemManagementService.listAssistants(isNull(), isNull(), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
       when(systemManagementService.getVipRequests(isNull(), isNull(), any(Pageable.class)))
-          .thenReturn(new VipRequestListResponse(new PageImpl<>(List.of()), 0L, 0L));
+          .thenReturn(new PageImpl<>(List.of()));
+      when(systemManagementService.getVipRequestCounts(isNull()))
+          .thenReturn(new VipRequestCountResponse(0));
 
       mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
       mockMvc
-          .perform(patch("/api/system-management/{id}/lock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isOk());
       mockMvc
-          .perform(patch("/api/system-management/{id}/unlock", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/unlock", LEARNER_ID))
           .andExpect(status().isOk());
       mockMvc
-          .perform(patch("/api/system-management/{id}/ban", LEARNER_ID))
+          .perform(patch("/api/system-management/learners/{id}/ban", LEARNER_ID))
           .andExpect(status().isOk());
       mockMvc.perform(get("/api/system-management/assistants")).andExpect(status().isOk());
       mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isOk());
+      mockMvc.perform(get("/api/system-management/vip-requests/counts")).andExpect(status().isOk());
       mockMvc
           .perform(patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1))
           .andExpect(status().isOk());
@@ -1265,31 +1310,36 @@ class SystemManagementControllerTest {
   class GetVipRequestsEndpointTests {
 
     @Test
-    @DisplayName("Default parameters -> returns 200 OK with VipRequestListResponse payload")
+    @DisplayName("Default parameters -> returns 200 OK with PageResponse<VipRequestResponse> payload")
     void getVipRequests_defaultParams_returns200AndListResponse() throws Exception {
-      VipRequestListResponse mockResponse = sampleVipRequestListResponse();
+      VipRequestResponse res1 =
+          sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
+      VipRequestResponse res2 =
+          sampleVipRequestResponse(VIP_REQUEST_ID_2, LEARNER_ID, VipRequestStatus.APPROVED);
+      Page<VipRequestResponse> mockPage =
+          new PageImpl<>(List.of(res1, res2), PageRequest.of(0, 10), 2);
+
       when(systemManagementService.getVipRequests(isNull(), isNull(), any(Pageable.class)))
-          .thenReturn(mockResponse);
+          .thenReturn(mockPage);
 
       mockMvc
           .perform(get("/api/system-management/vip-requests").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("VIP requests fetched successfully!"))
-          .andExpect(jsonPath("$.data.totalCount").value(2))
-          .andExpect(jsonPath("$.data.waitingCount").value(1))
-          .andExpect(jsonPath("$.data.requests.content").isArray())
-          .andExpect(jsonPath("$.data.requests.content[0].id").value(VIP_REQUEST_ID_1.toString()))
-          .andExpect(jsonPath("$.data.requests.content[0].userId").value(LEARNER_ID.toString()))
-          .andExpect(jsonPath("$.data.requests.content[0].name").value("Nguyễn Văn A"))
-          .andExpect(jsonPath("$.data.requests.content[0].gmail").value("learner@studyweb.edu"))
+          .andExpect(jsonPath("$.paging.total").value(2))
+          .andExpect(jsonPath("$.data").isArray())
+          .andExpect(jsonPath("$.data[0].id").value(VIP_REQUEST_ID_1.toString()))
+          .andExpect(jsonPath("$.data[0].userId").value(LEARNER_ID.toString()))
+          .andExpect(jsonPath("$.data[0].name").value("Nguyễn Văn A"))
+          .andExpect(jsonPath("$.data[0].gmail").value("learner@studyweb.edu"))
           .andExpect(
-              jsonPath("$.data.requests.content[0].note")
+              jsonPath("$.data[0].note")
                   .value("Cần kích hoạt VIP để học chuyên sâu"))
-          .andExpect(jsonPath("$.data.requests.content[0].status").value("WAITING"))
-          .andExpect(jsonPath("$.data.requests.content[0].mainCourse").value("React Masterclass"))
-          .andExpect(jsonPath("$.data.requests.content[1].id").value(VIP_REQUEST_ID_2.toString()))
-          .andExpect(jsonPath("$.data.requests.content[1].status").value("APPROVED"));
+          .andExpect(jsonPath("$.data[0].status").value("WAITING"))
+          .andExpect(jsonPath("$.data[0].mainCourse").value("React Masterclass"))
+          .andExpect(jsonPath("$.data[1].id").value(VIP_REQUEST_ID_2.toString()))
+          .andExpect(jsonPath("$.data[1].status").value("APPROVED"));
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
       verify(systemManagementService).getVipRequests(isNull(), isNull(), pageableCaptor.capture());
@@ -1300,9 +1350,14 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("With search, status and pagination -> forwards all parameters to service")
     void getVipRequests_withSearchAndStatus_passesParamsToService() throws Exception {
+      VipRequestResponse res1 =
+          sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
+      Page<VipRequestResponse> mockPage =
+          new PageImpl<>(List.of(res1), PageRequest.of(1, 5), 1);
+
       when(systemManagementService.getVipRequests(
               eq("nguyen"), eq(VipRequestStatus.WAITING), any(Pageable.class)))
-          .thenReturn(sampleVipRequestListResponse());
+          .thenReturn(mockPage);
 
       mockMvc
           .perform(
