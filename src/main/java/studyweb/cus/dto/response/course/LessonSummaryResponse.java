@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record LessonSummaryResponse(Integer lessonCount, List<LessonCardResponse> lessons) {
-        public record LessonCardResponse(UUID id, String title, Integer durationMin, String youtubeUrl,
+        public record LessonCardResponse(UUID id, Integer orderNum, String title, Integer durationMin,
+                        String youtubeUrl,
                         boolean isVip) {
         }
 }
