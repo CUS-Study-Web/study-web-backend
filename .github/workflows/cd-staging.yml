@@ -94,17 +94,34 @@ jobs:
         env:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
         run: |
-          mkdir -p ~/.config/systemd/user/git-ops/nginx
+          echo "Create permanent configs..."
 
+          mkdir -p ~/.config/systemd/user/git-ops/nginx
+          echo "Copy backend env file..."
           printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
           chmod 600 ~/.config/systemd/user/git-ops/backend.env
 
+          echo "Copy nginx config..."
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
+          chmod 600 ~/.config/systemd/user/git-ops/nginx/default.conf
 
-          cp docker.*.compose.yml ~/.config/systemd/user/git-ops/
+          echo "Copy compose files..."
+          cp compose/docker.*.compose.yml ~/.config/systemd/user/git-ops/
+          chmod 600 ~/.config/systemd/user/git-ops/docker.*.compose.yml
+          
+          echo "Copy service files..."
+          cp services/study-*.service ~/.config/systemd/user/git-ops/
+          chmod 600 ~/.config/systemd/user/git-ops/study-*.service
+
+
       - name: Check infra
         working-directory: gitops-manifests
         run: make infra
+
+      - name: Deploy Nginx
+        working-directory: gitops-manifests
+        run: make nginx
+
       - name: Deploy Backend
         working-directory: gitops-manifests
         env:
