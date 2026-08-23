@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import studyweb.cus.dto.base.PageResponse;
+import studyweb.cus.dto.base.PagedResponse;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 
@@ -24,6 +25,18 @@ public abstract class AbstractBaseController {
         responseFactory.createPageResponse(
             message,
             page.getContent(),
+            page.getNumber(),
+            page.getSize(),
+            page.getTotalElements(),
+            page.getTotalPages());
+    return ResponseEntity.ok(response);
+  }
+
+  protected <T> ResponseEntity<PagedResponse<T>> pagingData(Page<?> page, T data, String message) {
+    PagedResponse<T> response =
+        responseFactory.createPagedDataResponse(
+            message,
+            data,
             page.getNumber(),
             page.getSize(),
             page.getTotalElements(),

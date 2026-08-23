@@ -1,3 +1,3 @@
-package studyweb.cus.dto;
+package studyweb.cus.dto.response.document;
 
 public record UploadDocumentResult(long fileSize, String fileKey, String fileUrl) {}

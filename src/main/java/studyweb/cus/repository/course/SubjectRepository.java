@@ -12,6 +12,9 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
 
   List<Subject> findByCourseIdAndDeletedAtIsNull(UUID courseId);
 
+  org.springframework.data.domain.Page<Subject> findByCourseIdAndDeletedAtIsNull(
+      UUID courseId, org.springframework.data.domain.Pageable pageable);
+
   long countByCourseIdAndDeletedAtIsNull(UUID courseId);
 
   Optional<Subject> findByIdAndCourseIdAndDeletedAtIsNull(UUID id, UUID courseId);

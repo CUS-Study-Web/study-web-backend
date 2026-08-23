@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,13 +31,13 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
 import studyweb.cus.dto.request.assessment.CreateAssessmentRequest;
 import studyweb.cus.dto.request.assessment.UpdateAssessmentRequest;
 import studyweb.cus.dto.response.assessment.AnswerKeyResponse;
 import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.Course;
@@ -51,8 +52,11 @@ import studyweb.cus.exception.assessment.AssessmentErrorCode;
 import studyweb.cus.exception.assessment.AssessmentException;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
 import studyweb.cus.mapper.assessment.AssessmentMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
+import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
@@ -64,6 +68,7 @@ import studyweb.cus.utils.TestFixtures;
 class AssessmentServiceTest {
 
   @Mock private AssessmentRepository assessmentRepository;
+  @Mock private AssessmentAttemptRepository assessmentAttemptRepository;
   @Mock private AnswerKeyRepository answerKeyRepository;
   @Mock private CourseRepository courseRepository;
   @Mock private SubjectRepository subjectRepository;
@@ -106,7 +111,8 @@ class AssessmentServiceTest {
         100,
         AccessTier.PUBLIC,
         "PDF",
-        null);
+        null,
+        0L);
   }
 
   // ============================================================
@@ -204,7 +210,8 @@ class AssessmentServiceTest {
               Assessment saved = inv.getArgument(0);
               return saved;
             });
-    when(assessmentMapper.toSummary(any(Assessment.class))).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
@@ -275,7 +282,8 @@ class AssessmentServiceTest {
             inv -> {
               return inv.getArgument(0);
             });
-    when(assessmentMapper.toSummary(any(Assessment.class))).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
@@ -316,7 +324,7 @@ class AssessmentServiceTest {
             inv -> {
               return inv.getArgument(0);
             });
-    when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(), anyLong())).thenReturn(summaryResponse());
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
@@ -377,7 +385,7 @@ class AssessmentServiceTest {
             inv -> {
               return inv.getArgument(0);
             });
-    when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(), anyLong())).thenReturn(summaryResponse());
 
     String answerKeysJson = "[{\"questionNumber\":1,\"correctAnswer\":\"A\"}]";
     List<AnswerKeyItem> parsed = List.of(new AnswerKeyItem(1, AnswerChoice.A));
@@ -425,11 +433,11 @@ class AssessmentServiceTest {
             AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, unknownFile, null, null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
-        .isInstanceOf(AssessmentException.class)
+        .isInstanceOf(FileException.class)
         .satisfies(
             ex ->
-                assertThat(((AssessmentException) ex).getCode())
-                    .isEqualTo(AssessmentErrorCode.UNSUPPORTED_FILE_TYPE.code()));
+                assertThat(((FileException) ex).getCode())
+                    .isEqualTo(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.code()));
   }
 
   // ============================================================
@@ -518,7 +526,7 @@ class AssessmentServiceTest {
     when(assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
             eq(subjectId), eq(AssessmentType.HOMEWORK), any(Pageable.class)))
         .thenReturn(page);
-    when(assessmentMapper.toSummary(hw)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(hw), anyLong())).thenReturn(summaryResponse());
 
     Page<AssessmentSummaryResponse> result =
         service.listHomeworkBySubject(courseId, subjectId, PageRequest.of(0, 10));
@@ -537,7 +545,7 @@ class AssessmentServiceTest {
     when(assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
             eq(courseId), eq(AssessmentType.EXAM), any(Pageable.class)))
         .thenReturn(page);
-    when(assessmentMapper.toSummary(exam)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(exam), anyLong())).thenReturn(summaryResponse());
 
     Page<AssessmentSummaryResponse> result =
         service.listExamsByCourse(courseId, PageRequest.of(0, 10));
@@ -571,7 +579,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId))
         .thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
@@ -589,7 +597,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId))
         .thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
@@ -611,7 +619,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId))
         .thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
@@ -650,7 +658,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId))
         .thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
     when(fileService.uploadExamFile(any()))
         .thenReturn(new UploadDocumentResult(200L, "key", "https://s3.test/new-exam.pdf"));
 
@@ -673,7 +681,7 @@ class AssessmentServiceTest {
     when(courseRepository.requireCourse(courseId))
         .thenReturn(TestFixtures.createMockCourse(courseId));
     when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
-    when(assessmentMapper.toSummary(assessment)).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
@@ -740,7 +748,7 @@ class AssessmentServiceTest {
               return saved;
             });
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(), anyLong())).thenReturn(summaryResponse());
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
@@ -768,7 +776,7 @@ class AssessmentServiceTest {
               return saved;
             });
     when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(assessmentMapper.toSummary(any())).thenReturn(summaryResponse());
+    when(assessmentMapper.toSummary(any(), anyLong())).thenReturn(summaryResponse());
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(

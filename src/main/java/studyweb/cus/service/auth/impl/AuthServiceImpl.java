@@ -14,6 +14,7 @@ import studyweb.cus.dto.request.auth.ResetPasswordRequest;
 import studyweb.cus.dto.response.auth.AuthResponse;
 import studyweb.cus.entity.redis.PasswordResetOtp;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.mapper.user.UserMapper;
@@ -58,7 +59,9 @@ public class AuthServiceImpl implements AuthService {
   public AuthResponse register(RegisterRequest request) {
     User user = userService.createUser(request);
 
-    String accessToken = jwtUtils.generateAccessToken(user.getGmail(), user.getRole());
+    String accessToken =
+        jwtUtils.generateAccessToken(
+            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
     String refreshToken = jwtUtils.generateRefreshToken(user.getGmail());
 
     return new AuthResponse(accessToken, refreshToken, userMapper.toUserResponse(user));
@@ -76,7 +79,9 @@ public class AuthServiceImpl implements AuthService {
       throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-    String accessToken = jwtUtils.generateAccessToken(user.getGmail(), user.getRole());
+    String accessToken =
+        jwtUtils.generateAccessToken(
+            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
     String refreshToken = jwtUtils.generateRefreshToken(user.getGmail());
 
     return new AuthResponse(accessToken, refreshToken, userMapper.toUserResponse(user));
@@ -99,7 +104,9 @@ public class AuthServiceImpl implements AuthService {
             .findByGmail(jwtUtils.getEmailFromToken(refreshToken))
             .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
-    String newAccessToken = jwtUtils.generateAccessToken(user.getGmail(), user.getRole());
+    String newAccessToken =
+        jwtUtils.generateAccessToken(
+            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
 
     return new AuthResponse(newAccessToken, refreshToken, userMapper.toUserResponse(user));
   }

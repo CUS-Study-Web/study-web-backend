@@ -51,7 +51,7 @@ public class JwtUtilsImpl implements JwtUtils {
     log.info("JwtUtils initialized successfully with Lua script support");
   }
 
-  private String createToken(String email, UserRole role, long expiration) {
+  private String createToken(String email, UserRole role, Boolean isVip, long expiration) {
     Date now = new Date();
     Date expiryDate = new Date(now.getTime() + expiration);
 
@@ -64,19 +64,22 @@ public class JwtUtilsImpl implements JwtUtils {
     if (role != null) {
       builder.claim("role", role.name());
     }
+    if (isVip != null) {
+      builder.claim("isVip", isVip);
+    }
     return builder.compact();
   }
 
   @Override
-  public String generateAccessToken(String email, UserRole role) {
-    return createToken(email, role, accessTokenExpiration);
+  public String generateAccessToken(String email, UserRole role, boolean isVip) {
+    return createToken(email, role, isVip, accessTokenExpiration);
   }
 
   @Override
   public String generateRefreshToken(String email) {
     refreshTokenRepository.deleteByEmail(email);
 
-    String refreshToken = createToken(email, null, refreshTokenExpiration);
+    String refreshToken = createToken(email, null, null, refreshTokenExpiration);
 
     RefreshToken token =
         RefreshToken.builder()
@@ -123,6 +126,12 @@ public class JwtUtilsImpl implements JwtUtils {
   @Override
   public String getEmailFromToken(String token) {
     return getClaimFromToken(token, Claims::getSubject);
+  }
+
+  @Override
+  public boolean getIsVipFromToken(String token) {
+    return Boolean.TRUE.equals(
+        getClaimFromToken(token, claims -> claims.get("isVip", Boolean.class)));
   }
 
   @Override

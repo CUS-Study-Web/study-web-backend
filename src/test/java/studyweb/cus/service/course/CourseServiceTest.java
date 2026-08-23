@@ -23,13 +23,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import studyweb.cus.dto.UploadDocumentResult;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
 import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Lesson;
 import studyweb.cus.entity.course.Subject;
@@ -52,6 +52,7 @@ class CourseServiceTest {
   @Mock private CourseRepository courseRepository;
   @Mock private SubjectRepository subjectRepository;
   @Mock private LessonRepository lessonRepository;
+  @Mock private studyweb.cus.repository.course.AssessmentRepository assessmentRepository;
   @Mock private UserRepository userRepository;
   @Mock private CourseMapper courseMapper;
   @Mock private FileService fileService;
@@ -111,11 +112,16 @@ class CourseServiceTest {
   void listCourses_returnsPagedSummaries() {
     Course course = course();
     CourseSummaryResponse summary =
-        new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge", "desc", "url");
+        new CourseSummaryResponse(
+            courseId, "Java for Beginners", "sub", "badge", "desc", "url", 0L, 0L);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
     when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
-    when(courseMapper.toCourseSummary(course)).thenReturn(summary);
+    when(courseMapper.toCourseSummary(
+            eq(course),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(summary);
 
     Page<CourseSummaryResponse> response = courseService.listCourses(PageRequest.of(0, 10));
 
@@ -129,10 +135,15 @@ class CourseServiceTest {
   void createCourse_persistsAndReturnsSummary() {
     Course course = course();
     CourseSummaryResponse summary =
-        new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge", "desc", "url");
+        new CourseSummaryResponse(
+            courseId, "Java for Beginners", "sub", "badge", "desc", "url", 0L, 0L);
 
     when(courseRepository.save(any(Course.class))).thenReturn(course);
-    when(courseMapper.toCourseSummary(course)).thenReturn(summary);
+    when(courseMapper.toCourseSummary(
+            eq(course),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(summary);
     when(fileService.uploadAvatarFile(any(MultipartFile.class)))
         .thenReturn(new UploadDocumentResult(0L, "key", "url"));
 
@@ -152,10 +163,20 @@ class CourseServiceTest {
             5L, "key", "https://minio.test.invalid:9001/bucket-vmt/avatars/abc.png");
     when(fileService.uploadAvatarFile(any(MultipartFile.class))).thenReturn(uploaded);
     when(courseRepository.save(any(Course.class))).thenAnswer(inv -> inv.getArgument(0));
-    when(courseMapper.toCourseSummary(any(Course.class)))
+    when(courseMapper.toCourseSummary(
+            any(Course.class),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong()))
         .thenReturn(
             new CourseSummaryResponse(
-                courseId, "Java for Beginners", "sub", "badge", "desc", uploaded.fileUrl()));
+                courseId,
+                "Java for Beginners",
+                "sub",
+                "badge",
+                "desc",
+                uploaded.fileUrl(),
+                0L,
+                0L));
 
     MockMultipartFile thumbnail =
         new MockMultipartFile("thumbnail", "thumb.png", "image/png", new byte[] {1});
@@ -225,24 +246,31 @@ class CourseServiceTest {
     Course course = course();
     Subject subject = subject(4);
     SubjectSummaryResponse summary =
-        new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.TEN, 4);
+        new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.TEN, 4, 2);
 
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
-    when(subjectRepository.findByCourseIdAndDeletedAtIsNull(courseId)).thenReturn(List.of(subject));
-    when(courseMapper.toSubjectSummary(subject)).thenReturn(summary);
+    when(userRepository.findByGmail("learner@studyweb.edu"))
+        .thenReturn(Optional.of(user(UserTier.NORMAL)));
+    when(subjectRepository.findByCourseIdAndDeletedAtIsNull(eq(courseId), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(subject), PageRequest.of(0, 10), 1));
+    when(assessmentRepository.countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
+            eq(subjectId), eq(studyweb.cus.enums.AssessmentType.HOMEWORK), any()))
+        .thenReturn(2L);
+    when(courseMapper.toSubjectSummary(eq(subject), org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(summary);
 
-    var response = courseService.getCourseDetail(courseId, null);
+    var response =
+        courseService.getCourseDetail(courseId, "learner@studyweb.edu", PageRequest.of(0, 10));
 
-    assertThat(response.totalSubjects()).isEqualTo(1);
-    assertThat(response.subjects()).containsExactly(summary);
-    assertThat(response.learningProgress()).isNull();
+    assertThat(response.getContent()).containsExactly(summary);
+    assertThat(response.getTotalElements()).isEqualTo(1);
   }
 
   @Test
   void courseDetail_unknownCourseThrowsCourseNotFound() {
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> courseService.getCourseDetail(courseId, null))
+    assertThatThrownBy(() -> courseService.getCourseDetail(courseId, null, PageRequest.of(0, 10)))
         .isInstanceOf(CourseException.class)
         .satisfies(
             ex ->
@@ -258,7 +286,7 @@ class CourseServiceTest {
     Subject subject = subject(0);
     when(subjectRepository.save(any(Subject.class))).thenReturn(subject);
     when(courseMapper.toSubjectSummary(subject))
-        .thenReturn(new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.ZERO, 0));
+        .thenReturn(new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.ZERO, 0, null));
 
     SubjectSummaryResponse result =
         courseService.createSubject(courseId, new SubjectRequest("Basics", null, null));
@@ -324,67 +352,42 @@ class CourseServiceTest {
   // ---- Lessons ----
 
   @Test
-  void listLessons_normalUserSeesOnlyPublicLessons() {
+  void listLessons_returnsLessonCountAndCards() {
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
     when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
         .thenReturn(Optional.of(subject(1)));
-    when(userRepository.findByGmail("learner@studyweb.edu"))
-        .thenReturn(Optional.of(user(UserTier.NORMAL)));
 
     Lesson lesson = lesson();
-    Page<Lesson> page = new PageImpl<>(List.of(lesson), PageRequest.of(0, 10), 1);
-    when(lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC)), any(Pageable.class)))
-        .thenReturn(page);
-    when(courseMapper.toLessonSummary(lesson))
-        .thenReturn(new LessonSummaryResponse(lessonId, "Variables", 15, null));
+    when(lessonRepository.findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(
+            eq(subjectId), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(lesson), PageRequest.of(0, 10), 1));
+    when(courseMapper.toLessonCardResponse(lesson))
+        .thenReturn(
+            new LessonSummaryResponse.LessonCardResponse(lessonId, "Variables", 15, null, false));
 
-    Page<LessonSummaryResponse> response =
+    var response =
         courseService.listLessons(
-            courseId, subjectId, PageRequest.of(0, 10), "learner@studyweb.edu");
+            courseId, subjectId, "learner@studyweb.edu", PageRequest.of(0, 10));
 
+    assertThat(response.getContent()).hasSize(1);
     assertThat(response.getTotalElements()).isEqualTo(1);
     verify(lessonRepository)
-        .findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC)), any(Pageable.class));
+        .findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(eq(subjectId), any(Pageable.class));
   }
 
   @Test
-  void listLessons_vipUserSeesPublicAndVipLessons() {
+  void listLessons_emptyPageReturnsEmptyCards() {
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
     when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
         .thenReturn(Optional.of(subject(1)));
-    when(userRepository.findByGmail("vip@studyweb.edu"))
-        .thenReturn(Optional.of(user(UserTier.VIP)));
+    when(lessonRepository.findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(
+            eq(subjectId), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
 
-    Page<Lesson> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
-    when(lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC, AccessTier.VIP)), any(Pageable.class)))
-        .thenReturn(page);
+    var response = courseService.listLessons(courseId, subjectId, null, PageRequest.of(0, 10));
 
-    courseService.listLessons(courseId, subjectId, PageRequest.of(0, 10), "vip@studyweb.edu");
-
-    verify(lessonRepository)
-        .findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC, AccessTier.VIP)), any(Pageable.class));
-  }
-
-  @Test
-  void listLessons_guestSeesOnlyPublicLessons() {
-    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
-    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
-        .thenReturn(Optional.of(subject(1)));
-
-    Page<Lesson> page = new PageImpl<>(List.of(), PageRequest.of(0, 10), 0);
-    when(lessonRepository.findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC)), any(Pageable.class)))
-        .thenReturn(page);
-
-    courseService.listLessons(courseId, subjectId, PageRequest.of(0, 10), null);
-
-    verify(lessonRepository)
-        .findBySubjectIdAndDeletedAtIsNullAndAccessIn(
-            eq(subjectId), eq(List.of(AccessTier.PUBLIC)), any(Pageable.class));
+    assertThat(response.getContent()).isEmpty();
+    assertThat(response.getTotalElements()).isZero();
   }
 
   @Test
@@ -395,8 +398,9 @@ class CourseServiceTest {
         .thenReturn(Optional.of(subject));
     when(lessonRepository.save(any(Lesson.class))).thenReturn(lesson());
     when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(1L);
-    when(courseMapper.toLessonSummary(any(Lesson.class)))
-        .thenReturn(new LessonSummaryResponse(lessonId, "Variables", 15, null));
+    when(courseMapper.toLessonCardResponse(any(Lesson.class)))
+        .thenReturn(
+            new LessonSummaryResponse.LessonCardResponse(lessonId, "Variables", 15, null, false));
 
     courseService.createLesson(
         courseId, subjectId, new LessonRequest("Variables", 1, null, 15, AccessTier.PUBLIC));

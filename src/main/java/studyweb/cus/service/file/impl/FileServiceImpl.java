@@ -9,7 +9,6 @@ import static studyweb.cus.constant.FileConstants.FOLDER_DOCUMENTS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXAMS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXERCISES;
 
-import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
@@ -28,7 +27,7 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import studyweb.cus.config.S3Properties;
-import studyweb.cus.dto.UploadDocumentResult;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.file.FileService;
@@ -90,7 +89,7 @@ public class FileServiceImpl implements FileService {
     }
 
     String objectName = folder + UUID.randomUUID() + "." + extension;
-    try (InputStream inputStream = file.getInputStream()) {
+    try {
       s3Client.putObject(
           PutObjectRequest.builder()
               .bucket(s3Properties.getBucket())
@@ -100,7 +99,7 @@ public class FileServiceImpl implements FileService {
                       ? "application/octet-stream"
                       : file.getContentType())
               .build(),
-          RequestBody.fromInputStream(inputStream, file.getSize()));
+          RequestBody.fromBytes(file.getBytes()));
     } catch (Exception e) {
       log.error("Failed to upload file {} to S3", objectName, e);
       throw new FileException(FileErrorCode.UPLOAD_FAILED);

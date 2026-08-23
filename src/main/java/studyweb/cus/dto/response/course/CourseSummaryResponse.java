@@ -8,4 +8,6 @@ public record CourseSummaryResponse(
     String subTitle,
     String badgeTitle,
     String description,
-    String imageUrl) {}
+    String imageUrl,
+    long subjectCount,
+    long examCount) {}

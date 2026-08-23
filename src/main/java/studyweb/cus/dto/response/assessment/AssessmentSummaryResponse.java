@@ -18,4 +18,5 @@ public record AssessmentSummaryResponse(
     Integer maxScore,
     AccessTier accessTier,
     String fileType,
-    LocalDateTime createdAt) {}
+    LocalDateTime createdAt,
+    Long totalTakes) {}

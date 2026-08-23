@@ -2,7 +2,7 @@ package studyweb.cus.service.file;
 
 import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
-import studyweb.cus.dto.UploadDocumentResult;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 
 public interface FileService {
 
