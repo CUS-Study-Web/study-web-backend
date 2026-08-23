@@ -37,8 +37,6 @@ import studyweb.cus.service.file.FileService;
 @Slf4j
 public class FileServiceImpl implements FileService {
 
-  private static final Duration PRESIGN_EXPIRY = Duration.ofHours(1);
-
   private final S3Client s3Client;
   private final S3Presigner s3Presigner;
   private final S3Properties s3Properties;
@@ -116,9 +114,8 @@ public class FileServiceImpl implements FileService {
       GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey)
           .build();
       GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-          .signatureDuration(PRESIGN_EXPIRY)
           .getObjectRequest(getObjectRequest)
-          .build();
+          .signatureDuration(Duration.ZERO).build();
       PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
       return presigned.url().toString();
     } catch (Exception e) {
