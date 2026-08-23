@@ -1,0 +1,52 @@
+auth_enabled: ${LOKI_AUTH_ENABLED}
+
+server:
+  http_listen_port: ${LOKI_HTTP_PORT}
+  log_level: "${LOKI_LOG_LEVEL}"
+
+common:
+  path_prefix: "${LOKI_PATH_PREFIX}"
+  replication_factor: ${LOKI_REPLICATION_FACTOR}
+  ring:
+    instance_addr: "${LOKI_INSTANCE_ADDR}"
+    kvstore:
+      store: "${LOKI_RING_KVSTORE}"
+
+storage_config:
+  use_thanos_objstore: true
+  object_store:
+    s3:
+      bucket_name: "${S3_BUCKET}"
+      endpoint: "${MINIO_HOST}"
+      region: "${S3_REGION}"
+      access_key_id: "${S3_ACCESS_KEY}"
+      secret_access_key: "${S3_SECRET_KEY}"
+      insecure: ${S3_INSECURE}
+
+schema_config:
+  configs:
+    - from: "${LOKI_SCHEMA_START_DATE}"
+      store: "${LOKI_STORE_TYPE}"
+      object_store: "${LOKI_OBJECT_STORE}"
+      schema: "${LOKI_SCHEMA_VERSION}"
+      index:
+        prefix: "${LOKI_INDEX_PREFIX}"
+        period: "${LOKI_INDEX_PERIOD}"
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: ${LOKI_QUERY_CACHE_ENABLED}
+        max_size_mb: ${LOKI_QUERY_CACHE_MAX_SIZE_MB}
+
+limits_config:
+  allow_structured_metadata: ${LOKI_ALLOW_STRUCTURED_METADATA}
+  volume_enabled: ${LOKI_VOLUME_ENABLED}
+  metric_aggregation_enabled: ${LOKI_METRIC_AGGREGATION_ENABLED}
+  retention_period: "${LOKI_RETENTION_PERIOD}"
+
+compactor:
+  working_directory: "${LOKI_COMPACTOR_WORKING_DIR}"
+  retention_enabled: ${LOKI_COMPACTOR_RETENTION_ENABLED}
+  delete_request_store: "${LOKI_OBJECT_STORE}"
