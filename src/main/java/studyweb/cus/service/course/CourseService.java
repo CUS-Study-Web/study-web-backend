@@ -31,9 +31,9 @@ public interface CourseService {
   Page<LessonSummaryResponse.LessonCardResponse> listLessons(
       UUID courseId, UUID subjectId, String email, Pageable pageable);
 
-  LessonSummaryResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
+  LessonSummaryResponse.LessonCardResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
 
-  LessonSummaryResponse updateLesson(
+  LessonSummaryResponse.LessonCardResponse updateLesson(
       UUID courseId, UUID subjectId, UUID lessonId, LessonRequest request);
 
   void deleteLesson(UUID courseId, UUID subjectId, UUID lessonId);

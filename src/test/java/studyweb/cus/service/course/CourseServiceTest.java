@@ -344,7 +344,7 @@ class CourseServiceTest {
                 eq(subjectId), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(lesson), PageRequest.of(0, 10), 1));
         when(courseMapper.toLessonCardResponse(lesson))
-                .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, "Variables", 15, null, false));
+                .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, 1, "Variables", 15, null, false));
 
         var response =
                 courseService.listLessons(courseId, subjectId, "learner@studyweb.edu", PageRequest.of(0, 10));
@@ -379,7 +379,7 @@ class CourseServiceTest {
         when(lessonRepository.save(any(Lesson.class))).thenReturn(lesson());
         when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(1L);
         when(courseMapper.toLessonCardResponse(any(Lesson.class)))
-                .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, "Variables", 15, null, false));
+                .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, 1, "Variables", 15, null, false));
 
         courseService.createLesson(
                 courseId, subjectId, new LessonRequest("Variables", 1, null, 15, AccessTier.PUBLIC));

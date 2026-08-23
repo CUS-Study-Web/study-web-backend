@@ -156,7 +156,7 @@ public class CourseController extends AbstractBaseController {
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(summary = "Create Lesson", description = "Create a lesson for a subject (assistant only)")
-  public ResponseEntity<SingleResponse<LessonSummaryResponse>> createLesson(
+  public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> createLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @Valid @RequestBody LessonRequest request) {
@@ -172,7 +172,7 @@ public class CourseController extends AbstractBaseController {
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(summary = "Update Lesson", description = "Update a lesson of a subject (assistant only)")
-  public ResponseEntity<SingleResponse<LessonSummaryResponse>> updateLesson(
+  public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> updateLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @PathVariable UUID lessonId,

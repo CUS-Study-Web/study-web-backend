@@ -202,7 +202,7 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   @Transactional
-  public LessonSummaryResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request) {
+  public LessonSummaryResponse.LessonCardResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request) {
     requireCourse(courseId);
     Subject subject = requireSubject(courseId, subjectId);
 
@@ -219,13 +219,12 @@ public class CourseServiceImpl implements CourseService {
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
-    LessonSummaryResponse.LessonCardResponse card = courseMapper.toLessonCardResponse(saved);
-    return new LessonSummaryResponse(1, List.of(card));
+    return courseMapper.toLessonCardResponse(saved);
   }
 
   @Override
   @Transactional
-  public LessonSummaryResponse updateLesson(
+  public LessonSummaryResponse.LessonCardResponse updateLesson(
       UUID courseId, UUID subjectId, UUID lessonId, LessonRequest request) {
     requireCourse(courseId);
     requireSubject(courseId, subjectId);
@@ -245,8 +244,7 @@ public class CourseServiceImpl implements CourseService {
       lesson.setAccess(request.access());
     }
     log.info("Updated lesson {} of subject {}", lessonId, subjectId);
-    LessonSummaryResponse.LessonCardResponse card = courseMapper.toLessonCardResponse(lesson);
-    return new LessonSummaryResponse(1, List.of(card));
+    return courseMapper.toLessonCardResponse(lesson);
   }
 
   @Override

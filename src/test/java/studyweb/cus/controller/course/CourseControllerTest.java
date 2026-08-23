@@ -140,7 +140,7 @@ class CourseControllerTest {
             new PageImpl<>(
                 List.of(
                     new studyweb.cus.dto.response.course.LessonSummaryResponse.LessonCardResponse(
-                        UUID.randomUUID(), "Variables", 15, null, false)),
+                        UUID.randomUUID(), 1, "Variables", 15, null, false)),
                 PageRequest.of(0, 10),
                 1));
 
