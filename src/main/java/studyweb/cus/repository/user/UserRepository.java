@@ -23,16 +23,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           SELECT u FROM User u
           WHERE u.role = 'LEARNER'
             AND (:status IS NULL OR u.status = :status)
-            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
-                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """,
       countQuery =
           """
           SELECT COUNT(u) FROM User u
           WHERE u.role = 'LEARNER'
             AND (:status IS NULL OR u.status = :status)
-            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
-                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """)
   Page<User> searchLearners(
       @Param("search") String search, @Param("status") UserStatus status, Pageable pageable);
@@ -45,16 +45,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           SELECT u FROM User u
           WHERE u.role = 'ASSISTANT'
             AND (:status IS NULL OR u.status = :status)
-            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
-                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """,
       countQuery =
           """
           SELECT COUNT(u) FROM User u
           WHERE u.role = 'ASSISTANT'
             AND (:status IS NULL OR u.status = :status)
-            AND (:search IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', :search, '%'))
-                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%')))
+            AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """)
   Page<User> searchAssistants(
       @Param("search") String search, @Param("status") UserStatus status, Pageable pageable);
