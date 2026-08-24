@@ -3,8 +3,6 @@
 ALTER TABLE courses
     ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'DRAFT';
 
-DROP TABLE user_course_progress;
-
 CREATE TABLE user_subject_progress (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
