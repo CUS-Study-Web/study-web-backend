@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,14 +20,22 @@ import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Lesson;
 import studyweb.cus.entity.course.Subject;
+import studyweb.cus.entity.progress.UserLessonProgress;
+import studyweb.cus.entity.progress.UserSubjectProgress;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
+import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.course.CourseMapper;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.LessonRepository;
 import studyweb.cus.repository.course.SubjectRepository;
+import studyweb.cus.repository.course.UserLessonProgressRepository;
+import studyweb.cus.repository.course.UserSubjectProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.CourseService;
 import studyweb.cus.service.file.FileService;
@@ -43,11 +52,19 @@ public class CourseServiceImpl implements CourseService {
   private final UserRepository userRepository;
   private final CourseMapper courseMapper;
   private final FileService fileService;
+  private final UserLessonProgressRepository userLessonProgressRepository;
+
+  private final UserSubjectProgressRepository userSubjectProgressRepository;
 
   @Override
   @Transactional(readOnly = true)
-  public Page<CourseSummaryResponse> listCourses(Pageable pageable) {
-    Page<Course> page = courseRepository.findByDeletedAtIsNull(pageable);
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status) {
+    Page<Course> page;
+    if (status == null) {
+      page = courseRepository.findByDeletedAtIsNull(pageable);
+    } else {
+      page = courseRepository.findByDeletedAtIsNullAndStatus(pageable, status);
+    }
     Page<CourseSummaryResponse> result = page.map(course -> {
       long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
       long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
@@ -66,18 +83,31 @@ public class CourseServiceImpl implements CourseService {
     Course course = requireCourse(id);
     List<AccessTier> visibleTiers = visibleTiers(email);
 
-    Page<SubjectSummaryResponse> subjects =
-        subjectRepository
-            .findByCourseIdAndDeletedAtIsNull(course.getId(), pageable)
-            .map(
-                subject ->
-                    courseMapper.toSubjectSummary(
-                        subject,
-                        assessmentRepository
-                            .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
-                                subject.getId(),
-                                studyweb.cus.enums.AssessmentType.HOMEWORK,
-                                visibleTiers)));
+    Page<Subject> page = subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId(), pageable);
+
+    java.util.Map<UUID, Integer> progressMap = java.util.Collections.emptyMap();
+    if (email != null) {
+      User user = userRepository.findByGmail(email).orElse(null);
+      if (user != null) {
+        List<UUID> subjectIds = page.getContent().stream().map(Subject::getId).toList();
+        progressMap = userSubjectProgressRepository.findByUserIdAndSubjectIdIn(user.getId(), subjectIds).stream()
+            .collect(java.util.stream.Collectors.toMap(
+                p -> p.getSubject().getId(),
+                p -> defaultOr(p.getProgressPercent(), 0),
+                (a, b) -> a));
+      }
+    }
+
+    final java.util.Map<UUID, Integer> finalProgressMap = progressMap;
+    Page<SubjectSummaryResponse> subjects = page.map(subject -> {
+      long exerciseCount = assessmentRepository
+          .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
+              subject.getId(),
+              studyweb.cus.enums.AssessmentType.HOMEWORK,
+              visibleTiers);
+      Integer progress = finalProgressMap.getOrDefault(subject.getId(), 0);
+      return courseMapper.toSubjectSummary(subject, exerciseCount, progress);
+    });
 
     log.info(
         "Fetched course detail {} with {} subject(s) (page {}, size {})",
@@ -97,6 +127,7 @@ public class CourseServiceImpl implements CourseService {
         .badgeTitle(request.badgeTitle())
         .description(request.description())
         .thumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()))
+        .status(defaultOr(request.status(), studyweb.cus.enums.CourseCreateStatus.DRAFT))
         .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
@@ -107,20 +138,23 @@ public class CourseServiceImpl implements CourseService {
   @Transactional
   public CourseSummaryResponse updateCourse(UUID id, CourseRequest request) {
     Course course = requireCourse(id);
-    if (request.title().trim() != null && !request.title().trim().isEmpty()) {
-      course.setTitle(request.title());
+    if (request.title() != null && !request.title().trim().isEmpty()) {
+      course.setTitle(request.title().trim());
     }
-    if (request.subtitle().trim() != null && !request.subtitle().trim().isEmpty()) {
-      course.setSubtitle(request.subtitle());
+    if (request.subtitle() != null && !request.subtitle().trim().isEmpty()) {
+      course.setSubtitle(request.subtitle().trim());
     }
-    if (request.badgeTitle().trim() != null && !request.badgeTitle().trim().isEmpty()) {
-      course.setBadgeTitle(request.badgeTitle());
+    if (request.badgeTitle() != null && !request.badgeTitle().trim().isEmpty()) {
+      course.setBadgeTitle(request.badgeTitle().trim());
     }
-    if (request.description().trim() != null && !request.description().trim().isEmpty()) {
-      course.setDescription(request.description());
+    if (request.description() != null && !request.description().trim().isEmpty()) {
+      course.setDescription(request.description().trim());
     }
     if (request.thumbnailImage() != null && !request.thumbnailImage().isEmpty()) {
       course.setThumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()));
+    }
+    if (request.status() != null) {
+      course.setStatus(request.status());
     }
     log.info("Updated course {}", id);
 
@@ -185,10 +219,24 @@ public class CourseServiceImpl implements CourseService {
     requireCourse(courseId);
     requireSubject(courseId, subjectId);
 
-    Page<LessonSummaryResponse.LessonCardResponse> lessons =
-        lessonRepository
-            .findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable)
-            .map(courseMapper::toLessonCardResponse);
+    Page<Lesson> page = lessonRepository
+        .findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable);
+
+    java.util.Set<UUID> clickedLessonIds = java.util.Collections.emptySet();
+    if (email != null) {
+      User user = userRepository.findByGmail(email).orElse(null);
+      if (user != null) {
+        List<UUID> lessonIds = page.getContent().stream().map(Lesson::getId).toList();
+        clickedLessonIds = userLessonProgressRepository.findByUserIdAndLessonIdIn(user.getId(), lessonIds).stream()
+            .filter(p -> Boolean.TRUE.equals(p.getIsClicked()))
+            .map(p -> p.getLesson().getId())
+            .collect(java.util.stream.Collectors.toSet());
+      }
+    }
+
+    final java.util.Set<UUID> finalClickedLessonIds = clickedLessonIds;
+    Page<LessonSummaryResponse.LessonCardResponse> lessons = page
+        .map(lesson -> courseMapper.toLessonCardResponse(lesson, finalClickedLessonIds.contains(lesson.getId())));
 
     log.info(
         "Listed {} lessons for subject {} (user: {}, page {}, size {})",
@@ -282,6 +330,12 @@ public class CourseServiceImpl implements CourseService {
         .orElseThrow(() -> new CourseException(CourseErrorCode.LESSON_NOT_FOUND));
   }
 
+  private User requireUser(String email) {
+    return userRepository
+        .findByGmail(email)
+        .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+  }
+
   private List<AccessTier> visibleTiers(String email) {
     if (email == null) {
       return List.of(AccessTier.PUBLIC);
@@ -301,5 +355,53 @@ public class CourseServiceImpl implements CourseService {
 
   private static <T> T defaultOr(T value, T fallback) {
     return value == null ? fallback : value;
+  }
+
+  @Override
+  @Transactional
+  public void doneLesson(UUID courseId, UUID subjectId, UUID lessonId, String email) {
+    User user = requireUser(email);
+    requireCourse(courseId);
+    Subject subject = requireSubject(courseId, subjectId);
+    Lesson lesson = requireLesson(subjectId, lessonId);
+
+    UserLessonProgress lessonProgress = userLessonProgressRepository
+        .findByUserIdAndLessonId(user.getId(), lessonId)
+        .orElseGet(() -> UserLessonProgress.builder()
+            .user(user)
+            .lesson(lesson)
+            .isClicked(false)
+            .build());
+    lessonProgress.setIsClicked(true);
+    userLessonProgressRepository.save(lessonProgress);
+
+    int totalLessons = defaultOr(lessonRepository.countLessonBySubjectId(subjectId), 0);
+    long completedLessons = userLessonProgressRepository
+        .countByUserIdAndLesson_Subject_IdAndIsClickedTrue(user.getId(), subjectId);
+    int progressPercent = totalLessons > 0 ? (int) ((completedLessons * 100) / totalLessons) : 0;
+    progressPercent = Math.min(100, Math.max(0, progressPercent));
+
+    UserSubjectProgress subjectProgress = userSubjectProgressRepository
+        .findByUserIdAndSubjectId(user.getId(), subjectId)
+        .orElseGet(() -> UserSubjectProgress.builder()
+            .user(user)
+            .subject(subject)
+            .progressPercent(0)
+            .build());
+    subjectProgress.setProgressPercent(progressPercent);
+    userSubjectProgressRepository.save(subjectProgress);
+    log.info("Marked lesson {} done for user {}. Subject {} progress: {}%", lessonId, email, subjectId,
+        progressPercent);
+  }
+
+  @Override
+  public Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable) {
+
+    return listCourses(pageable, CourseCreateStatus.PUBLISH);
+  }
+
+  @Override
+  public Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable) {
+    return listCourses(pageable, null);
   }
 }

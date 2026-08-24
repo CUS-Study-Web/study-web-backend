@@ -24,7 +24,7 @@ import studyweb.cus.entity.course.Subject;
 import studyweb.cus.entity.course.TeacherProfile;
 import studyweb.cus.entity.flashcard.Flashcard;
 import studyweb.cus.entity.flashcard.FlashcardTopic;
-import studyweb.cus.entity.progress.UserCourseProgress;
+import studyweb.cus.entity.progress.UserSubjectProgress;
 import studyweb.cus.entity.progress.UserFlashcardProgress;
 import studyweb.cus.entity.progress.UserLessonProgress;
 import studyweb.cus.entity.progress.UserTopicProgress;
@@ -59,7 +59,7 @@ class EntityInheritanceTest {
             TeacherProfile.class,
             Flashcard.class,
             FlashcardTopic.class,
-            UserCourseProgress.class,
+            UserSubjectProgress.class,
             UserFlashcardProgress.class,
             UserLessonProgress.class,
             UserTopicProgress.class,

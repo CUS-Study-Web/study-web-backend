@@ -78,7 +78,7 @@ class CourseControllerTest {
   }
 
   private CourseSummaryResponse summary() {
-    return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url", 0L, 0L);
+    return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, 0L, 0L);
   }
 
   private MockMultipartFile thumbnail() {
@@ -87,7 +87,7 @@ class CourseControllerTest {
 
   @Test
   void listCourses_isPublicAndReturnsData() throws Exception {
-    when(courseService.listCourses(any(Pageable.class)))
+    when(courseService.listCoursesForUser(any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
 
     mockMvc
@@ -102,7 +102,21 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.paging.total").value(1))
         .andExpect(jsonPath("$.paging.totalPages").value(1));
 
-    verify(courseService).listCourses(any(Pageable.class));
+    verify(courseService).listCoursesForUser(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void listCoursesForAdmin_returnsDraftAndPublishedCourses() throws Exception {
+    when(courseService.listCoursesForAdmin(any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
+
+    mockMvc
+        .perform(get("/api/courses/admin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()));
+
+    verify(courseService).listCoursesForAdmin(any(Pageable.class));
   }
 
   @Test
@@ -111,8 +125,8 @@ class CourseControllerTest {
         .thenReturn(
             new PageImpl<>(
                 List.of(
-                    new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3, 1),
-                    new SubjectSummaryResponse(UUID.randomUUID(), "Advanced", null, 5, 2)),
+                    new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3, 1, 0),
+                    new SubjectSummaryResponse(UUID.randomUUID(), "Advanced", null, 5, 2, 0)),
                 PageRequest.of(0, 10),
                 2));
 
@@ -140,7 +154,7 @@ class CourseControllerTest {
             new PageImpl<>(
                 List.of(
                     new studyweb.cus.dto.response.course.LessonSummaryResponse.LessonCardResponse(
-                        UUID.randomUUID(), 1, "Variables", 15, null, false)),
+                        UUID.randomUUID(), 1, "Variables", 15, null, false, false)),
                 PageRequest.of(0, 10),
                 1));
 
@@ -231,5 +245,24 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.message").value("Course deleted successfully!"));
 
     verify(courseService).deleteCourse(COURSE_ID);
+  }
+
+  @Test
+  @WithMockUser
+  void doneLesson_marksLessonAsDone() throws Exception {
+    UUID subjectId = UUID.randomUUID();
+    UUID lessonId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post(
+                "/api/courses/{id}/subjects/{subjectId}/lessons/{lessonId}/done",
+                COURSE_ID,
+                subjectId,
+                lessonId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Lesson done successfully!"));
+
+    verify(courseService).doneLesson(eq(COURSE_ID), eq(subjectId), eq(lessonId), any());
   }
 }
