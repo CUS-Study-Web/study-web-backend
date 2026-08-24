@@ -1,5 +1,6 @@
 package studyweb.cus.service.admin.impl;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,8 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.admin.AdminErrorCode;
 import studyweb.cus.exception.admin.AdminException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
@@ -201,6 +204,11 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                   "Create VIP accounts only for CUS pre-registered learners");
             });
 
+    if (!request.startDate().isBefore(request.endDate())) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Start date must be before end date");
+    }
+
     Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
 
     String encodedPassword = passwordEncoder.encode(request.password());
@@ -228,6 +236,18 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         userRepository
             .findByIdAndRole(id, UserRole.LEARNER)
             .orElseThrow(() -> new AdminException(AdminErrorCode.USER_NOT_FOUND));
+
+    LocalDate effectiveStartDate =
+        request.startDate() != null ? request.startDate() : user.getVipStartDate();
+    LocalDate effectiveEndDate =
+        request.endDate() != null ? request.endDate() : user.getVipEndDate();
+
+    if (effectiveStartDate != null
+        && effectiveEndDate != null
+        && !effectiveStartDate.isBefore(effectiveEndDate)) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Start date must be before end date");
+    }
 
     if (request.primaryCourseId() != null) {
       Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
