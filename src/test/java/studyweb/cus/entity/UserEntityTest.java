@@ -52,7 +52,7 @@ class UserEntityTest {
             .user(user)
             .status(VipRequestStatus.WAITING)
             .note("Please upgrade")
-            .requestDate(LocalDateTime.now())
+            .requestDate(LocalDate.now())
             .build();
 
     assertThat(request.getUser()).isEqualTo(user);

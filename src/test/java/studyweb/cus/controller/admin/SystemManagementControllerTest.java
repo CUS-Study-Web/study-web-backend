@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -112,8 +113,8 @@ class SystemManagementControllerTest {
         "Trần Thị B",
         "vip.learner@studyweb.edu",
         COURSE_ID,
-        LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-        LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+        LocalDate.of(2026, 8, 18),
+        LocalDate.of(2027, 8, 18),
         "Kích hoạt gói VIP 1 năm qua admin",
         "Password@123");
   }
@@ -123,8 +124,8 @@ class SystemManagementControllerTest {
         "Trần Thị B",
         "vip.learner@studyweb.edu",
         COURSE_ID,
-        LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-        LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+        LocalDate.of(2026, 8, 18),
+        LocalDate.of(2027, 8, 18),
         "Ghi chú cập nhật",
         UserTier.VIP,
         "Password@123");
@@ -143,8 +144,8 @@ class SystemManagementControllerTest {
         "Nguyễn Văn A",
         4,
         "Kích hoạt VIP 1 năm",
-        LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-        LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+        LocalDate.of(2026, 8, 18),
+        LocalDate.of(2027, 8, 18),
         "https://cdn.studyweb.edu/avatars/nguyenvana.png");
   }
 
@@ -185,7 +186,7 @@ class SystemManagementControllerTest {
         "https://cdn.studyweb.edu/avatars/nguyenvana.png",
         "React Masterclass",
         "Cần kích hoạt VIP để học chuyên sâu",
-        LocalDateTime.of(2026, 8, 20, 10, 0, 0),
+        LocalDate.of(2026, 8, 20),
         status);
   }
 
@@ -373,10 +374,10 @@ class SystemManagementControllerTest {
 
     @Test
     @DisplayName(
-        "POST /learners/create-vip-account - JSON body deserializes all fields including ISO LocalDateTime")
+        "POST /learners/create-vip-account - JSON body deserializes all fields including ISO LocalDate")
     void createVipAccount_deserializesAllFields() throws Exception {
-      LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
-      LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
+      LocalDate start = LocalDate.of(2026, 8, 18);
+      LocalDate end = LocalDate.of(2027, 8, 18);
 
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
@@ -557,8 +558,8 @@ class SystemManagementControllerTest {
               "Nguyễn Văn A",
               "valid@studyweb.edu",
               COURSE_ID,
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              LocalDate.of(2026, 8, 18),
+              LocalDate.of(2027, 8, 18),
               null,
               invalidPassword);
 
@@ -591,8 +592,8 @@ class SystemManagementControllerTest {
               "Nguyễn Văn A",
               invalidGmail,
               COURSE_ID,
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              LocalDate.of(2026, 8, 18),
+              LocalDate.of(2027, 8, 18),
               null,
               "Password@123");
 
@@ -611,8 +612,8 @@ class SystemManagementControllerTest {
               "Nguyễn Văn A",
               invalidGmail,
               COURSE_ID,
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              LocalDate.of(2026, 8, 18),
+              LocalDate.of(2027, 8, 18),
               null,
               UserTier.VIP,
               "Password@123");
@@ -640,7 +641,7 @@ class SystemManagementControllerTest {
               "valid@studyweb.edu",
               COURSE_ID,
               null,
-              LocalDateTime.of(2027, 8, 18, 23, 59, 59),
+              LocalDate.of(2027, 8, 18),
               null,
               "Password@123");
 
@@ -665,7 +666,7 @@ class SystemManagementControllerTest {
               "Nguyễn Văn A",
               "valid@studyweb.edu",
               COURSE_ID,
-              LocalDateTime.of(2026, 8, 18, 0, 0, 0),
+              LocalDate.of(2026, 8, 18),
               null,
               null,
               "Password@123");

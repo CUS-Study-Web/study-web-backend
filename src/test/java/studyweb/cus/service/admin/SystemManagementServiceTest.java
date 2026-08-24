@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -65,6 +66,7 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.GlobalExceptionHandler;
 import studyweb.cus.exception.admin.AdminErrorCode;
+import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.mapper.admin.SystemManagementMapper;
 import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
@@ -1024,8 +1026,8 @@ class SystemManagementServiceTest {
     @DisplayName("New user creates VIP user entity with LEARNER role and VIP tier")
     void createVipAccount_newUser_encodesDefaultPasswordAndSaves() throws Exception {
       UUID courseId = UUID.randomUUID();
-      LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
-      LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
+      LocalDate start = LocalDate.of(2026, 8, 18);
+      LocalDate end = LocalDate.of(2027, 8, 18);
 
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
@@ -1075,8 +1077,8 @@ class SystemManagementServiceTest {
               "Trần Thị B",
               "existing@studyweb.edu",
               courseId,
-              LocalDateTime.now(),
-              LocalDateTime.now().plusYears(1),
+              LocalDate.now(),
+              LocalDate.now().plusYears(1),
               null,
               "Password@123");
 
@@ -1105,8 +1107,8 @@ class SystemManagementServiceTest {
               "Trần Thị B",
               "banned@studyweb.edu",
               courseId,
-              LocalDateTime.now(),
-              LocalDateTime.now().plusYears(1),
+              LocalDate.now(),
+              LocalDate.now().plusYears(1),
               null,
               "Password@123");
 
@@ -1135,8 +1137,8 @@ class SystemManagementServiceTest {
               "Trần Thị B",
               "inactive@studyweb.edu",
               courseId,
-              LocalDateTime.now(),
-              LocalDateTime.now().plusYears(1),
+              LocalDate.now(),
+              LocalDate.now().plusYears(1),
               null,
               "Password@123");
 
@@ -1155,6 +1157,34 @@ class SystemManagementServiceTest {
 
       verify(userRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("Start date not before end date throws 400 Bad Request INVALID_PARAMETER")
+    void createVipAccount_startDateAfterEndDate_throwsBadRequest() throws Exception {
+      UUID courseId = UUID.randomUUID();
+      CreateVipAccountRequest request =
+          new CreateVipAccountRequest(
+              "Trần Thị B",
+              "newvip@studyweb.edu",
+              courseId,
+              LocalDate.of(2027, 8, 18),
+              LocalDate.of(2026, 8, 18),
+              null,
+              "Password@123");
+
+      when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              post("/api/system-management/learners/create-vip-account")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.INVALID_PARAMETER.code()));
+
+      verify(userRepository, never()).save(any());
+    }
   }
 
   // =========================================================================
@@ -1168,8 +1198,8 @@ class SystemManagementServiceTest {
     @DisplayName("Existing user mutates fields, primary course, and encodes new password")
     void updateAccount_existingUser_updatesAndSaves() throws Exception {
       UUID courseId = UUID.randomUUID();
-      LocalDateTime start = LocalDateTime.of(2026, 8, 18, 0, 0, 0);
-      LocalDateTime end = LocalDateTime.of(2027, 8, 18, 23, 59, 59);
+      LocalDate start = LocalDate.of(2026, 8, 18);
+      LocalDate end = LocalDate.of(2027, 8, 18);
 
       UpdateAccountRequest request =
           new UpdateAccountRequest(
@@ -1226,8 +1256,8 @@ class SystemManagementServiceTest {
               "Trần Thị B",
               GMAIL_1,
               courseId,
-              LocalDateTime.now(),
-              LocalDateTime.now().plusYears(1),
+              LocalDate.now(),
+              LocalDate.now().plusYears(1),
               null,
               UserTier.VIP,
               "NewPass@123");
@@ -1243,6 +1273,44 @@ class SystemManagementServiceTest {
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
+    }
+
+    @Test
+    @DisplayName("Start date not before end date throws 400 Bad Request INVALID_PARAMETER")
+    void updateAccount_startDateAfterEndDate_throwsBadRequest() throws Exception {
+      UUID courseId = UUID.randomUUID();
+      UpdateAccountRequest request =
+          new UpdateAccountRequest(
+              "Trần Thị B",
+              GMAIL_1,
+              courseId,
+              LocalDate.of(2027, 8, 18),
+              LocalDate.of(2026, 8, 18),
+              null,
+              UserTier.VIP,
+              "NewPass@123");
+
+      User existingUser =
+          User.builder()
+              .name("Trần Thị B")
+              .gmail(GMAIL_1)
+              .role(UserRole.LEARNER)
+              .tier(UserTier.NORMAL)
+              .status(UserStatus.ACTIVE)
+              .build();
+      existingUser.setId(USER_ID_1);
+
+      when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
+          .thenReturn(Optional.of(existingUser));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/learners/{id}/update-account", USER_ID_1)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(objectMapper.writeValueAsString(request)))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.statusCode").value(400))
+          .andExpect(jsonPath("$.errorCode").value(SystemErrorCode.INVALID_PARAMETER.code()));
     }
   }
 
@@ -1310,7 +1378,7 @@ class SystemManagementServiceTest {
               null,
               "React Badge",
               "Note 1",
-              LocalDateTime.now(),
+              LocalDate.now(),
               VipRequestStatus.WAITING);
       VipRequestResponse res2 =
           new VipRequestResponse(
@@ -1321,7 +1389,7 @@ class SystemManagementServiceTest {
               null,
               "Java Fallback",
               "Note 2",
-              LocalDateTime.now(),
+              LocalDate.now(),
               VipRequestStatus.APPROVED);
 
       when(systemManagementMapper.toVipRequestResponse(vr1, "React Badge")).thenReturn(res1);
