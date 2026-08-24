@@ -398,7 +398,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     }
 
     User user = vipRequest.getUser();
-    LocalDateTime now = LocalDateTime.now();
+    LocalDate now = LocalDate.now();
     user.setTier(UserTier.VIP);
     user.setVipStartDate(now);
 
@@ -446,7 +446,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     }
   }
 
-  private LocalDateTime calculateVipEndDate(LocalDateTime startDate, String billingPeriod) {
+  private LocalDate calculateVipEndDate(LocalDate startDate, String billingPeriod) {
     if (billingPeriod == null || billingPeriod.isBlank()) {
       return startDate.plusMonths(1);
     }

@@ -85,10 +85,10 @@ public class User extends AbstractBaseEntity {
   private String note;
 
   @Column(name = "vip_start_date")
-  private LocalDateTime vipStartDate;
+  private LocalDate vipStartDate;
 
   @Column(name = "vip_end_date")
-  private LocalDateTime vipEndDate;
+  private LocalDate vipEndDate;
 
   @Column(name = "avatar_url", length = 500)
   private String avatarUrl;
