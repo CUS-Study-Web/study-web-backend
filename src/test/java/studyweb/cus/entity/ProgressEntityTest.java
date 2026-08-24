@@ -5,13 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Lesson;
+import studyweb.cus.entity.course.Subject;
 import studyweb.cus.entity.flashcard.Flashcard;
 import studyweb.cus.entity.flashcard.FlashcardTopic;
-import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.progress.UserFlashcardProgress;
 import studyweb.cus.entity.progress.UserLessonProgress;
+import studyweb.cus.entity.progress.UserSubjectProgress;
 import studyweb.cus.entity.progress.UserTopicProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.FlashcardProgressStatus;
@@ -20,18 +20,18 @@ import studyweb.cus.enums.FlashcardProgressStatus;
 class ProgressEntityTest {
 
   @Test
-  @DisplayName("Should build UserCourseProgress correctly")
-  void testUserCourseProgressBuilder() {
+  @DisplayName("Should build UserSubjectProgress correctly")
+  void testUserSubjectProgressBuilder() {
     User user = User.builder().gmail("learner@studyweb.edu").build();
     user.setId(UUID.randomUUID());
-    Course course = Course.builder().title("Java").build();
-    course.setId(UUID.randomUUID());
+    Subject subject = Subject.builder().title("Java").build();
+    subject.setId(UUID.randomUUID());
 
-    UserCourseProgress progress =
-        UserCourseProgress.builder().user(user).course(course).progressPercent(75).build();
+    UserSubjectProgress progress =
+        UserSubjectProgress.builder().user(user).subject(subject).progressPercent(75).build();
 
     assertThat(progress.getUser()).isEqualTo(user);
-    assertThat(progress.getCourse()).isEqualTo(course);
+    assertThat(progress.getSubject()).isEqualTo(subject);
     assertThat(progress.getProgressPercent()).isEqualTo(75);
   }
 

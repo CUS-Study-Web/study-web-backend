@@ -115,9 +115,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         keys.stream().map(assessmentMapper::toAnswerKeyResponse).toList();
 
     String presignedUrl =
-        assessment.getFileKey() != null
-            ? fileService.generatePresignedUrl(assessment.getFileKey())
-            : null;
+        assessment.getFileKey() != null ? fileService.buildFileUrl(assessment.getFileKey()) : null;
 
     log.info("Fetched assessment detail {}", assessmentId);
     return assessmentMapper.toDetail(assessment, keyResponses, presignedUrl);

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import studyweb.cus.entity.course.Course;
+import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 
@@ -19,4 +20,6 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
     return findByIdAndDeletedAtIsNull(id)
         .orElseThrow(() -> new CourseException(CourseErrorCode.COURSE_NOT_FOUND));
   }
+
+  Page<Course> findByDeletedAtIsNullAndStatus(Pageable pageable, CourseCreateStatus status);
 }

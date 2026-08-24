@@ -49,7 +49,11 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/api/auth/**")
                     .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/courses",
+                        "/api/courses/*",
+                        "/api/courses/*/assessments/exams")
                     .permitAll()
                     .requestMatchers(
                         "/api-docs/**",

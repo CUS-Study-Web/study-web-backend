@@ -9,7 +9,6 @@ import static studyweb.cus.constant.FileConstants.FOLDER_DOCUMENTS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXAMS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXERCISES;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -21,11 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import studyweb.cus.config.S3Properties;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
@@ -37,29 +32,54 @@ import studyweb.cus.service.file.FileService;
 @Slf4j
 public class FileServiceImpl implements FileService {
 
-  private static final Duration PRESIGN_EXPIRY = Duration.ofHours(1);
-
   private final S3Client s3Client;
-  private final S3Presigner s3Presigner;
   private final S3Properties s3Properties;
 
   @Override
   public UploadDocumentResult uploadDocumentFile(MultipartFile file) {
+    long maxDocSize =
+        s3Properties.getMaxSizeDocumentUpload() != null
+            ? s3Properties.getMaxSizeDocumentUpload()
+            : 10485760L;
+    if (file.getSize() > maxDocSize) {
+      throw new FileException(FileErrorCode.FILE_TOO_LARGE);
+    }
     return upload(file, FOLDER_DOCUMENTS, DOCUMENT_EXTENSIONS);
   }
 
   @Override
   public UploadDocumentResult uploadAvatarFile(MultipartFile file) {
+    long maxAvatarSize =
+        s3Properties.getMaxSizeAvatarUpload() != null
+            ? s3Properties.getMaxSizeAvatarUpload()
+            : 5242880L;
+    if (file.getSize() > maxAvatarSize) {
+      throw new FileException(FileErrorCode.FILE_TOO_LARGE);
+    }
     return upload(file, FOLDER_AVATARS, AVATAR_EXTENSIONS);
   }
 
   @Override
   public UploadDocumentResult uploadExerciseFile(MultipartFile file) {
+    long maxDocSize =
+        s3Properties.getMaxSizeDocumentUpload() != null
+            ? s3Properties.getMaxSizeDocumentUpload()
+            : 10485760L;
+    if (file.getSize() > maxDocSize) {
+      throw new FileException(FileErrorCode.FILE_TOO_LARGE);
+    }
     return upload(file, FOLDER_EXERCISES, EXERCISE_EXTENSIONS);
   }
 
   @Override
   public UploadDocumentResult uploadExamFile(MultipartFile file) {
+    long maxDocSize =
+        s3Properties.getMaxSizeDocumentUpload() != null
+            ? s3Properties.getMaxSizeDocumentUpload()
+            : 10485760L;
+    if (file.getSize() > maxDocSize) {
+      throw new FileException(FileErrorCode.FILE_TOO_LARGE);
+    }
     return upload(file, FOLDER_EXAMS, EXAM_EXTENSIONS);
   }
 
@@ -87,8 +107,7 @@ public class FileServiceImpl implements FileService {
     if (extension == null || !allowedExtensions.contains(extension)) {
       throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     }
-
-    String objectName = folder + UUID.randomUUID() + "." + extension;
+    String objectName = buildObjectName(folder, extension);
     try {
       s3Client.putObject(
           PutObjectRequest.builder()
@@ -105,25 +124,17 @@ public class FileServiceImpl implements FileService {
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
 
-    String fileUrl = generatePresignedUrl(objectName);
+    String fileUrl = buildFileUrl(objectName);
     log.info("Uploaded file {} ({} bytes)", objectName, file.getSize());
     return new UploadDocumentResult(file.getSize(), objectName, fileUrl);
   }
 
   @Override
-  public String generatePresignedUrl(String objectKey) {
+  public String buildFileUrl(String objectKey) {
     try {
-      GetObjectRequest getObjectRequest =
-          GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey).build();
-      GetObjectPresignRequest presignRequest =
-          GetObjectPresignRequest.builder()
-              .signatureDuration(PRESIGN_EXPIRY)
-              .getObjectRequest(getObjectRequest)
-              .build();
-      PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
-      return presigned.url().toString();
+      return s3Properties.getEndpoint() + "/" + s3Properties.getBucket() + "/" + objectKey;
     } catch (Exception e) {
-      log.error("Failed to generate presigned URL for {}", objectKey, e);
+      log.error("Failed to build file URL for {}", objectKey, e);
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
   }
@@ -151,5 +162,9 @@ public class FileServiceImpl implements FileService {
     } catch (Exception e) {
       log.error("Failed to delete file {} from S3", fileKey, e);
     }
+  }
+
+  private String buildObjectName(String folder, String extension) {
+    return folder + UUID.randomUUID() + "." + extension;
   }
 }

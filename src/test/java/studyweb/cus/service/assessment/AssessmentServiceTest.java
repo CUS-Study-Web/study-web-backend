@@ -480,7 +480,7 @@ class AssessmentServiceTest {
     when(answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId))
         .thenReturn(List.of(key1));
     when(assessmentMapper.toAnswerKeyResponse(key1)).thenReturn(keyResp);
-    when(fileService.generatePresignedUrl("exams/exam.pdf")).thenReturn("exams/exam.pdf");
+    when(fileService.buildFileUrl("exams/exam.pdf")).thenReturn("exams/exam.pdf");
     when(assessmentMapper.toDetail(eq(assessment), anyList(), eq("exams/exam.pdf")))
         .thenReturn(expected);
 

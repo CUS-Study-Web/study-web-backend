@@ -14,32 +14,32 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
-import studyweb.cus.entity.course.Course;
+import studyweb.cus.entity.course.Subject;
 import studyweb.cus.entity.user.User;
 
 @Entity
 @Table(
-    name = "user_course_progress",
+    name = "user_subject_progress",
     uniqueConstraints = {
       @UniqueConstraint(
-          name = "uq_user_course",
-          columnNames = {"user_id", "course_id"})
+          name = "uq_user_subject",
+          columnNames = {"user_id", "subject_id"})
     },
-    indexes = {@Index(name = "idx_user_course_progress_user", columnList = "user_id")})
+    indexes = {@Index(name = "idx_user_subject_progress_user", columnList = "user_id")})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCourseProgress extends AbstractBaseEntity {
+public class UserSubjectProgress extends AbstractBaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "course_id", nullable = false)
-  private Course course;
+  @JoinColumn(name = "subject_id", nullable = false)
+  private Subject subject;
 
   @Column(name = "progress_percent", nullable = false)
   @Builder.Default

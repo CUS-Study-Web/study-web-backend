@@ -50,7 +50,6 @@ import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
-import studyweb.cus.entity.content.PricingPageContent;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
@@ -148,8 +147,7 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.data").isEmpty())
           .andExpect(jsonPath("$.paging.total").value(0));
 
-      verify(systemManagementMapper, never())
-          .toLearnerSummary(any(), any(), anyDouble(), anyInt());
+      verify(systemManagementMapper, never()).toLearnerSummary(any(), any(), anyDouble(), anyInt());
     }
 
     @Test
@@ -271,28 +269,24 @@ class SystemManagementServiceTest {
           UserCourseProgress.builder().user(user).course(course).progressPercent(80).build();
 
       Assessment exam1 =
-          Assessment.builder()
-              .title("Quiz 1")
-              .course(course)
-              .numQuestions(1)
-              .maxScore(10)
-              .build();
+          Assessment.builder().title("Quiz 1").course(course).numQuestions(1).maxScore(10).build();
       exam1.setId(UUID.randomUUID());
       AssessmentAttemptDetail d1 =
-          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+          AssessmentAttemptDetail.builder()
+              .questionNumber(1)
+              .selectedAnswer(AnswerChoice.A)
+              .build();
       AssessmentAttempt attempt1 =
           AssessmentAttempt.builder().user(user).exam(exam1).details(List.of(d1)).build();
 
       Assessment exam2 =
-          Assessment.builder()
-              .title("Quiz 2")
-              .course(course)
-              .numQuestions(1)
-              .maxScore(10)
-              .build();
+          Assessment.builder().title("Quiz 2").course(course).numQuestions(1).maxScore(10).build();
       exam2.setId(UUID.randomUUID());
       AssessmentAttemptDetail d2 =
-          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+          AssessmentAttemptDetail.builder()
+              .questionNumber(1)
+              .selectedAnswer(AnswerChoice.A)
+              .build();
       AssessmentAttempt attempt2 =
           AssessmentAttempt.builder().user(user).exam(exam2).details(List.of(d2)).build();
 
@@ -308,7 +302,8 @@ class SystemManagementServiceTest {
           .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progress));
-      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1)))
+          .thenReturn(List.of(progress));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of(attempt1, attempt2));
       when(answerKeyRepository.findByExamIdInAndDeletedAtIsNull(any())).thenReturn(List.of(k1, k2));
@@ -356,12 +351,7 @@ class SystemManagementServiceTest {
       Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
 
-      User user =
-          User.builder()
-              .gmail(GMAIL_1)
-              .name("Nguyễn Văn A")
-              .primaryCourse(course)
-              .build();
+      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").primaryCourse(course).build();
       user.setId(USER_ID_1);
 
       UserCourseProgress progress =
@@ -372,7 +362,8 @@ class SystemManagementServiceTest {
           .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progress));
-      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1)))
+          .thenReturn(List.of(progress));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of());
 
@@ -411,12 +402,7 @@ class SystemManagementServiceTest {
       Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
 
-      User user =
-          User.builder()
-              .gmail(GMAIL_1)
-              .name("Nguyễn Văn A")
-              .primaryCourse(course)
-              .build();
+      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").primaryCourse(course).build();
       user.setId(USER_ID_1);
 
       UserCourseProgress progress =
@@ -430,30 +416,36 @@ class SystemManagementServiceTest {
               .maxScore(10)
               .build();
       validExam.setId(UUID.randomUUID());
-      Assessment examWithoutCourse =
-          Assessment.builder().title("Orphan Exam").course(null).build();
+      Assessment examWithoutCourse = Assessment.builder().title("Orphan Exam").course(null).build();
       examWithoutCourse.setId(UUID.randomUUID());
 
       AssessmentAttemptDetail d =
-          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+          AssessmentAttemptDetail.builder()
+              .questionNumber(1)
+              .selectedAnswer(AnswerChoice.A)
+              .build();
       AssessmentAttempt validAttempt =
           AssessmentAttempt.builder().user(user).exam(validExam).details(List.of(d)).build();
       AssessmentAttempt nullUserAttempt =
           AssessmentAttempt.builder().user(null).exam(validExam).build();
-      AssessmentAttempt nullExamAttempt =
-          AssessmentAttempt.builder().user(user).exam(null).build();
+      AssessmentAttempt nullExamAttempt = AssessmentAttempt.builder().user(user).exam(null).build();
       AssessmentAttempt nullCourseAttempt =
           AssessmentAttempt.builder().user(user).exam(examWithoutCourse).build();
 
       AnswerKey k =
-          AnswerKey.builder().exam(validExam).questionNumber(1).correctAnswer(AnswerChoice.A).build();
+          AnswerKey.builder()
+              .exam(validExam)
+              .questionNumber(1)
+              .correctAnswer(AnswerChoice.A)
+              .build();
 
       Page<User> userPage = new PageImpl<>(List.of(user), PageRequest.of(0, 10), 1);
       when(userRepository.searchLearners(isNull(), isNull(), any(Pageable.class)))
           .thenReturn(userPage);
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of(USER_ID_1)))
           .thenReturn(List.of(progress));
-      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1))).thenReturn(List.of(progress));
+      when(userCourseProgressRepository.findByUserIds(List.of(USER_ID_1)))
+          .thenReturn(List.of(progress));
       when(assessmentAttemptRepository.findAllByUserIdsWithExam(List.of(USER_ID_1)))
           .thenReturn(List.of(nullUserAttempt, nullExamAttempt, nullCourseAttempt, validAttempt));
       when(answerKeyRepository.findByExamIdInAndDeletedAtIsNull(any())).thenReturn(List.of(k));
@@ -492,8 +484,7 @@ class SystemManagementServiceTest {
       Course course1 = Course.builder().title("Java Course").build();
       course1.setId(UUID.randomUUID());
 
-      User user1 =
-          User.builder().gmail(GMAIL_1).name("Learner One").primaryCourse(course1).build();
+      User user1 = User.builder().gmail(GMAIL_1).name("Learner One").primaryCourse(course1).build();
       user1.setId(USER_ID_1);
 
       User user2 = User.builder().gmail(GMAIL_2).name("Learner Two").build();
@@ -503,15 +494,13 @@ class SystemManagementServiceTest {
           UserCourseProgress.builder().user(user1).course(course1).progressPercent(90).build();
 
       Assessment exam1 =
-          Assessment.builder()
-              .title("Exam 1")
-              .course(course1)
-              .numQuestions(1)
-              .maxScore(10)
-              .build();
+          Assessment.builder().title("Exam 1").course(course1).numQuestions(1).maxScore(10).build();
       exam1.setId(UUID.randomUUID());
       AssessmentAttemptDetail d1 =
-          AssessmentAttemptDetail.builder().questionNumber(1).selectedAnswer(AnswerChoice.A).build();
+          AssessmentAttemptDetail.builder()
+              .questionNumber(1)
+              .selectedAnswer(AnswerChoice.A)
+              .build();
       AssessmentAttempt attempt1 =
           AssessmentAttempt.builder().user(user1).exam(exam1).details(List.of(d1)).build();
       AnswerKey k1 =
@@ -613,7 +602,8 @@ class SystemManagementServiceTest {
       assistant.setId(ASSISTANT_ID);
 
       Page<User> page = new PageImpl<>(List.of(assistant), PageRequest.of(0, 10), 1);
-      when(userRepository.searchAssistants(isNull(), isNull(), any(Pageable.class))).thenReturn(page);
+      when(userRepository.searchAssistants(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(page);
       when(assessmentRepository.countExamsByAssistantIds(List.of(ASSISTANT_ID)))
           .thenReturn(List.<Object[]>of(new Object[] {ASSISTANT_ID, 12L}));
 
@@ -752,8 +742,7 @@ class SystemManagementServiceTest {
       CreateAssistantRequest request =
           new CreateAssistantRequest(
               "Trần Minh Hiếu", "inactive@cus.edu.vn", "0901111222", "CustomPass@123");
-      User inactiveUser =
-          User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
+      User inactiveUser = User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
 
@@ -780,8 +769,7 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("PATCH /assistants/{id}/deactivate mutates status to INACTIVE")
     void deactivateAssistant_setsStatusToInactive() throws Exception {
-      User assistant =
-          User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
+      User assistant = User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
 
       when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
@@ -814,15 +802,15 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("PATCH /assistants/{id}/activate mutates status to ACTIVE")
     void activateAssistant_setsStatusToActive() throws Exception {
-      User assistant =
-          User.builder().status(UserStatus.INACTIVE).role(UserRole.ASSISTANT).build();
+      User assistant = User.builder().status(UserStatus.INACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
 
       when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
           .thenReturn(Optional.of(assistant));
 
       mockMvc
-          .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
+          .perform(
+              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Activate assistant successfully."));
@@ -837,7 +825,8 @@ class SystemManagementServiceTest {
           .thenReturn(Optional.empty());
 
       mockMvc
-          .perform(patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
+          .perform(
+              patch("/api/system-management/assistants/{id}/activate", ASSISTANT_ID.toString()))
           .andExpect(status().isNotFound())
           .andExpect(jsonPath("$.statusCode").value(404))
           .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_NOT_FOUND.code()));
@@ -846,8 +835,7 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("PATCH /assistants/{id}/ban mutates status to BANNED")
     void banAssistant_setsStatusToInactive() throws Exception {
-      User assistant =
-          User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
+      User assistant = User.builder().status(UserStatus.ACTIVE).role(UserRole.ASSISTANT).build();
       assistant.setId(ASSISTANT_ID);
 
       when(userRepository.findByIdAndRole(ASSISTANT_ID, UserRole.ASSISTANT))
@@ -1152,8 +1140,7 @@ class SystemManagementServiceTest {
               null,
               "Password@123");
 
-      User inactiveUser =
-          User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
+      User inactiveUser = User.builder().gmail(request.gmail()).status(UserStatus.INACTIVE).build();
 
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.of(inactiveUser));
 
@@ -1292,33 +1279,19 @@ class SystemManagementServiceTest {
       User u1 = User.builder().name("User 1").gmail("u1@studyweb.edu").build();
       u1.setId(USER_ID_1);
       User u2 =
-          User.builder()
-              .name("User 2")
-              .gmail("u2@studyweb.edu")
-              .primaryCourse(course2)
-              .build();
+          User.builder().name("User 2").gmail("u2@studyweb.edu").primaryCourse(course2).build();
       u2.setId(USER_ID_2);
 
-      UserCourseProgress progress1 =
-          UserCourseProgress.builder().user(u1).course(course1).build();
-      UserCourseProgress progress2 =
-          UserCourseProgress.builder().user(u2).course(course2).build();
+      UserCourseProgress progress1 = UserCourseProgress.builder().user(u1).course(course1).build();
+      UserCourseProgress progress2 = UserCourseProgress.builder().user(u2).course(course2).build();
 
       UUID vr1Id = UUID.randomUUID();
       UUID vr2Id = UUID.randomUUID();
       VipRequest vr1 =
-          VipRequest.builder()
-              .user(u1)
-              .note("Note 1")
-              .status(VipRequestStatus.WAITING)
-              .build();
+          VipRequest.builder().user(u1).note("Note 1").status(VipRequestStatus.WAITING).build();
       vr1.setId(vr1Id);
       VipRequest vr2 =
-          VipRequest.builder()
-              .user(u2)
-              .note("Note 2")
-              .status(VipRequestStatus.APPROVED)
-              .build();
+          VipRequest.builder().user(u2).note("Note 2").status(VipRequestStatus.APPROVED).build();
       vr2.setId(vr2Id);
 
       Page<VipRequest> page = new PageImpl<>(List.of(vr1, vr2), PageRequest.of(0, 10), 2);
@@ -1369,7 +1342,10 @@ class SystemManagementServiceTest {
     @DisplayName("Search and status filter parameters are forwarded correctly to repository")
     void getVipRequests_withFilters_forwardsToRepository() throws Exception {
       when(vipRequestRepository.searchVipRequests(
-              eq("keyword"), eq(VipRequestStatus.WAITING), eq(UserRole.LEARNER), any(Pageable.class)))
+              eq("keyword"),
+              eq(VipRequestStatus.WAITING),
+              eq(UserRole.LEARNER),
+              any(Pageable.class)))
           .thenReturn(Page.empty());
       when(userCourseProgressRepository.findPrimaryCourseByUserIds(List.of()))
           .thenReturn(List.of());
@@ -1385,7 +1361,10 @@ class SystemManagementServiceTest {
 
       verify(vipRequestRepository)
           .searchVipRequests(
-              eq("keyword"), eq(VipRequestStatus.WAITING), eq(UserRole.LEARNER), any(Pageable.class));
+              eq("keyword"),
+              eq(VipRequestStatus.WAITING),
+              eq(UserRole.LEARNER),
+              any(Pageable.class));
     }
   }
 
@@ -1409,10 +1388,7 @@ class SystemManagementServiceTest {
       user.setId(USER_ID_1);
 
       VipRequest vipRequest =
-          VipRequest.builder()
-              .user(user)
-              .status(VipRequestStatus.WAITING)
-              .build();
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
@@ -1464,10 +1440,7 @@ class SystemManagementServiceTest {
       user.setId(USER_ID_1);
 
       VipRequest vipRequest =
-          VipRequest.builder()
-              .user(user)
-              .status(VipRequestStatus.WAITING)
-              .build();
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
@@ -1504,10 +1477,7 @@ class SystemManagementServiceTest {
       user.setId(USER_ID_1);
 
       VipRequest vipRequest =
-          VipRequest.builder()
-              .user(user)
-              .status(VipRequestStatus.WAITING)
-              .build();
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
@@ -1555,10 +1525,7 @@ class SystemManagementServiceTest {
       user.setId(USER_ID_1);
 
       VipRequest vipRequest =
-          VipRequest.builder()
-              .user(user)
-              .status(VipRequestStatus.WAITING)
-              .build();
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
       vipRequest.setId(requestId);
 
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));

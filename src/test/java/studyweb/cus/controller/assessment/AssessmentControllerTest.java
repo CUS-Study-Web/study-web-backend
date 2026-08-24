@@ -87,7 +87,11 @@ class AssessmentControllerTest {
               auth ->
                   auth.requestMatchers("/api/auth/**")
                       .permitAll()
-                      .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
+                      .requestMatchers(
+                          HttpMethod.GET,
+                          "/api/courses",
+                          "/api/courses/*",
+                          "/api/courses/*/assessments/exams")
                       .permitAll()
                       .anyRequest()
                       .authenticated())
@@ -249,8 +253,7 @@ class AssessmentControllerTest {
   }
 
   @Test
-  @WithMockUser(roles = "LEARNER")
-  void listExams_authenticated() throws Exception {
+  void listExams_public() throws Exception {
     AssessmentSummaryResponse summary =
         new AssessmentSummaryResponse(
             ASSESSMENT_ID,

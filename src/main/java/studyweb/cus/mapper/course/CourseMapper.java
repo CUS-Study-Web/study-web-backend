@@ -25,10 +25,27 @@ public interface CourseMapper {
   @Mapping(source = "subject.title", target = "name")
   @Mapping(source = "subject.durationHour", target = "durationHours")
   @Mapping(source = "subject.numLessons", target = "lessonCount")
+  @Mapping(source = "exerciseCount", target = "exerciseCount")
+  @Mapping(source = "learningProgress", target = "learningProgress")
+  SubjectSummaryResponse toSubjectSummary(
+      Subject subject, long exerciseCount, Integer learningProgress);
+
+  @Mapping(source = "subject.title", target = "name")
+  @Mapping(source = "subject.durationHour", target = "durationHours")
+  @Mapping(source = "subject.numLessons", target = "lessonCount")
+  @Mapping(source = "exerciseCount", target = "exerciseCount")
+  @Mapping(target = "learningProgress", constant = "0")
   SubjectSummaryResponse toSubjectSummary(Subject subject, long exerciseCount);
 
   @Mapping(
       target = "isVip",
       expression = "java(lesson.getAccess() == studyweb.cus.enums.AccessTier.VIP)")
+  @Mapping(source = "isClicked", target = "isClicked")
+  LessonSummaryResponse.LessonCardResponse toLessonCardResponse(Lesson lesson, boolean isClicked);
+
+  @Mapping(
+      target = "isVip",
+      expression = "java(lesson.getAccess() == studyweb.cus.enums.AccessTier.VIP)")
+  @Mapping(target = "isClicked", constant = "false")
   LessonSummaryResponse.LessonCardResponse toLessonCardResponse(Lesson lesson);
 }

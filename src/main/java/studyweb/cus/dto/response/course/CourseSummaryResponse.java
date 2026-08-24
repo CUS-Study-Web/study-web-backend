@@ -1,6 +1,7 @@
 package studyweb.cus.dto.response.course;
 
 import java.util.UUID;
+import studyweb.cus.enums.CourseCreateStatus;
 
 public record CourseSummaryResponse(
     UUID id,
@@ -9,5 +10,6 @@ public record CourseSummaryResponse(
     String badgeTitle,
     String description,
     String imageUrl,
+    CourseCreateStatus status,
     long subjectCount,
     long examCount) {}

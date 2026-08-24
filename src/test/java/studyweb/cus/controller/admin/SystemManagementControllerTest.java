@@ -229,7 +229,8 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listLearners(eq("nguyen"), isNull(), pageableCaptor.capture());
+      verify(systemManagementService)
+          .listLearners(eq("nguyen"), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(2);
@@ -270,7 +271,8 @@ class SystemManagementControllerTest {
           .andExpect(status().isOk());
 
       ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-      verify(systemManagementService).listAssistants(eq("hieu"), isNull(), pageableCaptor.capture());
+      verify(systemManagementService)
+          .listAssistants(eq("hieu"), isNull(), pageableCaptor.capture());
 
       Pageable bound = pageableCaptor.getValue();
       assertThat(bound.getPageNumber()).isEqualTo(1);
@@ -386,7 +388,9 @@ class SystemManagementControllerTest {
               "Ghi chú kích hoạt",
               "Password@123");
 
-      doNothing().when(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
+      doNothing()
+          .when(systemManagementService)
+          .createVipAccount(any(CreateVipAccountRequest.class));
 
       mockMvc
           .perform(
@@ -410,7 +414,8 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /learners/{id}/update-account - JSON body deserializes all fields for update")
+    @DisplayName(
+        "PATCH /learners/{id}/update-account - JSON body deserializes all fields for update")
     void updateAccount_deserializesAllFields() throws Exception {
       UpdateAccountRequest request = sampleUpdateAccountRequest();
       doNothing()
@@ -451,7 +456,8 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects blank or empty name")
     void createAssistant_rejectsBlankName(String invalidName) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest(invalidName, "assistant@cus.edu.vn", "0901111222", "CustomPass@123");
+          new CreateAssistantRequest(
+              invalidName, "assistant@cus.edu.vn", "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -471,7 +477,8 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects null or empty email")
     void createAssistant_rejectsNullOrEmptyEmail(String invalidGmail) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", invalidGmail, "0901111222", "CustomPass@123");
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", invalidGmail, "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -498,7 +505,8 @@ class SystemManagementControllerTest {
     @DisplayName("POST /assistants - Rejects invalid email format")
     void createAssistant_rejectsInvalidEmailFormat(String invalidEmail) throws Exception {
       CreateAssistantRequest request =
-          new CreateAssistantRequest("Trần Minh Hiếu", invalidEmail, "0901111222", "CustomPass@123");
+          new CreateAssistantRequest(
+              "Trần Minh Hiếu", invalidEmail, "0901111222", "CustomPass@123");
 
       mockMvc
           .perform(
@@ -520,10 +528,7 @@ class SystemManagementControllerTest {
     void createAssistant_rejectsBlankPassword(String invalidPassword) throws Exception {
       CreateAssistantRequest request =
           new CreateAssistantRequest(
-              "Trần Minh Hiếu",
-              "assistant@cus.edu.vn",
-              "0901111222",
-              invalidPassword);
+              "Trần Minh Hiếu", "assistant@cus.edu.vn", "0901111222", invalidPassword);
 
       mockMvc
           .perform(
@@ -694,7 +699,8 @@ class SystemManagementControllerTest {
       PageImpl<LearnerSummaryResponse> serviceResult =
           new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1);
 
-      when(systemManagementService.listLearners(eq("target_learner"), isNull(), any(Pageable.class)))
+      when(systemManagementService.listLearners(
+              eq("target_learner"), isNull(), any(Pageable.class)))
           .thenReturn(serviceResult);
 
       mockMvc
@@ -713,11 +719,13 @@ class SystemManagementControllerTest {
                   .value("https://cdn.studyweb.edu/avatars/nguyenvana.png"))
           .andExpect(jsonPath("$.paging.total").value(1));
 
-      verify(systemManagementService).listLearners(eq("target_learner"), isNull(), any(Pageable.class));
+      verify(systemManagementService)
+          .listLearners(eq("target_learner"), isNull(), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("PATCH /learners/{id}/lock - Delegates to switchUserStatus and wraps in SuccessResponse")
+    @DisplayName(
+        "PATCH /learners/{id}/lock - Delegates to switchUserStatus and wraps in SuccessResponse")
     void lockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
       doNothing()
           .when(systemManagementService)
@@ -734,7 +742,8 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /learners/{id}/unlock - Delegates to switchUserStatus and wraps in SuccessResponse")
+    @DisplayName(
+        "PATCH /learners/{id}/unlock - Delegates to switchUserStatus and wraps in SuccessResponse")
     void unlockLearner_delegatesAndWrapsSuccessResponse() throws Exception {
       doNothing()
           .when(systemManagementService)
@@ -854,7 +863,8 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /learners/{id}/ban - Delegates to switchUserStatus and wraps in SuccessResponse")
+    @DisplayName(
+        "PATCH /learners/{id}/ban - Delegates to switchUserStatus and wraps in SuccessResponse")
     void banLearner_delegatesAndWrapsSuccessResponse() throws Exception {
       doNothing()
           .when(systemManagementService)
@@ -875,7 +885,9 @@ class SystemManagementControllerTest {
         "POST /learners/create-vip-account - Delegates request to createVipAccount and wraps payload")
     void createVipAccount_delegatesAndWrapsPayload() throws Exception {
       CreateVipAccountRequest request = sampleVipRequest();
-      doNothing().when(systemManagementService).createVipAccount(any(CreateVipAccountRequest.class));
+      doNothing()
+          .when(systemManagementService)
+          .createVipAccount(any(CreateVipAccountRequest.class));
 
       mockMvc
           .perform(
@@ -890,7 +902,8 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("PATCH /learners/{id}/update-account - Delegates request to updateLearnerAccount and wraps payload")
+    @DisplayName(
+        "PATCH /learners/{id}/update-account - Delegates request to updateLearnerAccount and wraps payload")
     void updateAccount_delegatesAndWrapsPayload() throws Exception {
       UpdateAccountRequest request = sampleUpdateAccountRequest();
       doNothing()
@@ -906,7 +919,8 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Update learner account succesfully!"));
 
-      verify(systemManagementService).updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
+      verify(systemManagementService)
+          .updateLearnerAccount(eq(LEARNER_ID), any(UpdateAccountRequest.class));
     }
   }
 
@@ -1310,7 +1324,8 @@ class SystemManagementControllerTest {
   class GetVipRequestsEndpointTests {
 
     @Test
-    @DisplayName("Default parameters -> returns 200 OK with PageResponse<VipRequestResponse> payload")
+    @DisplayName(
+        "Default parameters -> returns 200 OK with PageResponse<VipRequestResponse> payload")
     void getVipRequests_defaultParams_returns200AndListResponse() throws Exception {
       VipRequestResponse res1 =
           sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
@@ -1333,9 +1348,7 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data[0].userId").value(LEARNER_ID.toString()))
           .andExpect(jsonPath("$.data[0].name").value("Nguyễn Văn A"))
           .andExpect(jsonPath("$.data[0].gmail").value("learner@studyweb.edu"))
-          .andExpect(
-              jsonPath("$.data[0].note")
-                  .value("Cần kích hoạt VIP để học chuyên sâu"))
+          .andExpect(jsonPath("$.data[0].note").value("Cần kích hoạt VIP để học chuyên sâu"))
           .andExpect(jsonPath("$.data[0].status").value("WAITING"))
           .andExpect(jsonPath("$.data[0].mainCourse").value("React Masterclass"))
           .andExpect(jsonPath("$.data[1].id").value(VIP_REQUEST_ID_2.toString()))
@@ -1352,8 +1365,7 @@ class SystemManagementControllerTest {
     void getVipRequests_withSearchAndStatus_passesParamsToService() throws Exception {
       VipRequestResponse res1 =
           sampleVipRequestResponse(VIP_REQUEST_ID_1, LEARNER_ID, VipRequestStatus.WAITING);
-      Page<VipRequestResponse> mockPage =
-          new PageImpl<>(List.of(res1), PageRequest.of(1, 5), 1);
+      Page<VipRequestResponse> mockPage = new PageImpl<>(List.of(res1), PageRequest.of(1, 5), 1);
 
       when(systemManagementService.getVipRequests(
               eq("nguyen"), eq(VipRequestStatus.WAITING), any(Pageable.class)))
