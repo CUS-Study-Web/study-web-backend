@@ -2,6 +2,7 @@ package studyweb.cus.service.course.impl;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,7 +86,7 @@ public class CourseServiceImpl implements CourseService {
 
     Page<Subject> page = subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId(), pageable);
 
-    java.util.Map<UUID, Integer> progressMap = java.util.Collections.emptyMap();
+    Map<UUID, Integer> progressMap = java.util.Collections.emptyMap();
     if (email != null) {
       User user = userRepository.findByGmail(email).orElse(null);
       if (user != null) {
@@ -98,7 +99,7 @@ public class CourseServiceImpl implements CourseService {
       }
     }
 
-    final java.util.Map<UUID, Integer> finalProgressMap = progressMap;
+    final Map<UUID, Integer> finalProgressMap = progressMap;
     Page<SubjectSummaryResponse> subjects = page.map(subject -> {
       long exerciseCount = assessmentRepository
           .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
