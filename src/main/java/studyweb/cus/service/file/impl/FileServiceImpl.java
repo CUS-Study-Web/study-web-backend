@@ -86,7 +86,7 @@ public class FileServiceImpl implements FileService {
       throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     }
 
-    String objectName = folder + UUID.randomUUID() + "." + extension;
+    String objectName = buildObjectName(folder, extension);
     try {
       s3Client.putObject(
           PutObjectRequest.builder()
@@ -103,23 +103,17 @@ public class FileServiceImpl implements FileService {
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
 
-    String fileUrl = generatePresignedUrl(objectName);
+    String fileUrl = buildFileUrl(objectName);
     log.info("Uploaded file {} ({} bytes)", objectName, file.getSize());
     return new UploadDocumentResult(file.getSize(), objectName, fileUrl);
   }
 
   @Override
-  public String generatePresignedUrl(String objectKey) {
+  public String buildFileUrl(String objectKey) {
     try {
-      GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3Properties.getBucket()).key(objectKey)
-          .build();
-      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-          .getObjectRequest(getObjectRequest)
-          .signatureDuration(Duration.ofDays(7)).build();
-      PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
-      return presigned.url().toString();
+      return s3Properties.getEndpoint() + "/" + s3Properties.getBucket() + "/" + objectKey;
     } catch (Exception e) {
-      log.error("Failed to generate presigned URL for {}", objectKey, e);
+      log.error("Failed to build file URL for {}", objectKey, e);
       throw new FileException(FileErrorCode.UPLOAD_FAILED);
     }
   }
@@ -149,5 +143,9 @@ public class FileServiceImpl implements FileService {
     } catch (Exception e) {
       log.error("Failed to delete file {} from S3", fileKey, e);
     }
+  }
+
+  private String buildObjectName(String folder, String extension) {
+    return folder + UUID.randomUUID() + "." + extension;
   }
 }

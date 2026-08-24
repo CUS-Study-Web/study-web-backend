@@ -23,5 +23,5 @@ public interface FileService {
 
   void deleteFile(String fileKey);
 
-  String generatePresignedUrl(String fileKey);
+  String buildFileUrl(String fileKey);
 }
