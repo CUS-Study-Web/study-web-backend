@@ -206,9 +206,8 @@ public class CourseController extends AbstractBaseController {
   }
 
   @PostMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}/done")
-  @PreAuthorize("isAuthenticated()")
   @Operation(summary = "Done Lesson", description = "Done a lesson of a subject")
-  public ResponseEntity<SuccessResponse> donelesson(
+  public ResponseEntity<SuccessResponse> doneLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @PathVariable UUID lessonId,
