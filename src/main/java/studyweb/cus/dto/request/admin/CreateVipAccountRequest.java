@@ -10,7 +10,7 @@ import java.util.UUID;
 public record CreateVipAccountRequest(
     String name,
     @Email(message = "Invalid email format") String gmail,
-    UUID primaryCourseId,
+    @NotNull(message = "Primary course ID is required") UUID primaryCourseId,
     @NotNull(message = "Start date is required") LocalDate startDate,
     @NotNull(message = "End date is required") LocalDate endDate,
     String note,
