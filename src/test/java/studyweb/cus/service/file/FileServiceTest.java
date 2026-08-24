@@ -33,8 +33,6 @@ class FileServiceTest {
 
   @Mock
   private S3Client s3Client;
-  @Mock
-  private S3Presigner s3Presigner;
 
   private final S3Properties properties = new S3Properties();
 
@@ -44,7 +42,7 @@ class FileServiceTest {
   void setUp() {
     properties.setEndpoint("https://minio.test.invalid:9000");
     properties.setBucket("bucket-vmt");
-    fileService = new FileServiceImpl(s3Client, s3Presigner, properties);
+    fileService = new FileServiceImpl(s3Client, properties);
   }
 
   private void stubPutObject() {

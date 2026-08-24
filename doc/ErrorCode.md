@@ -72,3 +72,4 @@
 | FILE_EXTENSION_NOT_ALLOWED | FILE_002 | File extension is not allowed |
 | UPLOAD_FAILED | FILE_003 | File upload failed |
 | DELETE_FAILED | FILE_004 | File delete failed |
+| FILE_TOO_LARGE | FILE_005 | File too large |

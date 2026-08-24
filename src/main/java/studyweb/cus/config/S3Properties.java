@@ -15,6 +15,8 @@ public class S3Properties {
   private String secretKey;
   private String bucket;
   private String region;
+  private Long maxSizeDocumentUpload;
+  private Long maxSizeAvatarUpload;
 
   boolean hasEndpoint() {
     return endpoint != null && !endpoint.isBlank();

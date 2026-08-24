@@ -9,10 +9,11 @@ import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.enums.CourseCreateStatus;
 
 public interface CourseService {
 
-  Page<CourseSummaryResponse> listCourses(Pageable pageable);
+  Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status);
 
   Page<SubjectSummaryResponse> getCourseDetail(UUID id, String email, Pageable pageable);
 
@@ -37,4 +38,10 @@ public interface CourseService {
       UUID courseId, UUID subjectId, UUID lessonId, LessonRequest request);
 
   void deleteLesson(UUID courseId, UUID subjectId, UUID lessonId);
+
+  void doneLesson(UUID courseId, UUID subjectId, UUID lessonId, String email);
+
+  Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable);
+
+  Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable);
 }
