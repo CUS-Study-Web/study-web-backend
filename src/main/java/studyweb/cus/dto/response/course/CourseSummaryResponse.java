@@ -11,5 +11,6 @@ public record CourseSummaryResponse(
     String description,
     String imageUrl,
     CourseCreateStatus status,
+    Integer learningProgress,
     long subjectCount,
     long examCount) {}

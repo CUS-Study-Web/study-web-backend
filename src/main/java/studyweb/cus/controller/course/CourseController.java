@@ -52,10 +52,11 @@ public class CourseController extends AbstractBaseController {
       summary = "List Courses for user",
       description = "List all courses with pagination for user")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCourses(
-      @PageableDefault(size = 10) Pageable pageable) {
+      @AuthenticationPrincipal String email, @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses] Page {}, size {}", pageable.getPageNumber(), pageable.getPageSize());
-    return paging(courseService.listCoursesForUser(pageable), "Courses fetched successfully!");
+    return paging(
+        courseService.listCoursesForUser(pageable, email), "Courses fetched successfully!");
   }
 
   @GetMapping("/admin")
@@ -70,6 +71,20 @@ public class CourseController extends AbstractBaseController {
         pageable.getPageNumber(),
         pageable.getPageSize());
     return paging(courseService.listCoursesForAdmin(pageable), "Courses fetched successfully!");
+  }
+
+  @GetMapping("/assistant")
+  @PreAuthorize("hasRole('ASSISTANT')")
+  @Operation(
+      summary = "List Courses for assistant",
+      description = "List all courses with pagination for assistant")
+  public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAssistant(
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/courses/assistant] Page {}, size {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return paging(courseService.listCoursesForAssistant(pageable), "Courses fetched successfully!");
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

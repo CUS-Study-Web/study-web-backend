@@ -27,4 +27,5 @@ public record UpdateAssessmentRequest(
             description =
                 "Answer keys as JSON array, e.g. [{\"questionNumber\":1,\"correctAnswer\":\"A\"}]")
         String answerKeys,
-    @Schema(description = "DRAFT or PUBLISHED") AssessmentStatus status) {}
+    @Schema(description = "DRAFT or PUBLISHED") AssessmentStatus status,
+    @Schema(description = "VIP or PUBLIC") AccessTier tier) {}

@@ -150,6 +150,7 @@ class AssessmentServiceTest {
             null,
             pdfFile(),
             invalidJson,
+            null,
             null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
@@ -181,7 +182,18 @@ class AssessmentServiceTest {
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
-            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, pdfFile(), null, null);
+            AssessmentType.EXAM,
+            "Exam",
+            10,
+            null,
+            null,
+            30,
+            100,
+            null,
+            pdfFile(),
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
         .isInstanceOf(RuntimeException.class)
@@ -225,6 +237,7 @@ class AssessmentServiceTest {
             AccessTier.PUBLIC,
             pdfFile(),
             null,
+            null,
             null);
 
     AssessmentSummaryResponse result = service.createAssessment(courseId, request);
@@ -250,6 +263,7 @@ class AssessmentServiceTest {
             null,
             null,
             pdfFile(),
+            null,
             null,
             null);
 
@@ -297,6 +311,7 @@ class AssessmentServiceTest {
             null,
             pdfFile(),
             null,
+            null,
             null);
 
     service.createAssessment(courseId, request);
@@ -338,7 +353,8 @@ class AssessmentServiceTest {
             AccessTier.PUBLIC,
             pdfFile(),
             null,
-            AssessmentStatus.PUBLISHED);
+            AssessmentStatus.PUBLISHED,
+            null);
 
     service.createAssessment(courseId, request);
 
@@ -357,7 +373,18 @@ class AssessmentServiceTest {
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
-            AssessmentType.EXAM, "Test", 10, null, null, 30, 100, null, pdfFile(), null, null);
+            AssessmentType.EXAM,
+            "Test",
+            10,
+            null,
+            null,
+            30,
+            100,
+            null,
+            pdfFile(),
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
         .isInstanceOf(CourseException.class)
@@ -406,6 +433,7 @@ class AssessmentServiceTest {
             null,
             pdfFile(),
             answerKeysJson,
+            null,
             null);
 
     service.createAssessment(courseId, request);
@@ -430,7 +458,18 @@ class AssessmentServiceTest {
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
-            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, unknownFile, null, null);
+            AssessmentType.EXAM,
+            "Exam",
+            10,
+            null,
+            null,
+            30,
+            100,
+            null,
+            unknownFile,
+            null,
+            null,
+            null);
 
     assertThatThrownBy(() -> service.createAssessment(courseId, request))
         .isInstanceOf(FileException.class)
@@ -583,7 +622,7 @@ class AssessmentServiceTest {
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
-            "Updated Title", null, null, null, null, null, null, null, null, null);
+            "Updated Title", null, null, null, null, null, null, null, null, null, null);
 
     service.updateAssessment(courseId, assessmentId, request);
 
@@ -601,7 +640,7 @@ class AssessmentServiceTest {
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
-            null, null, null, null, 120, 200, AccessTier.VIP, null, null, null);
+            null, null, null, null, 120, 200, AccessTier.VIP, null, null, null, null);
 
     service.updateAssessment(courseId, assessmentId, request);
 
@@ -623,7 +662,7 @@ class AssessmentServiceTest {
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
-            null, null, null, null, null, null, null, null, null, AssessmentStatus.PUBLISHED);
+            null, null, null, null, null, null, null, null, null, AssessmentStatus.PUBLISHED, null);
 
     service.updateAssessment(courseId, assessmentId, request);
 
@@ -641,7 +680,8 @@ class AssessmentServiceTest {
                 studyweb.cus.exception.assessment.AssessmentErrorCode.ASSESSMENT_NOT_FOUND));
 
     UpdateAssessmentRequest request =
-        new UpdateAssessmentRequest("Title", null, null, null, null, null, null, null, null, null);
+        new UpdateAssessmentRequest(
+            "Title", null, null, null, null, null, null, null, null, null, null);
 
     assertThatThrownBy(() -> service.updateAssessment(courseId, assessmentId, request))
         .isInstanceOf(AssessmentException.class)
@@ -665,7 +705,8 @@ class AssessmentServiceTest {
     MockMultipartFile newFile =
         new MockMultipartFile("file", "new-exam.pdf", "application/pdf", new byte[] {1, 2});
     UpdateAssessmentRequest request =
-        new UpdateAssessmentRequest(null, null, null, null, null, null, null, newFile, null, null);
+        new UpdateAssessmentRequest(
+            null, null, null, null, null, null, null, newFile, null, null, null);
 
     service.updateAssessment(courseId, assessmentId, request);
 
@@ -685,7 +726,7 @@ class AssessmentServiceTest {
 
     UpdateAssessmentRequest request =
         new UpdateAssessmentRequest(
-            "Updated Title", null, null, null, null, null, null, null, null, null);
+            "Updated Title", null, null, null, null, null, null, null, null, null, null);
 
     AssessmentSummaryResponse result = service.updateAssessment(courseId, assessmentId, request);
 
@@ -752,7 +793,7 @@ class AssessmentServiceTest {
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
-            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, docxFile, null, null);
+            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, docxFile, null, null, null);
 
     service.createAssessment(courseId, request);
 
@@ -780,7 +821,7 @@ class AssessmentServiceTest {
 
     CreateAssessmentRequest request =
         new CreateAssessmentRequest(
-            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, xlsxFile, null, null);
+            AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, xlsxFile, null, null, null);
 
     service.createAssessment(courseId, request);
 

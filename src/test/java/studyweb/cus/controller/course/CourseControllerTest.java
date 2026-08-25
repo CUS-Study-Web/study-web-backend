@@ -85,6 +85,7 @@ class CourseControllerTest {
         "desc",
         "url",
         studyweb.cus.enums.CourseCreateStatus.DRAFT,
+        null,
         0L,
         0L);
   }
@@ -95,7 +96,7 @@ class CourseControllerTest {
 
   @Test
   void listCourses_isPublicAndReturnsData() throws Exception {
-    when(courseService.listCoursesForUser(any(Pageable.class)))
+    when(courseService.listCoursesForUser(any(Pageable.class), any()))
         .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
 
     mockMvc
@@ -110,7 +111,7 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.paging.total").value(1))
         .andExpect(jsonPath("$.paging.totalPages").value(1));
 
-    verify(courseService).listCoursesForUser(any(Pageable.class));
+    verify(courseService).listCoursesForUser(any(Pageable.class), any());
   }
 
   @Test
@@ -125,6 +126,33 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()));
 
     verify(courseService).listCoursesForAdmin(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  void listCoursesForAssistant_assistantAllowed() throws Exception {
+    when(courseService.listCoursesForAssistant(any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
+
+    mockMvc
+        .perform(get("/api/courses/assistant"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Courses fetched successfully!"))
+        .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()))
+        .andExpect(jsonPath("$.paging.total").value(1));
+
+    verify(courseService).listCoursesForAssistant(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "USER")
+  void listCoursesForAssistant_nonAssistantForbidden() throws Exception {
+    mockMvc.perform(get("/api/courses/assistant")).andExpect(status().isForbidden());
+  }
+
+  @Test
+  void listCoursesForAssistant_unauthenticatedForbidden() throws Exception {
+    mockMvc.perform(get("/api/courses/assistant")).andExpect(status().isForbidden());
   }
 
   @Test

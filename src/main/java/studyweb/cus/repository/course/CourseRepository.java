@@ -1,5 +1,6 @@
 package studyweb.cus.repository.course;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -22,4 +23,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
   }
 
   Page<Course> findByDeletedAtIsNullAndStatus(Pageable pageable, CourseCreateStatus status);
+
+  Page<Course> findByDeletedAtIsNullAndStatusIn(
+      Pageable pageable, Collection<CourseCreateStatus> statuses);
 }

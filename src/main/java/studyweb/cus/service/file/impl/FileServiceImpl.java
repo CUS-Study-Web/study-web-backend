@@ -38,9 +38,9 @@ public class FileServiceImpl implements FileService {
   @Override
   public UploadDocumentResult uploadDocumentFile(MultipartFile file) {
     long maxDocSize =
-        s3Properties.getMaxSizeDocumentUpload() != null
-            ? s3Properties.getMaxSizeDocumentUpload()
-            : 10485760L;
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -50,9 +50,9 @@ public class FileServiceImpl implements FileService {
   @Override
   public UploadDocumentResult uploadAvatarFile(MultipartFile file) {
     long maxAvatarSize =
-        s3Properties.getMaxSizeAvatarUpload() != null
-            ? s3Properties.getMaxSizeAvatarUpload()
-            : 5242880L;
+        s3Properties.getMaxsizeavatarupload() != null
+            ? s3Properties.getMaxsizeavatarupload()
+            : 10485760L;
     if (file.getSize() > maxAvatarSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -62,9 +62,9 @@ public class FileServiceImpl implements FileService {
   @Override
   public UploadDocumentResult uploadExerciseFile(MultipartFile file) {
     long maxDocSize =
-        s3Properties.getMaxSizeDocumentUpload() != null
-            ? s3Properties.getMaxSizeDocumentUpload()
-            : 10485760L;
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -74,9 +74,9 @@ public class FileServiceImpl implements FileService {
   @Override
   public UploadDocumentResult uploadExamFile(MultipartFile file) {
     long maxDocSize =
-        s3Properties.getMaxSizeDocumentUpload() != null
-            ? s3Properties.getMaxSizeDocumentUpload()
-            : 10485760L;
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }

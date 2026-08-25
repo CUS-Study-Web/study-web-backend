@@ -1,5 +1,6 @@
 package studyweb.cus.repository.user;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -58,4 +59,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
           """)
   Page<User> searchAssistants(
       @Param("search") String search, @Param("status") UserStatus status, Pageable pageable);
+
+  @Query("SELECT u.id FROM User u WHERE u.role = :role")
+  List<UUID> findIdsByRole(@Param("role") UserRole role);
 }

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import studyweb.cus.entity.course.Subject;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
@@ -23,4 +24,7 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
     return findByIdAndCourseIdAndDeletedAtIsNull(id, courseId)
         .orElseThrow(() -> new CourseException(CourseErrorCode.SUBJECT_NOT_FOUND));
   }
+
+  @Query("SELECT COUNT(s) FROM Subject s WHERE s.course.id = :courseId AND s.deletedAt IS NULL")
+  Integer countSubjectByCourseId(UUID courseId);
 }

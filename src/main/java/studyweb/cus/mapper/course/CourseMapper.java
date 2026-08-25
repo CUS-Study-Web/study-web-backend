@@ -15,7 +15,14 @@ public interface CourseMapper {
 
   @Mapping(source = "course.subtitle", target = "subTitle")
   @Mapping(source = "course.thumbnailUrl", target = "imageUrl")
+  @Mapping(target = "learningProgress", constant = "0")
   CourseSummaryResponse toCourseSummary(Course course, long subjectCount, long examCount);
+
+  @Mapping(source = "course.subtitle", target = "subTitle")
+  @Mapping(source = "course.thumbnailUrl", target = "imageUrl")
+  @Mapping(source = "learningProgress", target = "learningProgress")
+  CourseSummaryResponse toCourseSummary(
+      Course course, long subjectCount, long examCount, Integer learningProgress);
 
   @Mapping(source = "title", target = "name")
   @Mapping(source = "durationHour", target = "durationHours")

@@ -64,6 +64,12 @@ class CourseServiceTest {
   @Mock private UserLessonProgressRepository userLessonProgressRepository;
   @Mock private UserSubjectProgressRepository userSubjectProgressRepository;
 
+  @Mock
+  private studyweb.cus.repository.course.UserCourseProgressRepository userCourseProgressRepository;
+
+  @Mock private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+  @Mock private java.util.concurrent.Executor updateProgressExecutor;
+
   @InjectMocks private CourseServiceImpl courseService;
 
   private final UUID courseId = UUID.randomUUID();
@@ -133,6 +139,7 @@ class CourseServiceTest {
             "desc",
             "url",
             studyweb.cus.enums.CourseCreateStatus.DRAFT,
+            null,
             0L,
             0L);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
@@ -144,7 +151,8 @@ class CourseServiceTest {
             org.mockito.ArgumentMatchers.anyLong()))
         .thenReturn(summary);
 
-    Page<CourseSummaryResponse> response = courseService.listCourses(PageRequest.of(0, 10), null);
+    Page<CourseSummaryResponse> response =
+        courseService.listCourses(PageRequest.of(0, 10), (List<CourseCreateStatus>) null);
 
     assertThat(response.getContent()).containsExactly(summary);
     assertThat(response.getTotalElements()).isEqualTo(1);
@@ -164,6 +172,7 @@ class CourseServiceTest {
             "desc",
             "url",
             CourseCreateStatus.PUBLISH,
+            null,
             0L,
             0L);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
@@ -177,7 +186,8 @@ class CourseServiceTest {
             org.mockito.ArgumentMatchers.anyLong()))
         .thenReturn(summary);
 
-    Page<CourseSummaryResponse> response = courseService.listCoursesForUser(PageRequest.of(0, 10));
+    Page<CourseSummaryResponse> response =
+        courseService.listCoursesForUser(PageRequest.of(0, 10), null);
 
     assertThat(response.getContent()).containsExactly(summary);
     verify(courseRepository)
@@ -196,6 +206,7 @@ class CourseServiceTest {
             "desc",
             "url",
             CourseCreateStatus.DRAFT,
+            null,
             0L,
             0L);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
@@ -214,6 +225,43 @@ class CourseServiceTest {
   }
 
   @Test
+  void listCoursesForAssistant_returnsDevelopingAndPublishedCourses() {
+    Course course = course();
+    CourseSummaryResponse summary =
+        new CourseSummaryResponse(
+            courseId,
+            "Java for Beginners",
+            "sub",
+            "badge",
+            "desc",
+            "url",
+            CourseCreateStatus.DEVELOPING,
+            null,
+            0L,
+            0L);
+    Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
+
+    when(courseRepository.findByDeletedAtIsNullAndStatusIn(
+            any(Pageable.class),
+            eq(List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH))))
+        .thenReturn(page);
+    when(courseMapper.toCourseSummary(
+            eq(course),
+            org.mockito.ArgumentMatchers.anyLong(),
+            org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(summary);
+
+    Page<CourseSummaryResponse> response =
+        courseService.listCoursesForAssistant(PageRequest.of(0, 10));
+
+    assertThat(response.getContent()).containsExactly(summary);
+    verify(courseRepository)
+        .findByDeletedAtIsNullAndStatusIn(
+            any(Pageable.class),
+            eq(List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH)));
+  }
+
+  @Test
   void createCourse_persistsAndReturnsSummary() {
     Course course = course();
     CourseSummaryResponse summary =
@@ -225,6 +273,7 @@ class CourseServiceTest {
             "desc",
             "url",
             studyweb.cus.enums.CourseCreateStatus.DRAFT,
+            null,
             0L,
             0L);
 
@@ -266,6 +315,7 @@ class CourseServiceTest {
                 "desc",
                 uploaded.fileUrl(),
                 studyweb.cus.enums.CourseCreateStatus.DRAFT,
+                null,
                 0L,
                 0L));
 
@@ -591,8 +641,9 @@ class CourseServiceTest {
     when(userLessonProgressRepository.findByUserIdAndLessonId(user.getId(), lessonId))
         .thenReturn(Optional.empty());
     when(lessonRepository.countLessonBySubjectId(subjectId)).thenReturn(3);
-    when(userLessonProgressRepository.countByUserIdAndLesson_Subject_IdAndIsClickedTrue(
-            user.getId(), subjectId))
+    when(userLessonProgressRepository
+            .countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(
+                user.getId(), subjectId))
         .thenReturn(1L);
     when(userSubjectProgressRepository.findByUserIdAndSubjectId(user.getId(), subjectId))
         .thenReturn(Optional.empty());
@@ -607,5 +658,53 @@ class CourseServiceTest {
     verify(userSubjectProgressRepository).save(subjectProgress.capture());
     assertThat(lessonProgress.getValue().getIsClicked()).isTrue();
     assertThat(subjectProgress.getValue().getProgressPercent()).isEqualTo(33);
+  }
+
+  @Test
+  void deleteLesson_triggersBatchedProgressUpdate() throws Exception {
+    org.springframework.transaction.support.TransactionSynchronizationManager.clear();
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
+    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
+        .thenReturn(Optional.of(subject(1)));
+    when(lessonRepository.findByIdAndSubjectIdAndDeletedAtIsNull(lessonId, subjectId))
+        .thenReturn(Optional.of(lesson()));
+    when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(0L);
+
+    List<UUID> learners =
+        java.util.stream.IntStream.range(0, 250).mapToObj(i -> UUID.randomUUID()).toList();
+    when(userRepository.findIdsByRole(studyweb.cus.enums.UserRole.LEARNER)).thenReturn(learners);
+
+    // Inject the executor manually since Mockito skips non-final fields when constructor injection
+    // is used
+    java.lang.reflect.Field executorField =
+        CourseServiceImpl.class.getDeclaredField("updateProgressExecutor");
+    executorField.setAccessible(true);
+    executorField.set(courseService, updateProgressExecutor);
+
+    courseService.deleteLesson(courseId, subjectId, lessonId);
+
+    // 250 learners divided by batch size of 100 = 3 tasks submitted
+    verify(updateProgressExecutor, org.mockito.Mockito.times(3)).execute(any(Runnable.class));
+  }
+
+  @Test
+  void deleteSubject_triggersBatchedProgressUpdate() throws Exception {
+    org.springframework.transaction.support.TransactionSynchronizationManager.clear();
+    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
+        .thenReturn(Optional.of(subject(1)));
+
+    List<UUID> learners =
+        java.util.stream.IntStream.range(0, 150).mapToObj(i -> UUID.randomUUID()).toList();
+    when(userRepository.findIdsByRole(studyweb.cus.enums.UserRole.LEARNER)).thenReturn(learners);
+
+    java.lang.reflect.Field executorField =
+        CourseServiceImpl.class.getDeclaredField("updateProgressExecutor");
+    executorField.setAccessible(true);
+    executorField.set(courseService, updateProgressExecutor);
+
+    courseService.deleteSubject(courseId, subjectId);
+
+    // 150 learners divided by batch size of 100 = 2 tasks submitted
+    verify(updateProgressExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
   }
 }
