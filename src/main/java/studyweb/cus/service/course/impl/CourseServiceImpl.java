@@ -4,13 +4,20 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.request.course.LessonRequest;
@@ -21,20 +28,25 @@ import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Lesson;
 import studyweb.cus.entity.course.Subject;
+import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.progress.UserLessonProgress;
 import studyweb.cus.entity.progress.UserSubjectProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
+import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.enums.CourseCreateStatus;
+import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.course.CourseMapper;
+import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.LessonRepository;
 import studyweb.cus.repository.course.SubjectRepository;
+import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.course.UserLessonProgressRepository;
 import studyweb.cus.repository.course.UserSubjectProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
@@ -49,27 +61,52 @@ public class CourseServiceImpl implements CourseService {
   private final CourseRepository courseRepository;
   private final SubjectRepository subjectRepository;
   private final LessonRepository lessonRepository;
-  private final studyweb.cus.repository.course.AssessmentRepository assessmentRepository;
+  private final AssessmentRepository assessmentRepository;
   private final UserRepository userRepository;
   private final CourseMapper courseMapper;
   private final FileService fileService;
   private final UserLessonProgressRepository userLessonProgressRepository;
-
+  private final UserCourseProgressRepository userCourseProgressRepository;
   private final UserSubjectProgressRepository userSubjectProgressRepository;
+  private final TransactionTemplate transactionTemplate;
+
+  @Autowired
+  @Qualifier("uploadExecutor")
+  private Executor updateProgressExecutor;
 
   @Override
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses) {
+    return listCourses(pageable, statuses, null);
+  }
+
   @Transactional(readOnly = true)
-  public Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status) {
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses, String email) {
     Page<Course> page;
-    if (status == null) {
+    if (statuses == null || statuses.isEmpty()) {
       page = courseRepository.findByDeletedAtIsNull(pageable);
+    } else if (statuses.size() == 1) {
+      page = courseRepository.findByDeletedAtIsNullAndStatus(pageable, statuses.get(0));
     } else {
-      page = courseRepository.findByDeletedAtIsNullAndStatus(pageable, status);
+      page = courseRepository.findByDeletedAtIsNullAndStatusIn(pageable, statuses);
     }
+
+    UUID userId = null;
+    if (email != null) {
+      userId = userRepository.findByGmail(email).map(u -> u.getId()).orElse(null);
+    }
+    final UUID finalUserId = userId;
+
     Page<CourseSummaryResponse> result = page.map(course -> {
       long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
       long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
-          course.getId(), studyweb.cus.enums.AssessmentType.EXAM);
+          course.getId(), AssessmentType.EXAM);
+      if (finalUserId != null) {
+        Integer progress = userCourseProgressRepository
+            .findByUserIdAndCourseId(finalUserId, course.getId())
+            .map(p -> defaultOr(p.getProgressPercent(), 0))
+            .orElse(0);
+        return courseMapper.toCourseSummary(course, subjectCount, examCount, progress);
+      }
       return courseMapper.toCourseSummary(course, subjectCount, examCount);
     });
     log.info(
@@ -186,6 +223,7 @@ public class CourseServiceImpl implements CourseService {
         .build();
     Subject saved = subjectRepository.save(subject);
     log.info("Created subject {} for course {}", saved.getId(), courseId);
+    updateCourseProgressWhenSubjectsChanged(courseId);
     return courseMapper.toSubjectSummary(saved);
   }
 
@@ -211,6 +249,7 @@ public class CourseServiceImpl implements CourseService {
     Subject subject = requireSubject(courseId, subjectId);
     subject.setDeletedAt(java.time.LocalDateTime.now());
     log.info("Soft-deleted subject {} of course {}", subjectId, courseId);
+    updateCourseProgressWhenSubjectsChanged(courseId);
   }
 
   @Override
@@ -252,7 +291,7 @@ public class CourseServiceImpl implements CourseService {
   @Override
   @Transactional
   public LessonSummaryResponse.LessonCardResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request) {
-    requireCourse(courseId);
+    Course course = requireCourse(courseId);
     Subject subject = requireSubject(courseId, subjectId);
 
     Lesson lesson = Lesson.builder()
@@ -267,6 +306,7 @@ public class CourseServiceImpl implements CourseService {
 
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
+    recomputeProgressForSubject(course.getId(), subject.getId());
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
     return courseMapper.toLessonCardResponse(saved);
   }
@@ -307,6 +347,7 @@ public class CourseServiceImpl implements CourseService {
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     log.info("Soft-deleted lesson {} of subject {}", lessonId, subjectId);
+    recomputeProgressForSubject(courseId, subjectId);
   }
 
   private String resolveThumbnailUrl(MultipartFile thumbnail) {
@@ -362,7 +403,7 @@ public class CourseServiceImpl implements CourseService {
   @Transactional
   public void doneLesson(UUID courseId, UUID subjectId, UUID lessonId, String email) {
     User user = requireUser(email);
-    requireCourse(courseId);
+    Course course = requireCourse(courseId);
     Subject subject = requireSubject(courseId, subjectId);
     Lesson lesson = requireLesson(subjectId, lessonId);
 
@@ -376,33 +417,176 @@ public class CourseServiceImpl implements CourseService {
     lessonProgress.setIsClicked(true);
     userLessonProgressRepository.save(lessonProgress);
 
-    int totalLessons = defaultOr(lessonRepository.countLessonBySubjectId(subjectId), 0);
-    long completedLessons = userLessonProgressRepository
-        .countByUserIdAndLesson_Subject_IdAndIsClickedTrue(user.getId(), subjectId);
-    int progressPercent = totalLessons > 0 ? (int) ((completedLessons * 100) / totalLessons) : 0;
-    progressPercent = Math.min(100, Math.max(0, progressPercent));
+    updateProgressForLearner(user, course, subject);
+    log.info("Marked lesson {} done for user {}", lessonId, email);
 
+  }
+
+  @Override
+  public Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable, String email) {
+    return listCourses(pageable, List.of(CourseCreateStatus.PUBLISH), email);
+  }
+
+  @Override
+  public Page<CourseSummaryResponse> listCoursesForAssistant(Pageable pageable) {
+    return listCourses(pageable, List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH));
+  }
+
+  @Override
+  public Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable) {
+    return listCourses(pageable, (List<CourseCreateStatus>) null);
+  }
+
+  private static final int BATCH_SIZE = 100;
+
+  private void recomputeProgressForSubject(UUID courseId, UUID subjectId) {
+    List<UUID> learnerIds = userRepository.findIdsByRole(UserRole.LEARNER);
+    if (learnerIds.isEmpty()) {
+      return;
+    }
+    runAfterCommit(() -> {
+      for (int i = 0; i < learnerIds.size(); i += BATCH_SIZE) {
+        List<UUID> batch = learnerIds.subList(i, Math.min(i + BATCH_SIZE, learnerIds.size()));
+        submitProgressTask(
+            () -> updateProgressForLearners(batch, courseId, subjectId),
+            "lesson progress for " + batch.size() + " users");
+      }
+    });
+  }
+
+  private void updateCourseProgressWhenSubjectsChanged(UUID courseId) {
+    List<UUID> learnerIds = userRepository.findIdsByRole(UserRole.LEARNER);
+    if (learnerIds.isEmpty()) {
+      return;
+    }
+    runAfterCommit(() -> {
+      for (int i = 0; i < learnerIds.size(); i += BATCH_SIZE) {
+        List<UUID> batch = learnerIds.subList(i, Math.min(i + BATCH_SIZE, learnerIds.size()));
+        submitProgressTask(
+            () -> updateCourseProgressForLearners(batch, courseId),
+            "course progress for " + batch.size() + " users");
+      }
+    });
+  }
+
+  private void runAfterCommit(Runnable task) {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          task.run();
+        }
+      });
+      return;
+    }
+    task.run();
+  }
+
+  private void submitProgressTask(Runnable task, String description) {
+    try {
+      CompletableFuture.runAsync(
+          () -> transactionTemplate.executeWithoutResult(tx -> task.run()),
+          updateProgressExecutor)
+          .exceptionally(ex -> {
+            log.error("Failed async update of {}", description, ex);
+            return null;
+          });
+    } catch (RuntimeException exception) {
+      log.error("Could not schedule update of {}", description, exception);
+    }
+  }
+
+  private void updateCourseProgressForLearners(List<UUID> userIds, UUID courseId) {
+    Course course = courseRepository.findByIdAndDeletedAtIsNull(courseId).orElse(null);
+    if (course == null) {
+      return;
+    }
+    List<User> users = userRepository.findAllById(userIds);
+    for (User user : users) {
+      if (user.getRole() == UserRole.LEARNER) {
+        updateCourseProgress(user, course);
+      }
+    }
+  }
+
+  private void updateProgressForLearners(List<UUID> userIds, UUID courseId, UUID subjectId) {
+    Course course = courseRepository.findByIdAndDeletedAtIsNull(courseId).orElse(null);
+    Subject subject = subjectRepository
+        .findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId)
+        .orElse(null);
+    if (course == null || subject == null) {
+      return;
+    }
+    List<User> users = userRepository.findAllById(userIds);
+    for (User user : users) {
+      if (user.getRole() == UserRole.LEARNER) {
+        updateProgressForLearner(user, course, subject);
+      }
+    }
+  }
+
+  private void updateProgressForLearner(User user, Course course, Subject subject) {
+
+    int subjectProgressPercent = subjectProgressCalculate(user.getId(), subject.getId());
+    // Update subject progress
     UserSubjectProgress subjectProgress = userSubjectProgressRepository
-        .findByUserIdAndSubjectId(user.getId(), subjectId)
+        .findByUserIdAndSubjectId(user.getId(), subject.getId())
         .orElseGet(() -> UserSubjectProgress.builder()
             .user(user)
             .subject(subject)
             .progressPercent(0)
             .build());
-    subjectProgress.setProgressPercent(progressPercent);
+    subjectProgress.setProgressPercent(subjectProgressPercent);
     userSubjectProgressRepository.save(subjectProgress);
-    log.info("Marked lesson {} done for user {}. Subject {} progress: {}%", lessonId, email, subjectId,
-        progressPercent);
+    // Update course progress
+    updateCourseProgress(user, course);
   }
 
-  @Override
-  public Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable) {
-
-    return listCourses(pageable, CourseCreateStatus.PUBLISH);
+  private void updateCourseProgress(User user, Course course) {
+    int courseProgressPercent = courseProgressCalculate(user.getId(), course.getId());
+    UserCourseProgress courseProgress = userCourseProgressRepository
+        .findByUserIdAndCourseId(user.getId(), course.getId())
+        .orElseGet(() -> UserCourseProgress.builder()
+            .user(user)
+            .course(course)
+            .progressPercent(0)
+            .build());
+    courseProgress.setProgressPercent(courseProgressPercent);
+    userCourseProgressRepository.save(courseProgress);
   }
 
-  @Override
-  public Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable) {
-    return listCourses(pageable, null);
+  private int subjectProgressCalculate(UUID userId, UUID subjectId) {
+    int totalLessons = defaultOr(lessonRepository.countLessonBySubjectId(subjectId), 0);
+    long completedLessons = userLessonProgressRepository
+        .countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(userId, subjectId);
+    int progressPercent = totalLessons > 0 ? (int) ((completedLessons * 100) / totalLessons) : 0;
+    progressPercent = Math.min(100, Math.max(0, progressPercent));
+
+    return progressPercent;
+  }
+
+  private int courseProgressCalculate(UUID userId, UUID courseId) {
+    List<Subject> subjects = subjectRepository.findByCourseIdAndDeletedAtIsNull(courseId);
+    if (subjects.isEmpty()) {
+      return 0;
+    }
+    // Course progress = average of each subject's progress percent.
+    // Subjects with no recorded progress count as 0%, so the denominator is
+    // always the total number of subjects (not just those with a row in the table).
+    List<UUID> subjectIds = subjects.stream().map(Subject::getId).toList();
+    Map<UUID, Integer> progressMap = userSubjectProgressRepository
+        .findByUserIdAndSubjectIdIn(userId, subjectIds)
+        .stream()
+        .collect(java.util.stream.Collectors.toMap(
+            p -> p.getSubject().getId(),
+            p -> defaultOr(p.getProgressPercent(), 0),
+            (a, b) -> a));
+
+    int sumPercent = subjects.stream()
+        .mapToInt(s -> progressMap.getOrDefault(s.getId(), 0))
+        .sum();
+
+    // Round to nearest integer (e.g. 50/4 = 12.5 → 13)
+    return (int) Math.round((double) sumPercent / subjects.size());
   }
 }

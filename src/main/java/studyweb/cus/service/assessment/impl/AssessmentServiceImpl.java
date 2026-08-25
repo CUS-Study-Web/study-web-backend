@@ -193,11 +193,15 @@ public class AssessmentServiceImpl implements AssessmentService {
         throw new AssessmentException(AssessmentErrorCode.HOMEWORK_REQUIRES_SUBJECT);
       }
       builder.subject(subjectRepository.requireSubject(request.subjectId(), courseId));
+      builder.access(defaultOr(request.tier(), AccessTier.PUBLIC));
     } else {
       builder.course(course);
       builder.durationMin(defaultOr(request.durationMin(), 0));
       builder.maxScore(defaultOr(request.maxScore(), 100));
-      builder.access(defaultOr(request.accessTier(), AccessTier.PUBLIC));
+      // tier takes precedence over legacy accessTier; fall back to PUBLIC
+      AccessTier access = request.tier() != null ? request.tier()
+          : defaultOr(request.accessTier(), AccessTier.PUBLIC);
+      builder.access(access);
     }
   }
 
@@ -257,8 +261,16 @@ public class AssessmentServiceImpl implements AssessmentService {
       if (request.maxScore() != null) {
         assessment.setMaxScore(request.maxScore());
       }
-      if (request.accessTier() != null) {
+      // tier takes precedence over legacy accessTier
+      if (request.tier() != null) {
+        assessment.setAccess(request.tier());
+      } else if (request.accessTier() != null) {
         assessment.setAccess(request.accessTier());
+      }
+    } else {
+      // HOMEWORK — apply tier if provided
+      if (request.tier() != null) {
+        assessment.setAccess(request.tier());
       }
     }
   }
