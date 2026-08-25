@@ -71,7 +71,7 @@ public class CourseController extends AbstractBaseController {
 
   @GetMapping("/assistant")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "List Courses for admin", description = "List all courses with pagination for admin")
+  @Operation(summary = "List Courses for assistant", description = "List all courses with pagination for assistant")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAssistant(
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(

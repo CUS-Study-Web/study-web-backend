@@ -75,17 +75,19 @@ public class CourseServiceImpl implements CourseService {
   private Executor updateProgressExecutor;
 
   @Override
-  public Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status) {
-    return listCourses(pageable, status, null);
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses) {
+    return listCourses(pageable, statuses, null);
   }
 
   @Transactional(readOnly = true)
-  public Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status, String email) {
+  public Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses, String email) {
     Page<Course> page;
-    if (status == null) {
+    if (statuses == null || statuses.isEmpty()) {
       page = courseRepository.findByDeletedAtIsNull(pageable);
+    } else if (statuses.size() == 1) {
+      page = courseRepository.findByDeletedAtIsNullAndStatus(pageable, statuses.get(0));
     } else {
-      page = courseRepository.findByDeletedAtIsNullAndStatus(pageable, status);
+      page = courseRepository.findByDeletedAtIsNullAndStatusIn(pageable, statuses);
     }
 
     UUID userId = null;
@@ -422,17 +424,17 @@ public class CourseServiceImpl implements CourseService {
 
   @Override
   public Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable, String email) {
-    return listCourses(pageable, CourseCreateStatus.PUBLISH, email);
+    return listCourses(pageable, List.of(CourseCreateStatus.PUBLISH), email);
   }
 
   @Override
   public Page<CourseSummaryResponse> listCoursesForAssistant(Pageable pageable) {
-    return listCourses(pageable, CourseCreateStatus.DEVELOPING);
+    return listCourses(pageable, List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH));
   }
 
   @Override
   public Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable) {
-    return listCourses(pageable, null);
+    return listCourses(pageable, (List<CourseCreateStatus>) null);
   }
 
   private static final int BATCH_SIZE = 100;

@@ -143,7 +143,7 @@ class CourseServiceTest {
         when(courseMapper.toCourseSummary(eq(course), org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyLong())).thenReturn(summary);
 
-        Page<CourseSummaryResponse> response = courseService.listCourses(PageRequest.of(0, 10), null);
+        Page<CourseSummaryResponse> response = courseService.listCourses(PageRequest.of(0, 10), (List<CourseCreateStatus>) null);
 
         assertThat(response.getContent()).containsExactly(summary);
         assertThat(response.getTotalElements()).isEqualTo(1);
@@ -188,13 +188,13 @@ class CourseServiceTest {
     }
 
     @Test
-    void listCoursesForAssistant_returnsDevelopingCourses() {
+    void listCoursesForAssistant_returnsDevelopingAndPublishedCourses() {
         Course course = course();
         CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
                 "desc", "url", CourseCreateStatus.DEVELOPING, null, 0L, 0L);
         Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
-        when(courseRepository.findByDeletedAtIsNullAndStatus(any(Pageable.class), eq(CourseCreateStatus.DEVELOPING)))
+        when(courseRepository.findByDeletedAtIsNullAndStatusIn(any(Pageable.class), eq(List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH))))
                 .thenReturn(page);
         when(courseMapper.toCourseSummary(eq(course), org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyLong())).thenReturn(summary);
@@ -203,7 +203,7 @@ class CourseServiceTest {
 
         assertThat(response.getContent()).containsExactly(summary);
         verify(courseRepository)
-                .findByDeletedAtIsNullAndStatus(any(Pageable.class), eq(CourseCreateStatus.DEVELOPING));
+                .findByDeletedAtIsNullAndStatusIn(any(Pageable.class), eq(List.of(CourseCreateStatus.DEVELOPING, CourseCreateStatus.PUBLISH)));
     }
 
     @Test

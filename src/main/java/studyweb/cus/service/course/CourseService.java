@@ -1,5 +1,6 @@
 package studyweb.cus.service.course;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +14,7 @@ import studyweb.cus.enums.CourseCreateStatus;
 
 public interface CourseService {
 
-  Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status);
+  Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses);
 
   Page<SubjectSummaryResponse> getCourseDetail(UUID id, String email, Pageable pageable);
 
