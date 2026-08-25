@@ -114,10 +114,6 @@ jobs:
           echo "===== LINGER ====="
           loginctl show-user "$(whoami)" -p Linger
 
-      - name: Check infra
-        working-directory: gitops-manifests
-        run: make infra-prod
-          
       - name: Deploy Backend
         working-directory: gitops-manifests
         env:
