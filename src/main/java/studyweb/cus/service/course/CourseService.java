@@ -41,7 +41,9 @@ public interface CourseService {
 
   void doneLesson(UUID courseId, UUID subjectId, UUID lessonId, String email);
 
-  Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable);
+  Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable, String email);
 
   Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable);
+
+  Page<CourseSummaryResponse> listCoursesForAssistant(Pageable pageable);
 }

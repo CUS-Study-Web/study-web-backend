@@ -73,6 +73,10 @@ class CourseServiceTest {
     private UserLessonProgressRepository userLessonProgressRepository;
     @Mock
     private UserSubjectProgressRepository userSubjectProgressRepository;
+    @Mock
+    private studyweb.cus.repository.course.UserCourseProgressRepository userCourseProgressRepository;
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     @InjectMocks
     private CourseServiceImpl courseService;
@@ -130,7 +134,7 @@ class CourseServiceTest {
     void listCourses_returnsPagedSummaries() {
         Course course = course();
         CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
-                "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, 0L, 0L);
+                "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, null, 0L, 0L);
         Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
         when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
@@ -149,7 +153,7 @@ class CourseServiceTest {
     void listCoursesForUser_returnsOnlyPublishedCourses() {
         Course course = course();
         CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
-                "desc", "url", CourseCreateStatus.PUBLISH, 0L, 0L);
+                "desc", "url", CourseCreateStatus.PUBLISH, null, 0L, 0L);
         Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
         when(courseRepository.findByDeletedAtIsNullAndStatus(any(Pageable.class), eq(CourseCreateStatus.PUBLISH)))
@@ -157,7 +161,7 @@ class CourseServiceTest {
         when(courseMapper.toCourseSummary(eq(course), org.mockito.ArgumentMatchers.anyLong(),
                 org.mockito.ArgumentMatchers.anyLong())).thenReturn(summary);
 
-        Page<CourseSummaryResponse> response = courseService.listCoursesForUser(PageRequest.of(0, 10));
+        Page<CourseSummaryResponse> response = courseService.listCoursesForUser(PageRequest.of(0, 10), null);
 
         assertThat(response.getContent()).containsExactly(summary);
         verify(courseRepository)
@@ -168,7 +172,7 @@ class CourseServiceTest {
     void listCoursesForAdmin_returnsCoursesOfEveryStatus() {
         Course course = course();
         CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
-                "desc", "url", CourseCreateStatus.DRAFT, 0L, 0L);
+                "desc", "url", CourseCreateStatus.DRAFT, null, 0L, 0L);
         Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
         when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
@@ -182,10 +186,29 @@ class CourseServiceTest {
     }
 
     @Test
+    void listCoursesForAssistant_returnsDevelopingCourses() {
+        Course course = course();
+        CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
+                "desc", "url", CourseCreateStatus.DEVELOPING, null, 0L, 0L);
+        Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
+
+        when(courseRepository.findByDeletedAtIsNullAndStatus(any(Pageable.class), eq(CourseCreateStatus.DEVELOPING)))
+                .thenReturn(page);
+        when(courseMapper.toCourseSummary(eq(course), org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.anyLong())).thenReturn(summary);
+
+        Page<CourseSummaryResponse> response = courseService.listCoursesForAssistant(PageRequest.of(0, 10));
+
+        assertThat(response.getContent()).containsExactly(summary);
+        verify(courseRepository)
+                .findByDeletedAtIsNullAndStatus(any(Pageable.class), eq(CourseCreateStatus.DEVELOPING));
+    }
+
+    @Test
     void createCourse_persistsAndReturnsSummary() {
         Course course = course();
         CourseSummaryResponse summary = new CourseSummaryResponse(courseId, "Java for Beginners", "sub", "badge",
-                "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, 0L, 0L);
+                "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, null, 0L, 0L);
 
         when(courseRepository.save(any(Course.class))).thenReturn(course);
         when(courseMapper.toCourseSummary(eq(course), org.mockito.ArgumentMatchers.anyLong(),
@@ -211,7 +234,7 @@ class CourseServiceTest {
                 org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(
                         new CourseSummaryResponse(
-                                courseId, "Java for Beginners", "sub", "badge", "desc", uploaded.fileUrl(), studyweb.cus.enums.CourseCreateStatus.DRAFT, 0L, 0L));
+                                courseId, "Java for Beginners", "sub", "badge", "desc", uploaded.fileUrl(), studyweb.cus.enums.CourseCreateStatus.DRAFT, null, 0L, 0L));
 
         MockMultipartFile thumbnail = new MockMultipartFile("thumbnail", "thumb.png", "image/png", new byte[] { 1 });
 
@@ -519,7 +542,7 @@ class CourseServiceTest {
         when(userLessonProgressRepository.findByUserIdAndLessonId(user.getId(), lessonId))
                 .thenReturn(Optional.empty());
         when(lessonRepository.countLessonBySubjectId(subjectId)).thenReturn(3);
-        when(userLessonProgressRepository.countByUserIdAndLesson_Subject_IdAndIsClickedTrue(user.getId(), subjectId))
+        when(userLessonProgressRepository.countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(user.getId(), subjectId))
                 .thenReturn(1L);
         when(userSubjectProgressRepository.findByUserIdAndSubjectId(user.getId(), subjectId))
                 .thenReturn(Optional.empty());
