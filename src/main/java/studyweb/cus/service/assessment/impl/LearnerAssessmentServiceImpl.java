@@ -65,7 +65,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     log.info("Learner started assessment {}", assessmentId);
     
     String presignedUrl = assessment.getFileKey() != null
-        ? fileService.generatePresignedUrl(assessment.getFileKey())
+        ? fileService.buildFileUrl(assessment.getFileKey())
         : null;
         
     return mapper.toStartResponse(assessment, presignedUrl);

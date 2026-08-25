@@ -122,7 +122,7 @@ class LearnerAssessmentServiceTest {
     when(courseRepository.requireCourse(courseId)).thenReturn(new studyweb.cus.entity.course.Course());
     when(assessmentRepository.requireAssessment(any())).thenReturn(assessment);
     when(userRepository.findByGmail(userEmail)).thenReturn(Optional.of(TestFixtures.createMockUser(userId, userEmail)));
-    when(fileService.generatePresignedUrl("exams/exam.pdf")).thenReturn("https://s3.test/exams/exam.pdf");
+    when(fileService.buildFileUrl("exams/exam.pdf")).thenReturn("https://s3.test/exams/exam.pdf");
     when(mapper.toStartResponse(assessment, "https://s3.test/exams/exam.pdf")).thenReturn(expected);
 
     AssessmentStartResponse result = service.getAssessmentForTaking(courseId, assessmentId, userEmail);

@@ -1,5 +1,7 @@
 package studyweb.cus.entity.progress;
 
+import studyweb.cus.entity.course.Subject;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,29 +16,28 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
-import studyweb.cus.entity.course.Lesson;
 import studyweb.cus.entity.user.User;
 
 @Entity
-@Table(name = "user_lesson_progress", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_user_lesson", columnNames = { "user_id", "lesson_id" })
-}, indexes = { @Index(name = "idx_user_lesson_progress_user", columnList = "user_id") })
+@Table(name = "user_subject_progress", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_user_subject", columnNames = { "user_id", "subject_id" })
+}, indexes = { @Index(name = "idx_user_subject_progress_user", columnList = "user_id") })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserLessonProgress extends AbstractBaseEntity {
+public class UserSubjectProgress extends AbstractBaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "lesson_id", nullable = false)
-  private Lesson lesson;
+  @JoinColumn(name = "subject_id", nullable = false)
+  private Subject subject;
 
-  @Column(name = "is_clicked", nullable = false)
+  @Column(name = "progress_percent", nullable = false)
   @Builder.Default
-  private Boolean isClicked = false;
+  private Integer progressPercent = 0;
 }

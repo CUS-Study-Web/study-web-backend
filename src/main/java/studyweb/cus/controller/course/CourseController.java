@@ -48,12 +48,37 @@ public class CourseController extends AbstractBaseController {
   private final CourseService courseService;
 
   @GetMapping
-  @Operation(summary = "List Courses", description = "List all courses with pagination")
+  @Operation(summary = "List Courses for user", description = "List all courses with pagination for user")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCourses(
+      @AuthenticationPrincipal String email,
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses] Page {}, size {}", pageable.getPageNumber(), pageable.getPageSize());
-    return paging(courseService.listCourses(pageable), "Courses fetched successfully!");
+    return paging(courseService.listCoursesForUser(pageable, email), "Courses fetched successfully!");
+  }
+
+  @GetMapping("/admin")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "List Courses for admin", description = "List all courses with pagination for admin")
+  public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAdmin(
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/courses/admin] Page {}, size {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return paging(courseService.listCoursesForAdmin(pageable), "Courses fetched successfully!");
+  }
+
+  @GetMapping("/assistant")
+  @PreAuthorize("hasRole('ASSISTANT')")
+  @Operation(summary = "List Courses for assistant", description = "List all courses with pagination for assistant")
+  public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAssistant(
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/courses/assistant] Page {}, size {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return paging(courseService.listCoursesForAssistant(pageable), "Courses fetched successfully!");
   }
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -79,10 +104,9 @@ public class CourseController extends AbstractBaseController {
       @PageableDefault(size = 10) Pageable pageable) {
     log.info("[GET /api/courses/{}] Fetching course detail", id);
     Page<SubjectSummaryResponse> subjects = courseService.getCourseDetail(id, email, pageable);
-    // ponytail: learningProgress has no calculation yet; placeholder until progress tracking exists
     return pagingData(
         subjects,
-        CourseDetailResponse.of(subjects.getTotalElements(), 0f, subjects.getContent()),
+        CourseDetailResponse.of(subjects.getTotalElements(), subjects.getContent()),
         "Course fetched successfully!");
   }
 
@@ -145,8 +169,7 @@ public class CourseController extends AbstractBaseController {
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses/{}/subjects/{}/lessons] Listing lessons for {}", id, subjectId, email);
-    Page<LessonSummaryResponse.LessonCardResponse> lessons =
-        courseService.listLessons(id, subjectId, email, pageable);
+    Page<LessonSummaryResponse.LessonCardResponse> lessons = courseService.listLessons(id, subjectId, email, pageable);
     return pagingData(
         lessons,
         new LessonSummaryResponse((int) lessons.getTotalElements(), lessons.getContent()),
@@ -156,7 +179,7 @@ public class CourseController extends AbstractBaseController {
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(summary = "Create Lesson", description = "Create a lesson for a subject (assistant only)")
-  public ResponseEntity<SingleResponse<LessonSummaryResponse>> createLesson(
+  public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> createLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @Valid @RequestBody LessonRequest request) {
@@ -172,7 +195,7 @@ public class CourseController extends AbstractBaseController {
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(summary = "Update Lesson", description = "Update a lesson of a subject (assistant only)")
-  public ResponseEntity<SingleResponse<LessonSummaryResponse>> updateLesson(
+  public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> updateLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
       @PathVariable UUID lessonId,
@@ -193,5 +216,22 @@ public class CourseController extends AbstractBaseController {
         "[DELETE /api/courses/{}/subjects/{}/lessons/{}] Deleting lesson", id, subjectId, lessonId);
     courseService.deleteLesson(id, subjectId, lessonId);
     return success("Lesson deleted successfully!");
+  }
+
+  @PostMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}/done")
+  @Operation(summary = "Done Lesson", description = "Done a lesson of a subject")
+  public ResponseEntity<SuccessResponse> doneLesson(
+      @PathVariable UUID id,
+      @PathVariable UUID subjectId,
+      @PathVariable UUID lessonId,
+      @AuthenticationPrincipal String email) {
+    log.info(
+        "[POST /api/courses/{}/subjects/{}/lessons/{}/done] done lesson by user {}",
+        id,
+        subjectId,
+        lessonId,
+        email);
+    courseService.doneLesson(id, subjectId, lessonId, email);
+    return success("Lesson done successfully!");
   }
 }

@@ -1,5 +1,6 @@
 package studyweb.cus.service.course;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,10 +10,11 @@ import studyweb.cus.dto.request.course.SubjectRequest;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.enums.CourseCreateStatus;
 
 public interface CourseService {
 
-  Page<CourseSummaryResponse> listCourses(Pageable pageable);
+  Page<CourseSummaryResponse> listCourses(Pageable pageable, List<CourseCreateStatus> statuses);
 
   Page<SubjectSummaryResponse> getCourseDetail(UUID id, String email, Pageable pageable);
 
@@ -31,10 +33,18 @@ public interface CourseService {
   Page<LessonSummaryResponse.LessonCardResponse> listLessons(
       UUID courseId, UUID subjectId, String email, Pageable pageable);
 
-  LessonSummaryResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
+  LessonSummaryResponse.LessonCardResponse createLesson(UUID courseId, UUID subjectId, LessonRequest request);
 
-  LessonSummaryResponse updateLesson(
+  LessonSummaryResponse.LessonCardResponse updateLesson(
       UUID courseId, UUID subjectId, UUID lessonId, LessonRequest request);
 
   void deleteLesson(UUID courseId, UUID subjectId, UUID lessonId);
+
+  void doneLesson(UUID courseId, UUID subjectId, UUID lessonId, String email);
+
+  Page<CourseSummaryResponse> listCoursesForUser(Pageable pageable, String email);
+
+  Page<CourseSummaryResponse> listCoursesForAdmin(Pageable pageable);
+
+  Page<CourseSummaryResponse> listCoursesForAssistant(Pageable pageable);
 }

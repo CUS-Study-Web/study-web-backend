@@ -37,26 +37,22 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.course.CourseRequest;
-import studyweb.cus.dto.response.course.CourseDetailResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 
-@WebMvcTest(
-    controllers = CourseController.class,
-    excludeFilters =
-        @ComponentScan.Filter(
-            type = FilterType.ASSIGNABLE_TYPE,
-            classes = JwtAuthenticationFilter.class))
+@WebMvcTest(controllers = CourseController.class, excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
 class CourseControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();
 
-  @Autowired private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
-  @MockitoBean private CourseService courseService;
+  @MockitoBean
+  private CourseService courseService;
 
   @TestConfiguration
   @EnableMethodSecurity
@@ -65,29 +61,28 @@ class CourseControllerTest {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
       http.csrf(AbstractHttpConfigurer::disable)
           .authorizeHttpRequests(
-              auth ->
-                  auth.requestMatchers("/api/auth/**")
-                      .permitAll()
-                      .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
-                      .permitAll()
-                      .anyRequest()
-                      .authenticated())
+              auth -> auth.requestMatchers("/api/auth/**")
+                  .permitAll()
+                  .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
+                  .permitAll()
+                  .anyRequest()
+                  .authenticated())
           .httpBasic(Customizer.withDefaults());
       return http.build();
     }
   }
 
   private CourseSummaryResponse summary() {
-    return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url", 0L, 0L);
+    return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, null, 0L, 0L);
   }
 
   private MockMultipartFile thumbnail() {
-    return new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] {1});
+    return new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] { 1 });
   }
 
   @Test
   void listCourses_isPublicAndReturnsData() throws Exception {
-    when(courseService.listCourses(any(Pageable.class)))
+    when(courseService.listCoursesForUser(any(Pageable.class), any()))
         .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
 
     mockMvc
@@ -102,7 +97,48 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.paging.total").value(1))
         .andExpect(jsonPath("$.paging.totalPages").value(1));
 
-    verify(courseService).listCourses(any(Pageable.class));
+    verify(courseService).listCoursesForUser(any(Pageable.class), any());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void listCoursesForAdmin_returnsDraftAndPublishedCourses() throws Exception {
+    when(courseService.listCoursesForAdmin(any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
+
+    mockMvc
+        .perform(get("/api/courses/admin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()));
+
+    verify(courseService).listCoursesForAdmin(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  void listCoursesForAssistant_assistantAllowed() throws Exception {
+    when(courseService.listCoursesForAssistant(any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(summary()), PageRequest.of(0, 10), 1));
+
+    mockMvc
+        .perform(get("/api/courses/assistant"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Courses fetched successfully!"))
+        .andExpect(jsonPath("$.data[0].id").value(COURSE_ID.toString()))
+        .andExpect(jsonPath("$.paging.total").value(1));
+
+    verify(courseService).listCoursesForAssistant(any(Pageable.class));
+  }
+
+  @Test
+  @WithMockUser(roles = "USER")
+  void listCoursesForAssistant_nonAssistantForbidden() throws Exception {
+    mockMvc.perform(get("/api/courses/assistant")).andExpect(status().isForbidden());
+  }
+
+  @Test
+  void listCoursesForAssistant_unauthenticatedForbidden() throws Exception {
+    mockMvc.perform(get("/api/courses/assistant")).andExpect(status().isForbidden());
   }
 
   @Test
@@ -111,8 +147,8 @@ class CourseControllerTest {
         .thenReturn(
             new PageImpl<>(
                 List.of(
-                    new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3, 1),
-                    new SubjectSummaryResponse(UUID.randomUUID(), "Advanced", null, 5, 2)),
+                    new SubjectSummaryResponse(UUID.randomUUID(), "Basics", null, 3, 1, 0),
+                    new SubjectSummaryResponse(UUID.randomUUID(), "Advanced", null, 5, 2, 0)),
                 PageRequest.of(0, 10),
                 2));
 
@@ -140,7 +176,7 @@ class CourseControllerTest {
             new PageImpl<>(
                 List.of(
                     new studyweb.cus.dto.response.course.LessonSummaryResponse.LessonCardResponse(
-                        UUID.randomUUID(), "Variables", 15, null, false)),
+                        UUID.randomUUID(), 1, "Variables", 15, null, false, false)),
                 PageRequest.of(0, 10),
                 1));
 
@@ -231,5 +267,24 @@ class CourseControllerTest {
         .andExpect(jsonPath("$.message").value("Course deleted successfully!"));
 
     verify(courseService).deleteCourse(COURSE_ID);
+  }
+
+  @Test
+  @WithMockUser
+  void doneLesson_marksLessonAsDone() throws Exception {
+    UUID subjectId = UUID.randomUUID();
+    UUID lessonId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post(
+                "/api/courses/{id}/subjects/{subjectId}/lessons/{lessonId}/done",
+                COURSE_ID,
+                subjectId,
+                lessonId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.message").value("Lesson done successfully!"));
+
+    verify(courseService).doneLesson(eq(COURSE_ID), eq(subjectId), eq(lessonId), any());
   }
 }
