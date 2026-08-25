@@ -75,7 +75,6 @@ public class CourseServiceImpl implements CourseService {
   private Executor updateProgressExecutor;
 
   @Override
-  @Transactional(readOnly = true)
   public Page<CourseSummaryResponse> listCourses(Pageable pageable, CourseCreateStatus status) {
     return listCourses(pageable, status, null);
   }
@@ -436,14 +435,21 @@ public class CourseServiceImpl implements CourseService {
     return listCourses(pageable, null);
   }
 
+  private static final int BATCH_SIZE = 100;
+
   private void recomputeProgressForSubject(UUID courseId, UUID subjectId) {
     List<UUID> learnerIds = userRepository.findIdsByRole(UserRole.LEARNER);
     if (learnerIds.isEmpty()) {
       return;
     }
-    runAfterCommit(() -> learnerIds.forEach(userId -> submitProgressTask(
-        () -> updateProgressForLearner(userId, courseId, subjectId),
-        "lesson progress for user " + userId)));
+    runAfterCommit(() -> {
+      for (int i = 0; i < learnerIds.size(); i += BATCH_SIZE) {
+        List<UUID> batch = learnerIds.subList(i, Math.min(i + BATCH_SIZE, learnerIds.size()));
+        submitProgressTask(
+            () -> updateProgressForLearners(batch, courseId, subjectId),
+            "lesson progress for " + batch.size() + " users");
+      }
+    });
   }
 
   private void updateCourseProgressWhenSubjectsChanged(UUID courseId) {
@@ -451,9 +457,14 @@ public class CourseServiceImpl implements CourseService {
     if (learnerIds.isEmpty()) {
       return;
     }
-    runAfterCommit(() -> learnerIds.forEach(userId -> submitProgressTask(
-        () -> updateCourseProgressForLearner(userId, courseId),
-        "course progress for user " + userId)));
+    runAfterCommit(() -> {
+      for (int i = 0; i < learnerIds.size(); i += BATCH_SIZE) {
+        List<UUID> batch = learnerIds.subList(i, Math.min(i + BATCH_SIZE, learnerIds.size()));
+        submitProgressTask(
+            () -> updateCourseProgressForLearners(batch, courseId),
+            "course progress for " + batch.size() + " users");
+      }
+    });
   }
 
   private void runAfterCommit(Runnable task) {
@@ -483,25 +494,33 @@ public class CourseServiceImpl implements CourseService {
     }
   }
 
-  private void updateCourseProgressForLearner(UUID userId, UUID courseId) {
-    User user = userRepository.findById(userId).orElse(null);
+  private void updateCourseProgressForLearners(List<UUID> userIds, UUID courseId) {
     Course course = courseRepository.findByIdAndDeletedAtIsNull(courseId).orElse(null);
-    if (user == null || user.getRole() != UserRole.LEARNER || course == null) {
+    if (course == null) {
       return;
     }
-    updateCourseProgress(user, course);
+    List<User> users = userRepository.findAllById(userIds);
+    for (User user : users) {
+      if (user.getRole() == UserRole.LEARNER) {
+        updateCourseProgress(user, course);
+      }
+    }
   }
 
-  private void updateProgressForLearner(UUID userId, UUID courseId, UUID subjectId) {
-    User user = userRepository.findById(userId).orElse(null);
+  private void updateProgressForLearners(List<UUID> userIds, UUID courseId, UUID subjectId) {
     Course course = courseRepository.findByIdAndDeletedAtIsNull(courseId).orElse(null);
     Subject subject = subjectRepository
         .findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId)
         .orElse(null);
-    if (user == null || user.getRole() != UserRole.LEARNER || course == null || subject == null) {
+    if (course == null || subject == null) {
       return;
     }
-    updateProgressForLearner(user, course, subject);
+    List<User> users = userRepository.findAllById(userIds);
+    for (User user : users) {
+      if (user.getRole() == UserRole.LEARNER) {
+        updateProgressForLearner(user, course, subject);
+      }
+    }
   }
 
   private void updateProgressForLearner(User user, Course course, Subject subject) {

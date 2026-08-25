@@ -77,6 +77,8 @@ class CourseServiceTest {
     private studyweb.cus.repository.course.UserCourseProgressRepository userCourseProgressRepository;
     @Mock
     private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+    @Mock
+    private java.util.concurrent.Executor updateProgressExecutor;
 
     @InjectMocks
     private CourseServiceImpl courseService;
@@ -557,5 +559,50 @@ class CourseServiceTest {
         verify(userSubjectProgressRepository).save(subjectProgress.capture());
         assertThat(lessonProgress.getValue().getIsClicked()).isTrue();
         assertThat(subjectProgress.getValue().getProgressPercent()).isEqualTo(33);
+    }
+
+    @Test
+    void deleteLesson_triggersBatchedProgressUpdate() throws Exception {
+        org.springframework.transaction.support.TransactionSynchronizationManager.clear();
+        when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
+        when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
+                .thenReturn(Optional.of(subject(1)));
+        when(lessonRepository.findByIdAndSubjectIdAndDeletedAtIsNull(lessonId, subjectId))
+                .thenReturn(Optional.of(lesson()));
+        when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(0L);
+
+        List<UUID> learners = java.util.stream.IntStream.range(0, 250)
+                .mapToObj(i -> UUID.randomUUID()).toList();
+        when(userRepository.findIdsByRole(studyweb.cus.enums.UserRole.LEARNER)).thenReturn(learners);
+
+        // Inject the executor manually since Mockito skips non-final fields when constructor injection is used
+        java.lang.reflect.Field executorField = CourseServiceImpl.class.getDeclaredField("updateProgressExecutor");
+        executorField.setAccessible(true);
+        executorField.set(courseService, updateProgressExecutor);
+
+        courseService.deleteLesson(courseId, subjectId, lessonId);
+
+        // 250 learners divided by batch size of 100 = 3 tasks submitted
+        verify(updateProgressExecutor, org.mockito.Mockito.times(3)).execute(any(Runnable.class));
+    }
+
+    @Test
+    void deleteSubject_triggersBatchedProgressUpdate() throws Exception {
+        org.springframework.transaction.support.TransactionSynchronizationManager.clear();
+        when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId))
+                .thenReturn(Optional.of(subject(1)));
+
+        List<UUID> learners = java.util.stream.IntStream.range(0, 150)
+                .mapToObj(i -> UUID.randomUUID()).toList();
+        when(userRepository.findIdsByRole(studyweb.cus.enums.UserRole.LEARNER)).thenReturn(learners);
+
+        java.lang.reflect.Field executorField = CourseServiceImpl.class.getDeclaredField("updateProgressExecutor");
+        executorField.setAccessible(true);
+        executorField.set(courseService, updateProgressExecutor);
+
+        courseService.deleteSubject(courseId, subjectId);
+
+        // 150 learners divided by batch size of 100 = 2 tasks submitted
+        verify(updateProgressExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
     }
 }
