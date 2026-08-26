@@ -1,6 +1,5 @@
 CREATE TABLE documents (
     id UUID PRIMARY KEY,
-    topic_id UUID REFERENCES flashcard_topics(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
     doc_type VARCHAR(50) NOT NULL DEFAULT 'THEORY',
     file_type VARCHAR(20) NOT NULL,
@@ -9,9 +8,7 @@ CREATE TABLE documents (
     description TEXT,
     download_count INT NOT NULL DEFAULT 0,
     youtube_url TEXT,
-    access_level VARCHAR(20) NOT NULL DEFAULT 'PUBLIC',
+    access_tier VARCHAR(20) NOT NULL DEFAULT 'PUBLIC',
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
-
-CREATE INDEX idx_documents_topic ON documents(topic_id);
