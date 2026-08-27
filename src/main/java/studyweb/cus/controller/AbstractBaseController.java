@@ -23,16 +23,24 @@ public abstract class AbstractBaseController {
   protected <T> ResponseEntity<PageResponse<T>> paging(Page<T> page, String message) {
     PageResponse<T> response =
         responseFactory.createPageResponse(
-            message, page.getContent(), page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+            message,
+            page.getContent(),
+            page.getNumber(),
+            page.getSize(),
+            page.getTotalElements(),
+            page.getTotalPages());
     return ResponseEntity.ok(response);
   }
 
   protected <T> ResponseEntity<PagedResponse<T>> pagingData(Page<?> page, T data, String message) {
     PagedResponse<T> response =
         responseFactory.createPagedDataResponse(
-            message, data, page.getNumber(), page.getSize(),
-            page.getTotalElements(), page.getTotalPages());
+            message,
+            data,
+            page.getNumber(),
+            page.getSize(),
+            page.getTotalElements(),
+            page.getTotalPages());
     return ResponseEntity.ok(response);
   }
 }

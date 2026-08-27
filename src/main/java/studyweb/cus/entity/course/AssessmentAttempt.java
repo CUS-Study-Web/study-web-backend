@@ -9,11 +9,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,10 +21,12 @@ import studyweb.cus.entity.AbstractBaseEntity;
 import studyweb.cus.entity.user.User;
 
 @Entity
-@Table(name = "assessment_attempts", indexes = {
-    @Index(name = "idx_assessment_attempts_user", columnList = "user_id"),
-    @Index(name = "idx_assessment_attempts_exam", columnList = "exam_id")
-})
+@Table(
+    name = "assessment_attempts",
+    indexes = {
+      @Index(name = "idx_assessment_attempts_user", columnList = "user_id"),
+      @Index(name = "idx_assessment_attempts_exam", columnList = "exam_id")
+    })
 @Getter
 @Setter
 @NoArgsConstructor

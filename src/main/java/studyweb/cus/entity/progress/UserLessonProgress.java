@@ -18,9 +18,14 @@ import studyweb.cus.entity.course.Lesson;
 import studyweb.cus.entity.user.User;
 
 @Entity
-@Table(name = "user_lesson_progress", uniqueConstraints = {
-    @UniqueConstraint(name = "uq_user_lesson", columnNames = { "user_id", "lesson_id" })
-}, indexes = { @Index(name = "idx_user_lesson_progress_user", columnList = "user_id") })
+@Table(
+    name = "user_lesson_progress",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uq_user_lesson",
+          columnNames = {"user_id", "lesson_id"})
+    },
+    indexes = {@Index(name = "idx_user_lesson_progress_user", columnList = "user_id")})
 @Getter
 @Setter
 @NoArgsConstructor
