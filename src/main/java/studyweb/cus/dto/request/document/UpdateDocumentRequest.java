@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.DocumentFileType;
+import studyweb.cus.validator.ValidYouTubeUrl;
 
 public record UpdateDocumentRequest(
     @Schema(description = "Replacement document file (optional)", format = "binary")
@@ -20,7 +21,7 @@ public record UpdateDocumentRequest(
         @Min(value = 0, message = "Number of pages must be non-negative")
         Integer numPages,
     @Schema(description = "Description") String description,
-    @Schema(description = "YouTube video URL") String youtubeUrl,
+    @Schema(description = "YouTube video URL") @ValidYouTubeUrl String youtubeUrl,
     @Schema(description = "Access tier (PUBLIC, VIP)") AccessTier accessTier,
     @Schema(description = "List of badge IDs to associate with this document")
         List<UUID> badgeIds) {}

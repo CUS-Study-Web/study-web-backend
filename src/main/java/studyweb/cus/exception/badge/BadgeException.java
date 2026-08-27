@@ -3,7 +3,6 @@ package studyweb.cus.exception.badge;
 import lombok.Getter;
 import studyweb.cus.exception.BaseException;
 
-@Getter
 public class BadgeException extends BaseException {
 
   public BadgeException(BadgeErrorCode errorCode) {
