@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +43,6 @@ import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
 import studyweb.cus.util.FileUtils;
-
-import studyweb.cus.repository.course.AssessmentAttemptRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -167,14 +164,45 @@ public class AssessmentServiceImpl implements AssessmentService {
     courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
 
-    updateCommonFields(assessment, request);
-    updateTypeSpecificFields(assessment, courseId, request);
-    updateFile(assessment, request);
-    updateStatus(assessment, request.status());
-    updateAnswerKeys(assessment, assessmentId, request.answerKeys());
+    String oldFileKey = assessment.getFileKey();
+    String newFileKey = null;
 
-    log.info("Updated assessment {}", assessmentId);
-    return mapToSummary(assessment);
+    if (request.file() != null && !request.file().isEmpty()) {
+      UploadDocumentResult uploadResult =
+          uploadAssessmentFile(assessment.getAssessmentType(), request.file());
+      newFileKey = uploadResult.fileKey();
+      assessment.setFileKey(newFileKey);
+      assessment.setFileType(detectFileType(request.file()));
+    }
+
+    try {
+      updateCommonFields(assessment, request);
+      updateTypeSpecificFields(assessment, courseId, request);
+      updateStatus(assessment, request.status());
+      updateAnswerKeys(assessment, assessmentId, request.answerKeys());
+
+      if (newFileKey != null && oldFileKey != null && !oldFileKey.isBlank()) {
+        try {
+          fileService.deleteFile(oldFileKey);
+        } catch (Exception e) {
+          log.error("Failed to delete old assessment file from S3: {}", oldFileKey, e);
+        }
+      }
+
+      log.info("Updated assessment {}", assessmentId);
+      return mapToSummary(assessment);
+    } catch (Exception ex) {
+      if (newFileKey != null) {
+        log.warn("Lỗi cập nhật assessment. Đang dọn dẹp file mới trên S3: {}", newFileKey);
+        try {
+          fileService.deleteFile(newFileKey);
+        } catch (Exception s3Ex) {
+          log.error(
+              "Failed to delete new file from S3 during update rollback: {}", newFileKey, s3Ex);
+        }
+      }
+      throw ex;
+    }
   }
 
   @Override
@@ -183,6 +211,13 @@ public class AssessmentServiceImpl implements AssessmentService {
     courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
     assessment.setDeletedAt(LocalDateTime.now());
+    if (assessment.getFileKey() != null && !assessment.getFileKey().isBlank()) {
+      try {
+        fileService.deleteFile(assessment.getFileKey());
+      } catch (Exception e) {
+        log.error("Failed to delete assessment file from S3: {}", assessment.getFileKey(), e);
+      }
+    }
     log.info("Soft-deleted assessment {}", assessmentId);
   }
 
@@ -274,19 +309,6 @@ public class AssessmentServiceImpl implements AssessmentService {
         assessment.setAccess(request.tier());
       }
     }
-  }
-
-  /**
-   * Replaces the assessment file on S3 and updates fileUrl + fileType if a new file is provided.
-   */
-  private void updateFile(Assessment assessment, UpdateAssessmentRequest request) {
-    if (request.file() == null || request.file().isEmpty()) {
-      return;
-    }
-    UploadDocumentResult uploadResult =
-        uploadAssessmentFile(assessment.getAssessmentType(), request.file());
-    assessment.setFileKey(uploadResult.fileKey());
-    assessment.setFileType(detectFileType(request.file()));
   }
 
   /** Updates status; sets publishedAt on first publish. */
