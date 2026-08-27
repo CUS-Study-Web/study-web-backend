@@ -9,7 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,7 +38,10 @@ public class VipRequest extends AbstractBaseEntity {
   @Builder.Default
   private VipRequestStatus status = VipRequestStatus.WAITING;
 
+  @Column(name = "note", columnDefinition = "TEXT")
+  private String note;
+
   @Column(name = "request_date", nullable = false)
   @Builder.Default
-  private LocalDateTime requestDate = LocalDateTime.now();
+  private LocalDate requestDate = LocalDate.now();
 }

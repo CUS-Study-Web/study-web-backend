@@ -42,17 +42,20 @@ import studyweb.cus.dto.response.course.SubjectSummaryResponse;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 
-@WebMvcTest(controllers = CourseController.class, excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class))
+@WebMvcTest(
+    controllers = CourseController.class,
+    excludeFilters =
+        @ComponentScan.Filter(
+            type = FilterType.ASSIGNABLE_TYPE,
+            classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
 class CourseControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();
 
-  @Autowired
-  private MockMvc mockMvc;
+  @Autowired private MockMvc mockMvc;
 
-  @MockitoBean
-  private CourseService courseService;
+  @MockitoBean private CourseService courseService;
 
   @TestConfiguration
   @EnableMethodSecurity
@@ -61,23 +64,34 @@ class CourseControllerTest {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
       http.csrf(AbstractHttpConfigurer::disable)
           .authorizeHttpRequests(
-              auth -> auth.requestMatchers("/api/auth/**")
-                  .permitAll()
-                  .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
-                  .permitAll()
-                  .anyRequest()
-                  .authenticated())
+              auth ->
+                  auth.requestMatchers("/api/auth/**")
+                      .permitAll()
+                      .requestMatchers(HttpMethod.GET, "/api/courses", "/api/courses/*")
+                      .permitAll()
+                      .anyRequest()
+                      .authenticated())
           .httpBasic(Customizer.withDefaults());
       return http.build();
     }
   }
 
   private CourseSummaryResponse summary() {
-    return new CourseSummaryResponse(COURSE_ID, "Java", "sub", "badge", "desc", "url", studyweb.cus.enums.CourseCreateStatus.DRAFT, null, 0L, 0L);
+    return new CourseSummaryResponse(
+        COURSE_ID,
+        "Java",
+        "sub",
+        "badge",
+        "desc",
+        "url",
+        studyweb.cus.enums.CourseCreateStatus.DRAFT,
+        null,
+        0L,
+        0L);
   }
 
   private MockMultipartFile thumbnail() {
-    return new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] { 1 });
+    return new MockMultipartFile("thumbnailImage", "thumb.png", "image/png", new byte[] {1});
   }
 
   @Test

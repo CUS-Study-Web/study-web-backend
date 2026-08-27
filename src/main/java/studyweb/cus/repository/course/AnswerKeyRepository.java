@@ -9,5 +9,7 @@ public interface AnswerKeyRepository extends JpaRepository<AnswerKey, UUID> {
 
   List<AnswerKey> findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(UUID examId);
 
+  List<AnswerKey> findByExamIdInAndDeletedAtIsNull(List<UUID> examIds);
+
   void deleteByExamId(UUID examId);
 }

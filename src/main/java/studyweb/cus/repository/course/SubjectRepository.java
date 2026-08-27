@@ -5,9 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-
 import studyweb.cus.entity.course.Subject;
-
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 
@@ -15,8 +13,8 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
 
   List<Subject> findByCourseIdAndDeletedAtIsNull(UUID courseId);
 
-  org.springframework.data.domain.Page<Subject> findByCourseIdAndDeletedAtIsNull(UUID courseId,
-      org.springframework.data.domain.Pageable pageable);
+  org.springframework.data.domain.Page<Subject> findByCourseIdAndDeletedAtIsNull(
+      UUID courseId, org.springframework.data.domain.Pageable pageable);
 
   long countByCourseIdAndDeletedAtIsNull(UUID courseId);
 
@@ -29,5 +27,4 @@ public interface SubjectRepository extends JpaRepository<Subject, UUID> {
 
   @Query("SELECT COUNT(s) FROM Subject s WHERE s.course.id = :courseId AND s.deletedAt IS NULL")
   Integer countSubjectByCourseId(UUID courseId);
-
 }

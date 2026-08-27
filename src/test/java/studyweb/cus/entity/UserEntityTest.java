@@ -3,7 +3,6 @@ package studyweb.cus.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,11 +50,13 @@ class UserEntityTest {
         VipRequest.builder()
             .user(user)
             .status(VipRequestStatus.WAITING)
-            .requestDate(LocalDateTime.now())
+            .note("Please upgrade")
+            .requestDate(LocalDate.now())
             .build();
 
     assertThat(request.getUser()).isEqualTo(user);
     assertThat(request.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+    assertThat(request.getNote()).isEqualTo("Please upgrade");
     assertThat(request.getRequestDate()).isNotNull();
   }
 
