@@ -16,8 +16,7 @@ import studyweb.cus.security.impl.JwtUtilsImpl;
 @ExtendWith(MockitoExtension.class)
 class JwtUtilsImplTest {
 
-  private static final String SECRET =
-      "unit-test-secret-key-for-hs512-signing-0123456789abcdef0123456789abcdef";
+  private static final String SECRET = "unit-test-secret-key-for-hs512-signing-0123456789abcdef0123456789abcdef";
 
   @Mock private RefreshTokenRepository refreshTokenRepository;
   @Mock private RedisTemplate<String, Object> redisTemplate;
@@ -29,11 +28,7 @@ class JwtUtilsImplTest {
   void setUp() {
     jwtUtils =
         new JwtUtilsImpl(
-            SECRET,
-            3_600_000L,
-            604_800_000L,
-            refreshTokenRepository,
-            redisTemplate,
+            SECRET, 3_600_000L, 604_800_000L, refreshTokenRepository, redisTemplate,
             revokeRefreshTokenScript);
   }
 

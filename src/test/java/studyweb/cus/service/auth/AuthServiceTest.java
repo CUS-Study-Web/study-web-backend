@@ -173,8 +173,7 @@ class AuthServiceTest {
     when(jwtUtils.getEmailFromToken(REFRESH_TOKEN)).thenReturn(GMAIL);
     when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
     when(userMapper.toUserResponse(user)).thenReturn(userResponse());
-    when(jwtUtils.generateAccessToken(GMAIL, UserRole.LEARNER, false))
-        .thenReturn("new-access-token");
+    when(jwtUtils.generateAccessToken(GMAIL, UserRole.LEARNER, false)).thenReturn("new-access-token");
 
     AuthResponse response = authService.refreshToken(REFRESH_TOKEN);
 

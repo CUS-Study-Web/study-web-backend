@@ -33,9 +33,7 @@ public class AuthController extends AbstractBaseController {
   private final AuthService authService;
 
   @PostMapping("/register")
-  @Operation(
-      summary = "Register",
-      description = "Register a new learner account and return access and refresh tokens")
+  @Operation(summary = "Register", description = "Register a new learner account and return access and refresh tokens")
   public ResponseEntity<SingleResponse<AuthResponse>> register(
       @Valid @RequestBody RegisterRequest request) {
     if (request.gmail() == null || request.gmail().isBlank())
@@ -48,9 +46,7 @@ public class AuthController extends AbstractBaseController {
   }
 
   @PostMapping("/login")
-  @Operation(
-      summary = "Login",
-      description = "Authenticate with email and password and return access and refresh tokens")
+  @Operation(summary = "Login", description = "Authenticate with email and password and return access and refresh tokens")
   public ResponseEntity<SingleResponse<AuthResponse>> login(
       @Valid @RequestBody LoginRequest request) {
     if (request.gmail() == null || request.gmail().isBlank())
@@ -63,9 +59,7 @@ public class AuthController extends AbstractBaseController {
   }
 
   @PostMapping("/refresh-token")
-  @Operation(
-      summary = "Refresh Token",
-      description = "Obtain a new access token using a valid refresh token")
+  @Operation(summary = "Refresh Token", description = "Obtain a new access token using a valid refresh token")
   public ResponseEntity<SingleResponse<AuthResponse>> refreshToken(
       @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
     log.info("[POST /api/auth/refresh-token] Refreshing access token");
@@ -89,9 +83,7 @@ public class AuthController extends AbstractBaseController {
   }
 
   @PostMapping("/forget-password")
-  @Operation(
-      summary = "Forget Password",
-      description = "Send a password reset OTP to the user's email")
+  @Operation(summary = "Forget Password", description = "Send a password reset OTP to the user's email")
   public ResponseEntity<SuccessResponse> forgetPassword(
       @Valid @RequestBody ForgetPasswordRequest request) {
     log.info("[POST /api/auth/forget-password] Sending reset OTP for gmail: {}", request.gmail());

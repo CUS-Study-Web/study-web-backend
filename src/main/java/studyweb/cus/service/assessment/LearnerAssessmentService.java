@@ -10,8 +10,7 @@ import studyweb.cus.dto.response.assessment.AssessmentSubmitResponse;
 
 public interface LearnerAssessmentService {
 
-  AssessmentStartResponse getAssessmentForTaking(
-      UUID courseId, UUID assessmentId, String userEmail);
+  AssessmentStartResponse getAssessmentForTaking(UUID courseId, UUID assessmentId, String userEmail);
 
   AssessmentSubmitResponse submitAssessment(
       UUID courseId, UUID assessmentId, String userEmail, AssessmentSubmitRequest request);

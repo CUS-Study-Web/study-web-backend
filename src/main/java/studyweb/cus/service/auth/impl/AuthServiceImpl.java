@@ -59,9 +59,7 @@ public class AuthServiceImpl implements AuthService {
   public AuthResponse register(RegisterRequest request) {
     User user = userService.createUser(request);
 
-    String accessToken =
-        jwtUtils.generateAccessToken(
-            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
+    String accessToken = jwtUtils.generateAccessToken(user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
     String refreshToken = jwtUtils.generateRefreshToken(user.getGmail());
 
     return new AuthResponse(accessToken, refreshToken, userMapper.toUserResponse(user));
@@ -79,9 +77,7 @@ public class AuthServiceImpl implements AuthService {
       throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
-    String accessToken =
-        jwtUtils.generateAccessToken(
-            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
+    String accessToken = jwtUtils.generateAccessToken(user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
     String refreshToken = jwtUtils.generateRefreshToken(user.getGmail());
 
     return new AuthResponse(accessToken, refreshToken, userMapper.toUserResponse(user));
@@ -105,8 +101,7 @@ public class AuthServiceImpl implements AuthService {
             .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
 
     String newAccessToken =
-        jwtUtils.generateAccessToken(
-            user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
+        jwtUtils.generateAccessToken(user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
 
     return new AuthResponse(newAccessToken, refreshToken, userMapper.toUserResponse(user));
   }
