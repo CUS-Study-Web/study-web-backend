@@ -9,7 +9,6 @@ import static studyweb.cus.constant.FileConstants.FOLDER_DOCUMENTS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXAMS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXERCISES;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -39,8 +38,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadDocumentFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -49,8 +50,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadAvatarFile(MultipartFile file) {
-    long maxAvatarSize = s3Properties.getMaxsizeavatarupload() != null ? s3Properties.getMaxsizeavatarupload()
-        : 10485760L;
+    long maxAvatarSize =
+        s3Properties.getMaxsizeavatarupload() != null
+            ? s3Properties.getMaxsizeavatarupload()
+            : 10485760L;
     if (file.getSize() > maxAvatarSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -59,8 +62,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadExerciseFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -69,8 +74,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadExamFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -143,10 +150,8 @@ public class FileServiceImpl implements FileService {
       return;
     }
     try {
-      s3Client.deleteObject(DeleteObjectRequest.builder()
-          .bucket(s3Properties.getBucket())
-          .key(fileKey)
-          .build());
+      s3Client.deleteObject(
+          DeleteObjectRequest.builder().bucket(s3Properties.getBucket()).key(fileKey).build());
       log.info("Deleted file from S3: {}", fileKey);
     } catch (Exception e) {
       log.error("Failed to delete file {} from S3", fileKey, e);
