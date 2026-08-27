@@ -44,7 +44,8 @@ class StringToUuidConverterTest {
   }
 
   @Test
-  @DisplayName("UUID surrounded by quotes and brackets (JSON array element format) converts properly")
+  @DisplayName(
+      "UUID surrounded by quotes and brackets (JSON array element format) converts properly")
   void shouldConvertUuidWithQuotesAndBrackets() {
     UUID uuid = UUID.randomUUID();
     UUID result = converter.convert("[\"" + uuid + "\"]");

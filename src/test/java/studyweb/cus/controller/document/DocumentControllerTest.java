@@ -40,15 +40,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import studyweb.cus.config.WebMvcConfig;
 import studyweb.cus.controller.ResponseFactory;
+import studyweb.cus.converter.StringToUuidConverter;
 import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.badge.BadgeResponse;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
-import studyweb.cus.config.WebMvcConfig;
-import studyweb.cus.converter.StringToUuidConverter;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.DocumentFileType;
 import studyweb.cus.security.JwtAuthenticationFilter;
@@ -106,8 +106,7 @@ class DocumentControllerTest {
         "https://youtube.com/watch?v=123",
         AccessTier.PUBLIC,
         List.of(
-            new BadgeResponse(
-                BADGE_ID, "Toán", null, LocalDateTime.now(), LocalDateTime.now())),
+            new BadgeResponse(BADGE_ID, "Toán", null, LocalDateTime.now(), LocalDateTime.now())),
         LocalDateTime.now(),
         LocalDateTime.now());
   }
@@ -347,8 +346,6 @@ class DocumentControllerTest {
   @WithMockUser(roles = "LEARNER")
   @DisplayName("DELETE /api/documents/{id} - Learner forbidden from deleting")
   void deleteDocument_learnerForbidden() throws Exception {
-    mockMvc
-        .perform(delete("/api/documents/{id}", DOCUMENT_ID))
-        .andExpect(status().isForbidden());
+    mockMvc.perform(delete("/api/documents/{id}", DOCUMENT_ID)).andExpect(status().isForbidden());
   }
 }

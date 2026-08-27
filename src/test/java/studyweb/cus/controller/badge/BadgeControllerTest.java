@@ -83,8 +83,7 @@ class BadgeControllerTest {
   }
 
   private BadgeResponse sampleBadgeResponse() {
-    return new BadgeResponse(
-        BADGE_ID, "Toán", ADMIN_ID, LocalDateTime.now(), LocalDateTime.now());
+    return new BadgeResponse(BADGE_ID, "Toán", ADMIN_ID, LocalDateTime.now(), LocalDateTime.now());
   }
 
   // --- Create Badge Tests ---
@@ -196,7 +195,9 @@ class BadgeControllerTest {
   void updateBadge_adminAllowed() throws Exception {
     BadgeRequest request = new BadgeRequest("Toán Nâng Cao");
     when(badgeService.updateBadge(eq(BADGE_ID), any(BadgeRequest.class)))
-        .thenReturn(new BadgeResponse(BADGE_ID, "Toán Nâng Cao", ADMIN_ID, LocalDateTime.now(), LocalDateTime.now()));
+        .thenReturn(
+            new BadgeResponse(
+                BADGE_ID, "Toán Nâng Cao", ADMIN_ID, LocalDateTime.now(), LocalDateTime.now()));
 
     mockMvc
         .perform(
