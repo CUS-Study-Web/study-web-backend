@@ -1,5 +1,7 @@
 package studyweb.cus.entity.progress;
 
+import studyweb.cus.entity.course.Subject;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,18 +16,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
-import studyweb.cus.entity.course.Subject;
 import studyweb.cus.entity.user.User;
 
 @Entity
-@Table(
-    name = "user_subject_progress",
-    uniqueConstraints = {
-      @UniqueConstraint(
-          name = "uq_user_subject",
-          columnNames = {"user_id", "subject_id"})
-    },
-    indexes = {@Index(name = "idx_user_subject_progress_user", columnList = "user_id")})
+@Table(name = "user_subject_progress", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_user_subject", columnNames = { "user_id", "subject_id" })
+}, indexes = { @Index(name = "idx_user_subject_progress_user", columnList = "user_id") })
 @Getter
 @Setter
 @NoArgsConstructor

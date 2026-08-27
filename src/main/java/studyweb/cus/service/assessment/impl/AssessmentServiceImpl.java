@@ -1,10 +1,10 @@
 package studyweb.cus.service.assessment.impl;
 
-import static studyweb.cus.util.CommonUtils.defaultOr;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static studyweb.cus.util.CommonUtils.defaultOr;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+
 import studyweb.cus.dto.request.assessment.AnswerKeyItem;
 import studyweb.cus.dto.request.assessment.CreateAssessmentRequest;
 import studyweb.cus.dto.request.assessment.UpdateAssessmentRequest;
@@ -37,12 +38,13 @@ import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.mapper.assessment.AssessmentMapper;
 import studyweb.cus.repository.course.AnswerKeyRepository;
-import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
+
+import studyweb.cus.repository.course.AssessmentAttemptRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -64,12 +66,11 @@ public class AssessmentServiceImpl implements AssessmentService {
       UUID courseId, CreateAssessmentRequest request) {
     Course course = courseRepository.requireCourse(courseId);
 
-    Assessment.AssessmentBuilder builder =
-        Assessment.builder()
-            .title(request.title())
-            .assessmentType(request.assessmentType())
-            .numQuestions(defaultOr(request.numQuestions(), 0))
-            .explanationUrl(request.explanationUrl());
+    Assessment.AssessmentBuilder builder = Assessment.builder()
+        .title(request.title())
+        .assessmentType(request.assessmentType())
+        .numQuestions(defaultOr(request.numQuestions(), 0))
+        .explanationUrl(request.explanationUrl());
 
     applyTypeSpecificFields(builder, course, courseId, request);
 
@@ -79,10 +80,9 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     String uploadedFileKey = null;
     try {
-      UploadDocumentResult uploadResult =
-          (request.assessmentType() == AssessmentType.EXAM)
-              ? fileService.uploadExamFile(request.file())
-              : fileService.uploadExerciseFile(request.file());
+      UploadDocumentResult uploadResult = (request.assessmentType() == AssessmentType.EXAM)
+          ? fileService.uploadExamFile(request.file())
+          : fileService.uploadExerciseFile(request.file());
       uploadedFileKey = uploadResult.fileKey();
 
       return finalizeAssessmentCreation(savedAssessment, uploadedFileKey, request);
@@ -93,8 +93,7 @@ public class AssessmentServiceImpl implements AssessmentService {
           fileService.deleteFile(uploadedFileKey);
           assessmentRepository.delete(savedAssessment);
         } catch (Exception s3Ex) {
-          log.error(
-              "Xóa file S3 thất bại. Nhường lại cho Cron Job xử lý: {}", uploadedFileKey, s3Ex);
+          log.error("Xóa file S3 thất bại. Nhường lại cho Cron Job xử lý: {}", uploadedFileKey, s3Ex);
         }
       } else {
         assessmentRepository.delete(savedAssessment);
@@ -109,13 +108,12 @@ public class AssessmentServiceImpl implements AssessmentService {
     courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
 
-    List<AnswerKey> keys =
-        answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
-    List<AnswerKeyResponse> keyResponses =
-        keys.stream().map(assessmentMapper::toAnswerKeyResponse).toList();
+    List<AnswerKey> keys = answerKeyRepository.findByExamIdAndDeletedAtIsNullOrderByQuestionNumberAsc(assessmentId);
+    List<AnswerKeyResponse> keyResponses = keys.stream().map(assessmentMapper::toAnswerKeyResponse).toList();
 
-    String presignedUrl =
-        assessment.getFileKey() != null ? fileService.buildFileUrl(assessment.getFileKey()) : null;
+    String presignedUrl = assessment.getFileKey() != null
+        ? fileService.buildFileUrl(assessment.getFileKey())
+        : null;
 
     log.info("Fetched assessment detail {}", assessmentId);
     return assessmentMapper.toDetail(assessment, keyResponses, presignedUrl);
@@ -128,9 +126,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     courseRepository.requireCourse(courseId);
     subjectRepository.requireSubject(subjectId, courseId);
 
-    Page<Assessment> page =
-        assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
-            subjectId, AssessmentType.HOMEWORK, pageable);
+    Page<Assessment> page = assessmentRepository.findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
+        subjectId, AssessmentType.HOMEWORK, pageable);
     log.info(
         "Listed {} homework(s) for subject {} (page {}, size {})",
         page.getNumberOfElements(),
@@ -145,9 +142,8 @@ public class AssessmentServiceImpl implements AssessmentService {
   public Page<AssessmentSummaryResponse> listExamsByCourse(UUID courseId, Pageable pageable) {
     courseRepository.requireCourse(courseId);
 
-    Page<Assessment> page =
-        assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
-            courseId, AssessmentType.EXAM, pageable);
+    Page<Assessment> page = assessmentRepository.findByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+        courseId, AssessmentType.EXAM, pageable);
     log.info(
         "Listed {} exam(s) for course {} (page {}, size {})",
         page.getNumberOfElements(),
@@ -183,7 +179,10 @@ public class AssessmentServiceImpl implements AssessmentService {
     log.info("Soft-deleted assessment {}", assessmentId);
   }
 
-  /** Sets HOMEWORK-specific (subject) or EXAM-specific (course, duration, score, access) fields. */
+  /**
+   * Sets HOMEWORK-specific (subject) or EXAM-specific (course, duration, score,
+   * access) fields.
+   */
   private void applyTypeSpecificFields(
       Assessment.AssessmentBuilder builder,
       Course course,
@@ -200,10 +199,8 @@ public class AssessmentServiceImpl implements AssessmentService {
       builder.durationMin(defaultOr(request.durationMin(), 0));
       builder.maxScore(defaultOr(request.maxScore(), 100));
       // tier takes precedence over legacy accessTier; fall back to PUBLIC
-      AccessTier access =
-          request.tier() != null
-              ? request.tier()
-              : defaultOr(request.accessTier(), AccessTier.PUBLIC);
+      AccessTier access = request.tier() != null ? request.tier()
+          : defaultOr(request.accessTier(), AccessTier.PUBLIC);
       builder.access(access);
     }
   }
@@ -233,7 +230,9 @@ public class AssessmentServiceImpl implements AssessmentService {
   // }
   // }
 
-  /** Updates title, numQuestions, and explanationUrl if present in the request. */
+  /**
+   * Updates title, numQuestions, and explanationUrl if present in the request.
+   */
   private void updateCommonFields(Assessment assessment, UpdateAssessmentRequest request) {
     if (request.title() != null) {
       assessment.setTitle(request.title());
@@ -246,7 +245,10 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
   }
 
-  /** Updates HOMEWORK subject or EXAM-specific fields (duration, score, access) if present. */
+  /**
+   * Updates HOMEWORK subject or EXAM-specific fields (duration, score, access) if
+   * present.
+   */
   private void updateTypeSpecificFields(
       Assessment assessment, UUID courseId, UpdateAssessmentRequest request) {
     if (assessment.getAssessmentType() == AssessmentType.HOMEWORK && request.subjectId() != null) {
@@ -274,14 +276,14 @@ public class AssessmentServiceImpl implements AssessmentService {
   }
 
   /**
-   * Replaces the assessment file on S3 and updates fileUrl + fileType if a new file is provided.
+   * Replaces the assessment file on S3 and updates fileUrl + fileType if a new
+   * file is provided.
    */
   private void updateFile(Assessment assessment, UpdateAssessmentRequest request) {
     if (request.file() == null || request.file().isEmpty()) {
       return;
     }
-    UploadDocumentResult uploadResult =
-        uploadAssessmentFile(assessment.getAssessmentType(), request.file());
+    UploadDocumentResult uploadResult = uploadAssessmentFile(assessment.getAssessmentType(), request.file());
     assessment.setFileKey(uploadResult.fileKey());
     assessment.setFileType(detectFileType(request.file()));
   }
@@ -307,7 +309,8 @@ public class AssessmentServiceImpl implements AssessmentService {
   }
 
   /**
-   * Parses the answer keys JSON string and persists each entry linked to the given assessment.
+   * Parses the answer keys JSON string and persists each entry linked to the
+   * given assessment.
    * Skips silently if the JSON is null or blank.
    */
   private void saveAnswerKeys(Assessment assessment, String answerKeysJson) {
@@ -315,16 +318,14 @@ public class AssessmentServiceImpl implements AssessmentService {
       return;
     }
     List<AnswerKeyItem> items = parseAnswerKeys(answerKeysJson);
-    List<AnswerKey> entities =
-        items.stream()
-            .map(
-                item ->
-                    AnswerKey.builder()
-                        .exam(assessment)
-                        .questionNumber(item.questionNumber())
-                        .correctAnswer(item.correctAnswer())
-                        .build())
-            .toList();
+    List<AnswerKey> entities = items.stream()
+        .map(
+            item -> AnswerKey.builder()
+                .exam(assessment)
+                .questionNumber(item.questionNumber())
+                .correctAnswer(item.correctAnswer())
+                .build())
+        .toList();
     answerKeyRepository.saveAll(entities);
     log.info("Saved {} answer key(s) for assessment {}", entities.size(), assessment.getId());
   }
@@ -336,7 +337,8 @@ public class AssessmentServiceImpl implements AssessmentService {
    */
   private List<AnswerKeyItem> parseAnswerKeys(String json) {
     try {
-      return objectMapper.readValue(json, new TypeReference<>() {});
+      return objectMapper.readValue(json, new TypeReference<>() {
+      });
     } catch (JsonProcessingException e) {
       log.error("Failed to parse answer keys JSON: {}", e.getMessage());
       throw new AssessmentException(AssessmentErrorCode.INVALID_ANSWER_KEYS);
@@ -344,8 +346,8 @@ public class AssessmentServiceImpl implements AssessmentService {
   }
 
   /**
-   * Delegates file upload to the appropriate S3 folder based on assessment type: HOMEWORK →
-   * exercises/, EXAM → exams/.
+   * Delegates file upload to the appropriate S3 folder based on assessment type:
+   * HOMEWORK → exercises/, EXAM → exams/.
    */
   private UploadDocumentResult uploadAssessmentFile(
       AssessmentType assessmentType, MultipartFile file) {
@@ -356,8 +358,9 @@ public class AssessmentServiceImpl implements AssessmentService {
   }
 
   /**
-   * Auto-detects the {@link AssessmentFileType} from the uploaded file's extension. Supports pdf,
-   * doc/docx, xls/xlsx.
+   * Auto-detects the {@link AssessmentFileType} from the uploaded file's
+   * extension.
+   * Supports pdf, doc/docx, xls/xlsx.
    *
    * @throws AssessmentException if the extension is missing or unsupported
    */
@@ -366,8 +369,8 @@ public class AssessmentServiceImpl implements AssessmentService {
     if (originalFilename == null) {
       throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     }
-    String extension =
-        originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+    String extension = originalFilename.substring(
+        originalFilename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
     return switch (extension) {
       case "pdf" -> AssessmentFileType.PDF;
       case "doc", "docx" -> AssessmentFileType.DOCX;
@@ -377,34 +380,34 @@ public class AssessmentServiceImpl implements AssessmentService {
   }
 
   /**
-   * Finalizes the assessment creation process within a dedicated transaction. Updates the
-   * assessment with the uploaded file details, saves answer keys, sets the final status, and
-   * commits the changes to the database.
+   * Finalizes the assessment creation process within a dedicated transaction.
+   * Updates the assessment with the uploaded file details, saves answer keys,
+   * sets the final status, and commits the changes to the database.
    *
    * @param savedAssessment the pending assessment entity previously saved
    * @param uploadedFileUrl the URL of the file uploaded to S3
-   * @param request the original creation request containing answer keys and status
+   * @param request         the original creation request containing answer keys
+   *                        and status
    * @return the summary of the finalized assessment
    */
   private AssessmentSummaryResponse finalizeAssessmentCreation(
       Assessment savedAssessment, String uploadedFileKey, CreateAssessmentRequest request) {
 
-    return transactionTemplate.execute(
-        status -> {
-          savedAssessment.setFileKey(uploadedFileKey);
-          savedAssessment.setFileType(detectFileType(request.file()));
+    return transactionTemplate.execute(status -> {
+      savedAssessment.setFileKey(uploadedFileKey);
+      savedAssessment.setFileType(detectFileType(request.file()));
 
-          saveAnswerKeys(savedAssessment, request.answerKeys());
+      saveAnswerKeys(savedAssessment, request.answerKeys());
 
-          AssessmentStatus resolvedStatus = defaultOr(request.status(), AssessmentStatus.DRAFT);
-          savedAssessment.setStatus(resolvedStatus);
-          if (resolvedStatus == AssessmentStatus.PUBLISHED) {
-            savedAssessment.setPublishedAt(LocalDateTime.now());
-          }
+      AssessmentStatus resolvedStatus = defaultOr(request.status(), AssessmentStatus.DRAFT);
+      savedAssessment.setStatus(resolvedStatus);
+      if (resolvedStatus == AssessmentStatus.PUBLISHED) {
+        savedAssessment.setPublishedAt(LocalDateTime.now());
+      }
 
-          Assessment finalAssessment = assessmentRepository.save(savedAssessment);
-          return mapToSummary(finalAssessment);
-        });
+      Assessment finalAssessment = assessmentRepository.save(savedAssessment);
+      return mapToSummary(finalAssessment);
+    });
   }
 
   private AssessmentSummaryResponse mapToSummary(Assessment assessment) {

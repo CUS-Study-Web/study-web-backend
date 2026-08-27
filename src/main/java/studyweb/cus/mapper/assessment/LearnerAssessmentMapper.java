@@ -11,4 +11,5 @@ public interface LearnerAssessmentMapper {
 
   @Mapping(source = "presignedUrl", target = "fileUrl")
   AssessmentStartResponse toStartResponse(Assessment assessment, String presignedUrl);
+
 }

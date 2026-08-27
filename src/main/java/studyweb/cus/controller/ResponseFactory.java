@@ -13,14 +13,12 @@ public class ResponseFactory {
 
   public <T> PageResponse<T> createPageResponse(
       String message, List<T> data, int page, int limit, long total, int totalPages) {
-    return new PageResponse<>(
-        200, message, data, new PageResponse.PagingInfo(page, limit, total, totalPages));
+    return new PageResponse<>(200, message, data, new PageResponse.PagingInfo(page, limit, total, totalPages));
   }
 
   public <T> PagedResponse<T> createPagedDataResponse(
       String message, T data, int page, int limit, long total, int totalPages) {
-    return new PagedResponse<>(
-        200, message, data, new PageResponse.PagingInfo(page, limit, total, totalPages));
+    return new PagedResponse<>(200, message, data, new PageResponse.PagingInfo(page, limit, total, totalPages));
   }
 
   public <T> ResponseEntity<SingleResponse<T>> successSingle(T data, String message) {

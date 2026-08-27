@@ -16,7 +16,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
-import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
@@ -27,8 +26,7 @@ import studyweb.cus.enums.AssessmentType;
     name = "assessments",
     indexes = {
       @Index(name = "idx_assessments_course", columnList = "course_id"),
-      @Index(name = "idx_assessments_subject", columnList = "subject_id"),
-      @Index(name = "idx_assessments_uploaded_by", columnList = "uploaded_by_id")
+      @Index(name = "idx_assessments_subject", columnList = "subject_id")
     })
 @Getter
 @Setter
@@ -44,10 +42,6 @@ public class Assessment extends AbstractAuditEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "subject_id")
   private Subject subject;
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "uploaded_by_id")
-  private User uploadedBy;
 
   @Column(name = "title", nullable = false, length = 255)
   private String title;

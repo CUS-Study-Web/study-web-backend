@@ -10,10 +10,9 @@ import studyweb.cus.entity.progress.UserLessonProgress;
 
 @Repository
 public interface UserLessonProgressRepository extends JpaRepository<UserLessonProgress, UUID> {
-  Optional<UserLessonProgress> findByUserIdAndLessonId(UUID userId, UUID lessonId);
+    Optional<UserLessonProgress> findByUserIdAndLessonId(UUID userId, UUID lessonId);
 
-  long countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(
-      UUID userId, UUID subjectId);
+    long countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(UUID userId, UUID subjectId);
 
-  List<UserLessonProgress> findByUserIdAndLessonIdIn(UUID userId, Collection<UUID> lessonIds);
+    List<UserLessonProgress> findByUserIdAndLessonIdIn(UUID userId, Collection<UUID> lessonIds);
 }
