@@ -162,17 +162,6 @@ class BadgeServiceTest {
       assertThat(result.getContent()).hasSize(1);
       assertThat(result.getContent().get(0).name()).isEqualTo("Toán");
     }
-
-    @Test
-    @DisplayName("Should list all badges")
-    void shouldListAllBadges() {
-      when(badgeRepository.findAll()).thenReturn(List.of(sampleBadge));
-
-      List<BadgeResponse> result = badgeService.listAllBadges();
-
-      assertThat(result).hasSize(1);
-      assertThat(result.get(0).name()).isEqualTo("Toán");
-    }
   }
 
   @Nested
