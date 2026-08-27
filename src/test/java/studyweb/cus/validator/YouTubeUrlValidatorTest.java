@@ -18,9 +18,14 @@ class YouTubeUrlValidatorTest {
   }
 
   @Test
-  @DisplayName("Null or empty string should fail validation")
-  void shouldRejectNullOrEmpty() {
-    assertThat(validator.isValid(null, null)).isFalse();
+  @DisplayName("Null value should pass validation")
+  void shouldAcceptNull() {
+    assertThat(validator.isValid(null, null)).isTrue();
+  }
+
+  @Test
+  @DisplayName("Empty or blank string should fail validation")
+  void shouldRejectEmptyOrBlank() {
     assertThat(validator.isValid("", null)).isFalse();
     assertThat(validator.isValid("   ", null)).isFalse();
   }

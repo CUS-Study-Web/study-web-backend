@@ -3,7 +3,6 @@ package studyweb.cus.controller.badge;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,16 +60,6 @@ public class BadgeController extends AbstractBaseController {
         pageable.getPageNumber(),
         pageable.getPageSize());
     return paging(badgeService.listBadges(search, pageable), "Badges fetched successfully!");
-  }
-
-  @GetMapping("/all")
-  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
-  @Operation(
-      summary = "List All Badges",
-      description = "List all badges as a flat list (Admin and Assistant only)")
-  public ResponseEntity<SingleResponse<List<BadgeResponse>>> listAllBadges() {
-    log.info("[GET /api/badges/all] Listing all badges");
-    return successSingle(badgeService.listAllBadges(), "All badges fetched successfully!");
   }
 
   @GetMapping("/{id}")

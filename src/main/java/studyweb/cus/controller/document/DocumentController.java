@@ -84,14 +84,14 @@ public class DocumentController extends AbstractBaseController {
         "Documents fetched successfully!");
   }
 
-  @GetMapping("/{id}/download")
+  @PostMapping("/{id}/download")
   @Operation(
       summary = "Download Document",
       description =
           "Download a document. Tier-based access enforced (VIP documents require VIP tier).")
   public ResponseEntity<SingleResponse<DocumentDownloadResponse>> downloadDocument(
       @PathVariable UUID id, @AuthenticationPrincipal String email) {
-    log.info("[GET /api/documents/{}/download] Download requested by user '{}'", id, email);
+    log.info("[POST /api/documents/{}/download] Download requested by user '{}'", id, email);
     return successSingle(
         documentService.downloadDocument(id, email), "Document ready for download!");
   }

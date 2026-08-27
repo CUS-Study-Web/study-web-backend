@@ -4,6 +4,7 @@ import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -77,13 +78,17 @@ public class DocumentServiceImpl implements DocumentService {
     Document savedDocument = documentRepository.save(document);
 
     if (request.badgeIds() != null && !request.badgeIds().isEmpty()) {
-      List<Badge> badges = badgeRepository.findAllById(request.badgeIds());
-      List<DocumentBadge> documentBadges =
-          badges.stream()
-              .map(badge -> DocumentBadge.builder().badge(badge).document(savedDocument).build())
-              .toList();
-      documentBadgeRepository.saveAll(documentBadges);
-      savedDocument.setDocumentBadges(new ArrayList<>(documentBadges));
+      List<UUID> nonNullBadgeIds =
+          request.badgeIds().stream().filter(Objects::nonNull).toList();
+      if (!nonNullBadgeIds.isEmpty()) {
+        List<Badge> badges = badgeRepository.findAllById(nonNullBadgeIds);
+        List<DocumentBadge> documentBadges =
+            badges.stream()
+                .map(badge -> DocumentBadge.builder().badge(badge).document(savedDocument).build())
+                .toList();
+        documentBadgeRepository.saveAll(documentBadges);
+        savedDocument.setDocumentBadges(new ArrayList<>(documentBadges));
+      }
     }
 
     log.info("Document created successfully with ID {}", savedDocument.getId());
@@ -187,8 +192,10 @@ public class DocumentServiceImpl implements DocumentService {
 
     if (request.badgeIds() != null) {
       document.getDocumentBadges().clear();
-      if (!request.badgeIds().isEmpty()) {
-        List<Badge> badges = badgeRepository.findAllById(request.badgeIds());
+      List<UUID> nonNullBadgeIds =
+          request.badgeIds().stream().filter(Objects::nonNull).toList();
+      if (!nonNullBadgeIds.isEmpty()) {
+        List<Badge> badges = badgeRepository.findAllById(nonNullBadgeIds);
         List<DocumentBadge> newBadges =
             badges.stream()
                 .map(b -> DocumentBadge.builder().badge(b).document(document).build())

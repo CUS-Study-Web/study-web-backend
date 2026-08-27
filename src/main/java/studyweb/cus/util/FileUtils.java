@@ -63,15 +63,6 @@ public final class FileUtils {
     return resolveDocumentFileType(file.getOriginalFilename());
   }
 
-  /**
-   * Resolves the {@link DocumentFileType} from a {@link MultipartFile} auto-detecting from filename.
-   *
-   * @param file the uploaded file
-   * @return resolved {@link DocumentFileType}
-   */
-  public static DocumentFileType resolveDocumentFileType(MultipartFile file) {
-    return resolveDocumentFileType(file, null);
-  }
 
   /**
    * Resolves the {@link DocumentFileType} from a filename and an optional explicit type override.

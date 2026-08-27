@@ -47,6 +47,8 @@ import studyweb.cus.dto.response.badge.BadgeResponse;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
+import studyweb.cus.config.WebMvcConfig;
+import studyweb.cus.converter.StringToUuidConverter;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.DocumentFileType;
 import studyweb.cus.security.JwtAuthenticationFilter;
@@ -58,7 +60,7 @@ import studyweb.cus.service.document.DocumentService;
         @ComponentScan.Filter(
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
-@Import(ResponseFactory.class)
+@Import({ResponseFactory.class, WebMvcConfig.class, StringToUuidConverter.class})
 class DocumentControllerTest {
 
   private static final UUID DOCUMENT_ID = UUID.randomUUID();
@@ -134,6 +136,85 @@ class DocumentControllerTest {
   }
 
   @Test
+  @WithMockUser(roles = "ASSISTANT")
+  @DisplayName("POST /api/documents - Upload with badgeIds in JSON array format [\"uuid\"]")
+  void uploadDocument_assistantAllowed_withBadgeIdsJsonArrayFormat() throws Exception {
+    when(documentService.uploadDocument(any(CreateDocumentRequest.class)))
+        .thenReturn(sampleDocumentResponse());
+
+    mockMvc
+        .perform(
+            multipart("/api/documents")
+                .file(mockFile())
+                .param("title", "Grammar Guide")
+                .param("docType", "THEORY")
+                .param("accessTier", "PUBLIC")
+                .param("badgeIds", "[\"" + BADGE_ID + "\"]"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.title").value("Grammar Guide"));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  @DisplayName("POST /api/documents - Upload with multiple badgeIds form params (List<UUID>)")
+  void uploadDocument_assistantAllowed_withMultipleBadgeIds() throws Exception {
+    UUID secondBadgeId = UUID.randomUUID();
+    when(documentService.uploadDocument(any(CreateDocumentRequest.class)))
+        .thenReturn(sampleDocumentResponse());
+
+    mockMvc
+        .perform(
+            multipart("/api/documents")
+                .file(mockFile())
+                .param("title", "Grammar Guide")
+                .param("docType", "THEORY")
+                .param("accessTier", "PUBLIC")
+                .param("badgeIds", BADGE_ID.toString(), secondBadgeId.toString()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  @DisplayName("POST /api/documents - Upload with comma-separated badgeIds string")
+  void uploadDocument_assistantAllowed_withCommaSeparatedBadgeIds() throws Exception {
+    UUID secondBadgeId = UUID.randomUUID();
+    when(documentService.uploadDocument(any(CreateDocumentRequest.class)))
+        .thenReturn(sampleDocumentResponse());
+
+    mockMvc
+        .perform(
+            multipart("/api/documents")
+                .file(mockFile())
+                .param("title", "Grammar Guide")
+                .param("docType", "THEORY")
+                .param("accessTier", "PUBLIC")
+                .param("badgeIds", BADGE_ID + ", " + secondBadgeId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  @DisplayName("POST /api/documents - Upload without youtubeUrl (null) is valid")
+  void uploadDocument_assistantAllowed_withNullYouTubeUrl() throws Exception {
+    when(documentService.uploadDocument(any(CreateDocumentRequest.class)))
+        .thenReturn(sampleDocumentResponse());
+
+    mockMvc
+        .perform(
+            multipart("/api/documents")
+                .file(mockFile())
+                .param("title", "Grammar Guide")
+                .param("docType", "THEORY")
+                .param("accessTier", "PUBLIC"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.title").value("Grammar Guide"));
+  }
+
+  @Test
   @WithMockUser(roles = "LEARNER")
   @DisplayName("POST /api/documents - Learner role forbidden from uploading")
   void uploadDocument_learnerForbidden() throws Exception {
@@ -197,7 +278,7 @@ class DocumentControllerTest {
   // --- Download Tests ---
 
   @Test
-  @DisplayName("GET /api/documents/{id}/download - Download document endpoint")
+  @DisplayName("POST /api/documents/{id}/download - Download document endpoint")
   void downloadDocument_authenticatedAllowed() throws Exception {
     DocumentDownloadResponse downloadResponse =
         new DocumentDownloadResponse(
@@ -211,7 +292,9 @@ class DocumentControllerTest {
         .thenReturn(downloadResponse);
 
     mockMvc
-        .perform(get("/api/documents/{id}/download", DOCUMENT_ID).with(authenticated()))
+        .perform(
+            MockMvcRequestBuilders.post("/api/documents/{id}/download", DOCUMENT_ID)
+                .with(authenticated()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.data.downloadUrl").value("https://s3.example.com/guide.pdf"))

@@ -119,24 +119,24 @@ class FileUtilsTest {
     void shouldResolveFromMultipartFile() {
       MockMultipartFile docxFile =
           new MockMultipartFile("file", "assignment.docx", "application/msword", new byte[] {1});
-      assertThat(FileUtils.resolveDocumentFileType(docxFile)).isEqualTo(DocumentFileType.DOCX);
+      assertThat(FileUtils.resolveDocumentFileType(docxFile, null)).isEqualTo(DocumentFileType.DOCX);
 
       MockMultipartFile xlsxFile =
           new MockMultipartFile("file", "data.XLSX", "application/vnd.ms-excel", new byte[] {1});
-      assertThat(FileUtils.resolveDocumentFileType(xlsxFile)).isEqualTo(DocumentFileType.XLSX);
+      assertThat(FileUtils.resolveDocumentFileType(xlsxFile, null)).isEqualTo(DocumentFileType.XLSX);
     }
 
     @Test
     @DisplayName("Should default to PDF for null MultipartFile or null filename")
     void shouldDefaultToPdfForNulls() {
-      assertThat(FileUtils.resolveDocumentFileType((MockMultipartFile) null))
+      assertThat(FileUtils.resolveDocumentFileType((MockMultipartFile) null, null))
           .isEqualTo(DocumentFileType.PDF);
       assertThat(FileUtils.resolveDocumentFileType((String) null))
           .isEqualTo(DocumentFileType.PDF);
 
       MockMultipartFile nullNameFile =
           new MockMultipartFile("file", null, "application/octet-stream", new byte[] {1});
-      assertThat(FileUtils.resolveDocumentFileType(nullNameFile))
+      assertThat(FileUtils.resolveDocumentFileType(nullNameFile, null))
           .isEqualTo(DocumentFileType.PDF);
     }
   }

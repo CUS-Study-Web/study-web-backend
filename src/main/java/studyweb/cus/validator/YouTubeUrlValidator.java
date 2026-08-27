@@ -13,7 +13,10 @@ public class YouTubeUrlValidator implements ConstraintValidator<ValidYouTubeUrl,
 
   @Override
   public boolean isValid(String value, ConstraintValidatorContext context) {
-    if (value == null || value.trim().isEmpty()) {
+    if (value == null) {
+      return true;
+    }
+    if (value.trim().isEmpty()) {
       return false;
     }
     return YOUTUBE_PATTERN.matcher(value.trim()).matches();

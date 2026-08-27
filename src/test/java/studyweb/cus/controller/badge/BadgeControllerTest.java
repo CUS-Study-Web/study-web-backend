@@ -173,19 +173,6 @@ class BadgeControllerTest {
     mockMvc.perform(get("/api/badges")).andExpect(status().isForbidden());
   }
 
-  @Test
-  @WithMockUser(roles = "ADMIN")
-  @DisplayName("GET /api/badges/all - Admin can list all badges")
-  void listAllBadges_adminAllowed() throws Exception {
-    when(badgeService.listAllBadges()).thenReturn(List.of(sampleBadgeResponse()));
-
-    mockMvc
-        .perform(get("/api/badges/all"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.statusCode").value(200))
-        .andExpect(jsonPath("$.data[0].name").value("Toán"));
-  }
-
   // --- Get Detail Tests ---
 
   @Test
