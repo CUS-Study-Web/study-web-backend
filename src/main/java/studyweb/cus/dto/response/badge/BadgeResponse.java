@@ -6,8 +6,4 @@ import java.util.UUID;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record BadgeResponse(
-    UUID id,
-    String name,
-    UUID createdBy,
-    LocalDateTime createdAt,
-    LocalDateTime updatedAt) {}
+    UUID id, String name, UUID createdBy, LocalDateTime createdAt, LocalDateTime updatedAt) {}

@@ -110,9 +110,7 @@ public class DocumentController extends AbstractBaseController {
 
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(
-      summary = "Delete Document",
-      description = "Delete a document (Assistant role only)")
+  @Operation(summary = "Delete Document", description = "Delete a document (Assistant role only)")
   public ResponseEntity<SuccessResponse> deleteDocument(@PathVariable UUID id) {
     log.info("[DELETE /api/documents/{}] Deleting document", id);
     documentService.deleteDocument(id);

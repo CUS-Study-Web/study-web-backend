@@ -1,6 +1,5 @@
 package studyweb.cus.exception.document;
 
-import lombok.Getter;
 import studyweb.cus.exception.BaseException;
 
 public class DocumentException extends BaseException {

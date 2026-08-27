@@ -6,5 +6,6 @@ public enum DocumentFileType {
   XLSX,
   DOC,
   XLS,
-  PPTX
+  PPTX,
+  PPT
 }

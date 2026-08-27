@@ -6,8 +6,4 @@ import studyweb.cus.enums.DocumentFileType;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record DocumentDownloadResponse(
-    UUID id,
-    String title,
-    String downloadUrl,
-    DocumentFileType fileType,
-    Integer downloadCount) {}
+    UUID id, String title, String downloadUrl, DocumentFileType fileType, Integer downloadCount) {}

@@ -11,8 +11,7 @@ public record LessonRequest(
         @Size(max = 255, message = "Lesson title must not exceed 255 characters")
         String title,
     @Min(value = 1, message = "Order number must be at least 1") Integer orderNum,
-    @Size(max = 255, message = "YouTube URL must not exceed 255 characters")
-        @ValidYouTubeUrl
+    @Size(max = 255, message = "YouTube URL must not exceed 255 characters") @ValidYouTubeUrl
         String youtubeUrl,
     @Min(value = 1, message = "Duration must be at least 1 minute") Integer durationMin,
     AccessTier access) {}

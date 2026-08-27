@@ -10,34 +10,34 @@ public class StringToUuidConverter implements Converter<String, UUID> {
 
   @Override
   public UUID convert(@NonNull String source) {
-    String cleaned = source.trim();
+    String sanitizedUuid = source.trim();
 
     // Strip leading brackets, quotes, and whitespace
-    while (!cleaned.isEmpty()
-        && (cleaned.startsWith("[")
-            || cleaned.startsWith("]")
-            || cleaned.startsWith("\"")
-            || cleaned.startsWith("'")
-            || Character.isWhitespace(cleaned.charAt(0)))) {
-      cleaned = cleaned.substring(1).trim();
+    while (!sanitizedUuid.isEmpty()
+        && (sanitizedUuid.startsWith("[")
+            || sanitizedUuid.startsWith("]")
+            || sanitizedUuid.startsWith("\"")
+            || sanitizedUuid.startsWith("'")
+            || Character.isWhitespace(sanitizedUuid.charAt(0)))) {
+      sanitizedUuid = sanitizedUuid.substring(1).trim();
     }
 
     // Strip trailing brackets, quotes, and whitespace
-    while (!cleaned.isEmpty()
-        && (cleaned.endsWith("]")
-            || cleaned.endsWith("[")
-            || cleaned.endsWith("\"")
-            || cleaned.endsWith("'")
-            || Character.isWhitespace(cleaned.charAt(cleaned.length() - 1)))) {
-      cleaned = cleaned.substring(0, cleaned.length() - 1).trim();
+    while (!sanitizedUuid.isEmpty()
+        && (sanitizedUuid.endsWith("]")
+            || sanitizedUuid.endsWith("[")
+            || sanitizedUuid.endsWith("\"")
+            || sanitizedUuid.endsWith("'")
+            || Character.isWhitespace(sanitizedUuid.charAt(sanitizedUuid.length() - 1)))) {
+      sanitizedUuid = sanitizedUuid.substring(0, sanitizedUuid.length() - 1).trim();
     }
 
-    if (cleaned.isEmpty()
-        || "null".equalsIgnoreCase(cleaned)
-        || "undefined".equalsIgnoreCase(cleaned)) {
+    if (sanitizedUuid.isEmpty()
+        || "null".equalsIgnoreCase(sanitizedUuid)
+        || "undefined".equalsIgnoreCase(sanitizedUuid)) {
       return null;
     }
 
-    return UUID.fromString(cleaned);
+    return UUID.fromString(sanitizedUuid);
   }
 }
