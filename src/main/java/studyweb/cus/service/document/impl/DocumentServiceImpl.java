@@ -38,6 +38,7 @@ import studyweb.cus.repository.document.DocumentRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.document.DocumentService;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.util.FileUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -57,7 +58,7 @@ public class DocumentServiceImpl implements DocumentService {
     log.info("Uploading document: title='{}', docType={}", request.title(), request.docType());
 
     UploadDocumentResult uploadResult = fileService.uploadDocumentFile(request.file());
-    DocumentFileType fileType = resolveFileType(request.file(), request.fileType());
+    var fileType = FileUtils.resolveDocumentFileType(request.file(), request.fileType());
 
     Document document =
         Document.builder()
@@ -73,16 +74,18 @@ public class DocumentServiceImpl implements DocumentService {
             .documentBadges(new ArrayList<>())
             .build();
 
+    Document savedDocument = documentRepository.save(document);
+
     if (request.badgeIds() != null && !request.badgeIds().isEmpty()) {
       List<Badge> badges = badgeRepository.findAllById(request.badgeIds());
       List<DocumentBadge> documentBadges =
           badges.stream()
-              .map(b -> DocumentBadge.builder().badge(b).document(document).build())
+              .map(badge -> DocumentBadge.builder().badge(badge).document(savedDocument).build())
               .toList();
-      document.getDocumentBadges().addAll(documentBadges);
+      documentBadgeRepository.saveAll(documentBadges);
+      savedDocument.setDocumentBadges(new ArrayList<>(documentBadges));
     }
 
-    Document savedDocument = documentRepository.save(document);
     log.info("Document created successfully with ID {}", savedDocument.getId());
     return documentMapper.toResponse(savedDocument);
   }
@@ -142,11 +145,11 @@ public class DocumentServiceImpl implements DocumentService {
     checkVipAccess(document, userEmail);
 
     documentRepository.incrementDownloadCount(id);
-    document.setDownloadCount(document.getDownloadCount() + 1);
+    Document updatedDocument = requireDocument(id);
 
     log.info(
-        "Document ID {} downloaded. Updated count: {}", id, document.getDownloadCount());
-    return documentMapper.toDownloadResponse(document);
+        "Document ID {} downloaded. Updated count: {}", id, updatedDocument.getDownloadCount());
+    return documentMapper.toDownloadResponse(updatedDocument);
   }
 
   @Override
@@ -158,7 +161,7 @@ public class DocumentServiceImpl implements DocumentService {
     if (request.file() != null && !request.file().isEmpty()) {
       UploadDocumentResult uploadResult = fileService.uploadDocumentFile(request.file());
       document.setFileUrl(uploadResult.fileUrl());
-      document.setFileType(resolveFileType(request.file(), request.fileType()));
+      document.setFileType(FileUtils.resolveDocumentFileType(request.file(), request.fileType()));
     } else if (request.fileType() != null) {
       document.setFileType(request.fileType());
     }
@@ -228,22 +231,5 @@ public class DocumentServiceImpl implements DocumentService {
         throw new DocumentException(DocumentErrorCode.VIP_ONLY);
       }
     }
-  }
-
-  private DocumentFileType resolveFileType(
-      MultipartFile file, DocumentFileType explicitType) {
-    if (explicitType != null) {
-      return explicitType;
-    }
-    if (file == null || file.getOriginalFilename() == null) {
-      return DocumentFileType.PDF;
-    }
-    String filename = file.getOriginalFilename().toLowerCase();
-    if (filename.endsWith(".docx")) return DocumentFileType.DOCX;
-    if (filename.endsWith(".doc")) return DocumentFileType.DOC;
-    if (filename.endsWith(".xlsx")) return DocumentFileType.XLSX;
-    if (filename.endsWith(".xls")) return DocumentFileType.XLS;
-    if (filename.endsWith(".pptx")) return DocumentFileType.PPTX;
-    return DocumentFileType.PDF;
   }
 }

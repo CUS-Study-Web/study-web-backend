@@ -185,6 +185,41 @@ class DocumentServiceTest {
       assertThat(response.badges().get(0).name()).isEqualTo("Toán");
       verify(documentRepository).save(documentCaptor.capture());
       assertThat(documentCaptor.getValue().getDownloadCount()).isZero();
+      assertThat(documentCaptor.getValue().getFileType()).isEqualTo(DocumentFileType.PDF);
+    }
+
+    @Test
+    @DisplayName("Should auto-detect fileType from uploaded file extension when not explicitly provided")
+    void shouldAutoDetectFileTypeWhenExplicitTypeIsNull() {
+      MockMultipartFile docxFile =
+          new MockMultipartFile(
+              "file", "lecture_notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content".getBytes());
+      CreateDocumentRequest request =
+          new CreateDocumentRequest(
+              docxFile,
+              "Lecture Notes",
+              DocType.THEORY,
+              null,
+              10,
+              "Desc",
+              null,
+              AccessTier.PUBLIC,
+              null);
+
+      when(fileService.uploadDocumentFile(docxFile))
+          .thenReturn(new UploadDocumentResult(50L, "documents/lecture_notes.docx", "https://s3/lecture_notes.docx"));
+      when(documentRepository.save(any(Document.class)))
+          .thenAnswer(inv -> {
+            Document doc = inv.getArgument(0);
+            doc.setId(UUID.randomUUID());
+            return doc;
+          });
+
+      DocumentResponse response = documentService.uploadDocument(request);
+
+      assertThat(response).isNotNull();
+      verify(documentRepository).save(documentCaptor.capture());
+      assertThat(documentCaptor.getValue().getFileType()).isEqualTo(DocumentFileType.DOCX);
     }
   }
 
@@ -276,8 +311,21 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should allow normal user to download public document and increment count")
     void shouldAllowNormalUserToDownloadPublicDocument() {
+      Document updatedDoc =
+          Document.builder()
+              .title(publicDocument.getTitle())
+              .docType(publicDocument.getDocType())
+              .fileType(publicDocument.getFileType())
+              .fileUrl(publicDocument.getFileUrl())
+              .numPages(publicDocument.getNumPages())
+              .downloadCount(6)
+              .accessTier(publicDocument.getAccessTier())
+              .documentBadges(publicDocument.getDocumentBadges())
+              .build();
+      updatedDoc.setId(publicDocument.getId());
+
       when(documentRepository.findById(publicDocument.getId()))
-          .thenReturn(Optional.of(publicDocument));
+          .thenReturn(Optional.of(publicDocument), Optional.of(updatedDoc));
 
       DocumentDownloadResponse response =
           documentService.downloadDocument(publicDocument.getId(), "learner@gmail.com");
@@ -308,8 +356,21 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should allow VIP user to download VIP document and increment count")
     void shouldAllowVipUserToDownloadVipDocument() {
+      Document updatedDoc =
+          Document.builder()
+              .title(vipDocument.getTitle())
+              .docType(vipDocument.getDocType())
+              .fileType(vipDocument.getFileType())
+              .fileUrl(vipDocument.getFileUrl())
+              .numPages(vipDocument.getNumPages())
+              .downloadCount(3)
+              .accessTier(vipDocument.getAccessTier())
+              .documentBadges(vipDocument.getDocumentBadges())
+              .build();
+      updatedDoc.setId(vipDocument.getId());
+
       when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
+          .thenReturn(Optional.of(vipDocument), Optional.of(updatedDoc));
       when(userRepository.findByGmail("vip@gmail.com"))
           .thenReturn(Optional.of(vipUser));
 
@@ -325,8 +386,21 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should allow Assistant to download VIP document")
     void shouldAllowAssistantToDownloadVipDocument() {
+      Document updatedDoc =
+          Document.builder()
+              .title(vipDocument.getTitle())
+              .docType(vipDocument.getDocType())
+              .fileType(vipDocument.getFileType())
+              .fileUrl(vipDocument.getFileUrl())
+              .numPages(vipDocument.getNumPages())
+              .downloadCount(3)
+              .accessTier(vipDocument.getAccessTier())
+              .documentBadges(vipDocument.getDocumentBadges())
+              .build();
+      updatedDoc.setId(vipDocument.getId());
+
       when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
+          .thenReturn(Optional.of(vipDocument), Optional.of(updatedDoc));
       when(userRepository.findByGmail("assistant@gmail.com"))
           .thenReturn(Optional.of(assistantUser));
 
@@ -389,6 +463,39 @@ class DocumentServiceTest {
       assertThat(response.accessTier()).isEqualTo(AccessTier.VIP);
       assertThat(response.badges()).hasSize(1);
       assertThat(response.badges().get(0).name()).isEqualTo("Công thức");
+    }
+
+    @Test
+    @DisplayName("Should update document file and auto-detect fileType")
+    void shouldUpdateDocumentWithFileAndAutoDetectFileType() {
+      MockMultipartFile xlsxFile =
+          new MockMultipartFile(
+              "file", "report.xlsx", "application/vnd.ms-excel", "content".getBytes());
+      UpdateDocumentRequest updateRequest =
+          new UpdateDocumentRequest(
+              xlsxFile,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null);
+
+      when(documentRepository.findById(publicDocument.getId()))
+          .thenReturn(Optional.of(publicDocument));
+      when(fileService.uploadDocumentFile(xlsxFile))
+          .thenReturn(new UploadDocumentResult(100L, "documents/report.xlsx", "https://s3/report.xlsx"));
+      when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+
+      DocumentResponse response =
+          documentService.updateDocument(publicDocument.getId(), updateRequest);
+
+      assertThat(response).isNotNull();
+      verify(documentRepository).save(documentCaptor.capture());
+      assertThat(documentCaptor.getValue().getFileType()).isEqualTo(DocumentFileType.XLSX);
+      assertThat(documentCaptor.getValue().getFileUrl()).isEqualTo("https://s3/report.xlsx");
     }
 
     @Test

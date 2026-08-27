@@ -43,6 +43,7 @@ import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.util.FileUtils;
 
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 
@@ -365,12 +366,10 @@ public class AssessmentServiceImpl implements AssessmentService {
    * @throws AssessmentException if the extension is missing or unsupported
    */
   private AssessmentFileType detectFileType(MultipartFile file) {
-    String originalFilename = file.getOriginalFilename();
-    if (originalFilename == null) {
+    String extension = FileUtils.getExtension(file);
+    if (extension == null) {
       throw new FileException(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED);
     }
-    String extension = originalFilename.substring(
-        originalFilename.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
     return switch (extension) {
       case "pdf" -> AssessmentFileType.PDF;
       case "doc", "docx" -> AssessmentFileType.DOCX;

@@ -19,7 +19,7 @@ public interface DocumentRepository
 
   Page<Document> findByAccessTier(AccessTier accessTier, Pageable pageable);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("UPDATE Document d SET d.downloadCount = d.downloadCount + 1 WHERE d.id = :id")
   void incrementDownloadCount(@Param("id") UUID id);
 }

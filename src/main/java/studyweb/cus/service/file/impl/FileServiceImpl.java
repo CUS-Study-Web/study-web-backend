@@ -27,6 +27,7 @@ import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.util.FileUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -133,14 +134,7 @@ public class FileServiceImpl implements FileService {
   }
 
   private String extensionOf(String fileName) {
-    if (fileName == null) {
-      return null;
-    }
-    int dot = fileName.lastIndexOf('.');
-    if (dot < 0 || dot == fileName.length() - 1) {
-      return null;
-    }
-    return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    return FileUtils.getExtension(fileName);
   }
 
   @Override
