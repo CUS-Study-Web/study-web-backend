@@ -21,7 +21,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import studyweb.cus.config.S3Properties;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
@@ -31,8 +30,7 @@ import studyweb.cus.service.file.impl.FileServiceImpl;
 @ExtendWith(MockitoExtension.class)
 class FileServiceTest {
 
-  @Mock
-  private S3Client s3Client;
+  @Mock private S3Client s3Client;
 
   private final S3Properties properties = new S3Properties();
 
@@ -62,7 +60,8 @@ class FileServiceTest {
   void uploadDocumentFileReturnsSizeAndFileUrl() {
     stubPutObject();
 
-    UploadDocumentResult result = fileService.uploadDocumentFile(file("lesson.pdf", "application/pdf", 1, 2, 3));
+    UploadDocumentResult result =
+        fileService.uploadDocumentFile(file("lesson.pdf", "application/pdf", 1, 2, 3));
 
     assertThat(result.fileSize()).isEqualTo(3L);
     assertThat(result.fileKey()).startsWith("documents/").endsWith(".pdf");
@@ -97,7 +96,8 @@ class FileServiceTest {
   void uploadExerciseFileUsesExerciseFolderAndAllowedExtensions() {
     stubPutObject();
 
-    UploadDocumentResult result = fileService.uploadExerciseFile(file("exercise.pdf", "application/pdf", 1, 2));
+    UploadDocumentResult result =
+        fileService.uploadExerciseFile(file("exercise.pdf", "application/pdf", 1, 2));
 
     assertThat(result.fileKey()).startsWith("exercises/").endsWith(".pdf");
     assertThat(result.fileUrl())
@@ -108,7 +108,8 @@ class FileServiceTest {
   void uploadExamFileUsesExamFolderAndAllowedExtensions() {
     stubPutObject();
 
-    UploadDocumentResult result = fileService.uploadExamFile(file("exam.pdf", "application/pdf", 1, 2));
+    UploadDocumentResult result =
+        fileService.uploadExamFile(file("exam.pdf", "application/pdf", 1, 2));
 
     assertThat(result.fileKey()).startsWith("exams/").endsWith(".pdf");
     assertThat(result.fileUrl())
@@ -151,11 +152,14 @@ class FileServiceTest {
   void uploadMultipleDocumentsUploadsAllFiles() {
     stubPutObject();
 
-    List<UploadDocumentResult> results = fileService.uploadMultipleDocuments(
-        List.of(file("a.pdf", "application/pdf", 1), file("b.docx", "application/docx", 2)));
+    List<UploadDocumentResult> results =
+        fileService.uploadMultipleDocuments(
+            List.of(file("a.pdf", "application/pdf", 1), file("b.docx", "application/docx", 2)));
 
     assertThat(results).hasSize(2);
-    assertThat(results).allMatch(r -> r.fileUrl().equals("https://minio.test.invalid:9000/bucket-vmt/" + r.fileKey()));
+    assertThat(results)
+        .allMatch(
+            r -> r.fileUrl().equals("https://minio.test.invalid:9000/bucket-vmt/" + r.fileKey()));
     verify(s3Client, org.mockito.Mockito.times(2))
         .putObject(any(PutObjectRequest.class), any(RequestBody.class));
   }
@@ -165,10 +169,11 @@ class FileServiceTest {
     stubPutObject();
 
     assertThatThrownBy(
-        () -> fileService.uploadMultipleDocuments(
-            List.of(
-                file("a.pdf", "application/pdf", 1),
-                file("bad.exe", "application/octet-stream", 1))))
+            () ->
+                fileService.uploadMultipleDocuments(
+                    List.of(
+                        file("a.pdf", "application/pdf", 1),
+                        file("bad.exe", "application/octet-stream", 1))))
         .isInstanceOf(FileException.class)
         .hasMessage(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.message());
   }

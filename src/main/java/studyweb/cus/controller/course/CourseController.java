@@ -48,18 +48,22 @@ public class CourseController extends AbstractBaseController {
   private final CourseService courseService;
 
   @GetMapping
-  @Operation(summary = "List Courses for user", description = "List all courses with pagination for user")
+  @Operation(
+      summary = "List Courses for user",
+      description = "List all courses with pagination for user")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCourses(
-      @AuthenticationPrincipal String email,
-      @PageableDefault(size = 10) Pageable pageable) {
+      @AuthenticationPrincipal String email, @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses] Page {}, size {}", pageable.getPageNumber(), pageable.getPageSize());
-    return paging(courseService.listCoursesForUser(pageable, email), "Courses fetched successfully!");
+    return paging(
+        courseService.listCoursesForUser(pageable, email), "Courses fetched successfully!");
   }
 
   @GetMapping("/admin")
   @PreAuthorize("hasRole('ADMIN')")
-  @Operation(summary = "List Courses for admin", description = "List all courses with pagination for admin")
+  @Operation(
+      summary = "List Courses for admin",
+      description = "List all courses with pagination for admin")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAdmin(
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
@@ -71,7 +75,9 @@ public class CourseController extends AbstractBaseController {
 
   @GetMapping("/assistant")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "List Courses for assistant", description = "List all courses with pagination for assistant")
+  @Operation(
+      summary = "List Courses for assistant",
+      description = "List all courses with pagination for assistant")
   public ResponseEntity<PageResponse<CourseSummaryResponse>> listCoursesForAssistant(
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
@@ -97,7 +103,9 @@ public class CourseController extends AbstractBaseController {
   }
 
   @GetMapping("/{id}")
-  @Operation(summary = "Course Detail", description = "Get a course detail with its subjects paginated")
+  @Operation(
+      summary = "Course Detail",
+      description = "Get a course detail with its subjects paginated")
   public ResponseEntity<PagedResponse<CourseDetailResponse>> courseDetail(
       @PathVariable UUID id,
       @AuthenticationPrincipal String email,
@@ -152,7 +160,9 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}")
   @PreAuthorize("hasRole('ADMIN')")
-  @Operation(summary = "Delete Subject", description = "Soft-delete a subject of a course (admin only)")
+  @Operation(
+      summary = "Delete Subject",
+      description = "Soft-delete a subject of a course (admin only)")
   public ResponseEntity<SuccessResponse> deleteSubject(
       @PathVariable UUID id, @PathVariable UUID subjectId) {
     log.info("[DELETE /api/courses/{}/subjects/{}] Deleting subject", id, subjectId);
@@ -161,7 +171,9 @@ public class CourseController extends AbstractBaseController {
   }
 
   @GetMapping("/{id}/subjects/{subjectId}/lessons")
-  @Operation(summary = "List Lessons", description = "List all lessons of a subject; marks VIP lessons")
+  @Operation(
+      summary = "List Lessons",
+      description = "List all lessons of a subject; marks VIP lessons")
   public ResponseEntity<PagedResponse<LessonSummaryResponse>> listLessons(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -169,7 +181,8 @@ public class CourseController extends AbstractBaseController {
       @PageableDefault(size = 10) Pageable pageable) {
     log.info(
         "[GET /api/courses/{}/subjects/{}/lessons] Listing lessons for {}", id, subjectId, email);
-    Page<LessonSummaryResponse.LessonCardResponse> lessons = courseService.listLessons(id, subjectId, email, pageable);
+    Page<LessonSummaryResponse.LessonCardResponse> lessons =
+        courseService.listLessons(id, subjectId, email, pageable);
     return pagingData(
         lessons,
         new LessonSummaryResponse((int) lessons.getTotalElements(), lessons.getContent()),
@@ -178,7 +191,9 @@ public class CourseController extends AbstractBaseController {
 
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Create Lesson", description = "Create a lesson for a subject (assistant only)")
+  @Operation(
+      summary = "Create Lesson",
+      description = "Create a lesson for a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> createLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -194,7 +209,9 @@ public class CourseController extends AbstractBaseController {
 
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Update Lesson", description = "Update a lesson of a subject (assistant only)")
+  @Operation(
+      summary = "Update Lesson",
+      description = "Update a lesson of a subject (assistant only)")
   public ResponseEntity<SingleResponse<LessonSummaryResponse.LessonCardResponse>> updateLesson(
       @PathVariable UUID id,
       @PathVariable UUID subjectId,
@@ -209,7 +226,9 @@ public class CourseController extends AbstractBaseController {
 
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
-  @Operation(summary = "Delete Lesson", description = "Soft-delete a lesson of a subject (assistant only)")
+  @Operation(
+      summary = "Delete Lesson",
+      description = "Soft-delete a lesson of a subject (assistant only)")
   public ResponseEntity<SuccessResponse> deleteLesson(
       @PathVariable UUID id, @PathVariable UUID subjectId, @PathVariable UUID lessonId) {
     log.info(

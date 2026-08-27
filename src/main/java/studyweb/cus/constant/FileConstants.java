@@ -14,7 +14,8 @@ public final class FileConstants {
   public static final String FOLDER_EXAMS = "exams/";
 
   public static final Set<String> AVATAR_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
-  public static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "doc", "docx", "xls", "xlsx", "pptx");
+  public static final Set<String> DOCUMENT_EXTENSIONS =
+      Set.of("pdf", "doc", "docx", "xls", "xlsx", "pptx");
   public static final Set<String> EXERCISE_EXTENSIONS = DOCUMENT_EXTENSIONS;
   public static final Set<String> EXAM_EXTENSIONS = DOCUMENT_EXTENSIONS;
 }

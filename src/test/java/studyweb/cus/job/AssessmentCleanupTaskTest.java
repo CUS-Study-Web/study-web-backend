@@ -22,18 +22,16 @@ import studyweb.cus.service.file.FileService;
 @ExtendWith(MockitoExtension.class)
 class AssessmentCleanupTaskTest {
 
-  @Mock
-  private AssessmentRepository assessmentRepository;
+  @Mock private AssessmentRepository assessmentRepository;
 
-  @Mock
-  private FileService fileService;
+  @Mock private FileService fileService;
 
-  @InjectMocks
-  private AssessmentCleanupTask task;
+  @InjectMocks private AssessmentCleanupTask task;
 
   @Test
   void cleanupOrphanAssessments_withNoOrphans_doesNothing() {
-    when(assessmentRepository.findByStatusAndCreatedAtBefore(eq(AssessmentStatus.PENDING_UPLOAD), any()))
+    when(assessmentRepository.findByStatusAndCreatedAtBefore(
+            eq(AssessmentStatus.PENDING_UPLOAD), any()))
         .thenReturn(List.of());
 
     task.cleanupOrphanAssessments();
@@ -52,7 +50,8 @@ class AssessmentCleanupTaskTest {
     a2.setId(UUID.randomUUID());
     a2.setFileKey("key2");
 
-    when(assessmentRepository.findByStatusAndCreatedAtBefore(eq(AssessmentStatus.PENDING_UPLOAD), any()))
+    when(assessmentRepository.findByStatusAndCreatedAtBefore(
+            eq(AssessmentStatus.PENDING_UPLOAD), any()))
         .thenReturn(List.of(a1, a2));
 
     task.cleanupOrphanAssessments();
@@ -73,7 +72,8 @@ class AssessmentCleanupTaskTest {
     a2.setId(UUID.randomUUID());
     a2.setFileKey("key2");
 
-    when(assessmentRepository.findByStatusAndCreatedAtBefore(eq(AssessmentStatus.PENDING_UPLOAD), any()))
+    when(assessmentRepository.findByStatusAndCreatedAtBefore(
+            eq(AssessmentStatus.PENDING_UPLOAD), any()))
         .thenReturn(List.of(a1, a2));
 
     doThrow(new RuntimeException("S3 Error")).when(fileService).deleteFile("key1");
@@ -95,7 +95,8 @@ class AssessmentCleanupTaskTest {
     a1.setId(UUID.randomUUID());
     a1.setFileKey(null); // File upload failed completely, so no S3 URL
 
-    when(assessmentRepository.findByStatusAndCreatedAtBefore(eq(AssessmentStatus.PENDING_UPLOAD), any()))
+    when(assessmentRepository.findByStatusAndCreatedAtBefore(
+            eq(AssessmentStatus.PENDING_UPLOAD), any()))
         .thenReturn(List.of(a1));
 
     task.cleanupOrphanAssessments();

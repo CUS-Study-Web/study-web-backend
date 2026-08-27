@@ -1,7 +1,7 @@
 package studyweb.cus.enums;
 
 public enum CourseCreateStatus {
-    DRAFT,
-    PUBLISH,
-    DEVELOPING,
+  DRAFT,
+  PUBLISH,
+  DEVELOPING,
 }

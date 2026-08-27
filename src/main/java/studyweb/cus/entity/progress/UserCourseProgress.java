@@ -18,24 +18,29 @@ import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.user.User;
 
 @Entity
-@Table(name = "user_course_progress", uniqueConstraints = {
-        @UniqueConstraint(name = "uq_user_course", columnNames = { "user_id", "course_id" })
-}, indexes = { @Index(name = "idx_user_course_progress_user", columnList = "user_id") })
+@Table(
+    name = "user_course_progress",
+    uniqueConstraints = {
+      @UniqueConstraint(
+          name = "uq_user_course",
+          columnNames = {"user_id", "course_id"})
+    },
+    indexes = {@Index(name = "idx_user_course_progress_user", columnList = "user_id")})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserCourseProgress extends AbstractBaseEntity {
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
-    private Course course;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "course_id", nullable = false)
+  private Course course;
 
-    @Column(name = "progress_percent", nullable = false)
-    @Builder.Default
-    private Integer progressPercent = 0;
+  @Column(name = "progress_percent", nullable = false)
+  @Builder.Default
+  private Integer progressPercent = 0;
 }

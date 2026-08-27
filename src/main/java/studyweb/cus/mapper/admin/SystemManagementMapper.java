@@ -1,0 +1,101 @@
+package studyweb.cus.mapper.admin;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
+import org.mapstruct.ReportingPolicy;
+import studyweb.cus.constant.admin.SystemManagementConstants;
+import studyweb.cus.dto.response.admin.AssistantActivityResponse;
+import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.entity.progress.UserCourseProgress;
+import studyweb.cus.entity.user.ActivityLog;
+import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface SystemManagementMapper {
+  DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy, HH:mm");
+
+  @Mapping(target = "id", source = "user.id")
+  @Mapping(target = "gmail", source = "user.gmail")
+  @Mapping(target = "name", source = "user.name")
+  @Mapping(target = "status", source = "user.status")
+  @Mapping(target = "tier", source = "user.tier")
+  @Mapping(target = "primaryCourse", expression = "java(resolvePrimaryCourse(user, progress))")
+  @Mapping(target = "progress", source = "progress.progressPercent", defaultValue = "0.0")
+  @Mapping(target = "averageScore", source = "averageScore", qualifiedByName = "roundGpa")
+  @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
+  @Mapping(target = "numExams", source = "numExams")
+  @Mapping(target = "note", source = "user.note")
+  @Mapping(target = "vipStartDate", source = "user.vipStartDate")
+  @Mapping(target = "vipEndDate", source = "user.vipEndDate")
+  @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+  LearnerSummaryResponse toLearnerSummary(
+      User user, UserCourseProgress progress, Double averageScore, int numExams);
+
+  default String resolvePrimaryCourse(User user, UserCourseProgress progress) {
+    if (user != null
+        && user.getPrimaryCourse() != null
+        && user.getPrimaryCourse().getTitle() != null) {
+      return user.getPrimaryCourse().getTitle();
+    }
+    if (progress != null
+        && progress.getCourse() != null
+        && progress.getCourse().getTitle() != null) {
+      return progress.getCourse().getTitle();
+    }
+    return "N/A";
+  }
+
+  @Mapping(target = "id", source = "vipRequest.id")
+  @Mapping(target = "userId", source = "vipRequest.user.id")
+  @Mapping(target = "name", source = "vipRequest.user.name")
+  @Mapping(target = "gmail", source = "vipRequest.user.gmail")
+  @Mapping(target = "avatarUrl", source = "vipRequest.user.avatarUrl")
+  @Mapping(target = "note", source = "vipRequest.note")
+  @Mapping(target = "requestDate", source = "vipRequest.requestDate")
+  @Mapping(target = "status", source = "vipRequest.status")
+  @Mapping(target = "mainCourse", source = "mainCourse", defaultValue = "N/A")
+  VipRequestResponse toVipRequestResponse(VipRequest vipRequest, String mainCourse);
+
+  @Mapping(target = "id", source = "user.id")
+  @Mapping(target = "name", source = "user.name")
+  @Mapping(target = "gmail", source = "user.gmail")
+  @Mapping(target = "phone", source = "user.phone")
+  @Mapping(target = "status", source = "user.status")
+  @Mapping(target = "numExams", source = "numExams")
+  @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
+  @Mapping(target = "recentActivities", source = "recentActivities")
+  @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+  AssistantSummaryResponse toAssistantSummary(
+      User user, int numExams, List<AssistantActivityResponse> recentActivities);
+
+  @Mapping(target = "id", source = "activityLog.id")
+  @Mapping(target = "description", source = "activityLog.description")
+  @Mapping(
+      target = "timestamp",
+      source = "activityLog.createdAt",
+      qualifiedByName = "formatLastLogin")
+  AssistantActivityResponse toAssistantActivity(ActivityLog activityLog);
+
+  @Named("roundGpa")
+  default Double roundGpa(Double score) {
+    if (score == null) {
+      return 0.0;
+    }
+    return Math.round(score * 10.0) / 10.0;
+  }
+
+  @Named("formatLastLogin")
+  default String formatLastLogin(LocalDateTime dateTime) {
+    if (dateTime == null) {
+      return SystemManagementConstants.textNotLogin;
+    }
+    return dateTime.format(DATE_FORMATTER);
+  }
+}
