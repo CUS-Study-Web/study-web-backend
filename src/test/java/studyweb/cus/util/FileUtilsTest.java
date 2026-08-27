@@ -87,8 +87,7 @@ class FileUtilsTest {
       MockMultipartFile file =
           new MockMultipartFile("file", "presentation.pptx", "application/pdf", new byte[] {1});
 
-      DocumentFileType result =
-          FileUtils.resolveDocumentFileType(file, DocumentFileType.PDF);
+      DocumentFileType result = FileUtils.resolveDocumentFileType(file, DocumentFileType.PDF);
       assertThat(result).isEqualTo(DocumentFileType.PDF);
 
       DocumentFileType strResult =
@@ -104,6 +103,8 @@ class FileUtilsTest {
       "data.xlsx, XLSX",
       "table.xls, XLS",
       "slides.pptx, PPTX",
+      "slides.ppt, PPT",
+      "SLIDES.PPT, PPT",
       "manual.pdf, PDF",
       "archive.zip, PDF",
       "no_ext, PDF"
@@ -119,11 +120,18 @@ class FileUtilsTest {
     void shouldResolveFromMultipartFile() {
       MockMultipartFile docxFile =
           new MockMultipartFile("file", "assignment.docx", "application/msword", new byte[] {1});
-      assertThat(FileUtils.resolveDocumentFileType(docxFile, null)).isEqualTo(DocumentFileType.DOCX);
+      assertThat(FileUtils.resolveDocumentFileType(docxFile, null))
+          .isEqualTo(DocumentFileType.DOCX);
 
       MockMultipartFile xlsxFile =
           new MockMultipartFile("file", "data.XLSX", "application/vnd.ms-excel", new byte[] {1});
-      assertThat(FileUtils.resolveDocumentFileType(xlsxFile, null)).isEqualTo(DocumentFileType.XLSX);
+      assertThat(FileUtils.resolveDocumentFileType(xlsxFile, null))
+          .isEqualTo(DocumentFileType.XLSX);
+
+      MockMultipartFile pptFile =
+          new MockMultipartFile(
+              "file", "slides.ppt", "application/vnd.ms-powerpoint", new byte[] {1});
+      assertThat(FileUtils.resolveDocumentFileType(pptFile, null)).isEqualTo(DocumentFileType.PPT);
     }
 
     @Test
@@ -131,13 +139,46 @@ class FileUtilsTest {
     void shouldDefaultToPdfForNulls() {
       assertThat(FileUtils.resolveDocumentFileType((MockMultipartFile) null, null))
           .isEqualTo(DocumentFileType.PDF);
-      assertThat(FileUtils.resolveDocumentFileType((String) null))
-          .isEqualTo(DocumentFileType.PDF);
+      assertThat(FileUtils.resolveDocumentFileType((String) null)).isEqualTo(DocumentFileType.PDF);
 
       MockMultipartFile nullNameFile =
           new MockMultipartFile("file", null, "application/octet-stream", new byte[] {1});
       assertThat(FileUtils.resolveDocumentFileType(nullNameFile, null))
           .isEqualTo(DocumentFileType.PDF);
+    }
+  }
+
+  @Nested
+  @DisplayName("extractFileKey Tests")
+  class ExtractFileKeyTests {
+
+    @Test
+    @DisplayName("Should return null for null or blank input")
+    void shouldReturnNullForNullOrBlank() {
+      assertThat(FileUtils.extractFileKey(null)).isNull();
+      assertThat(FileUtils.extractFileKey("")).isNull();
+      assertThat(FileUtils.extractFileKey("   ")).isNull();
+    }
+
+    @Test
+    @DisplayName("Should return raw key as-is if already an S3 key")
+    void shouldReturnRawKeyIfAlreadyKey() {
+      assertThat(FileUtils.extractFileKey("documents/123-abc.pdf"))
+          .isEqualTo("documents/123-abc.pdf");
+      assertThat(FileUtils.extractFileKey("exams/exam-123.pdf")).isEqualTo("exams/exam-123.pdf");
+    }
+
+    @Test
+    @DisplayName("Should extract key from full HTTP/HTTPS S3 URLs")
+    void shouldExtractKeyFromFullUrl() {
+      assertThat(
+              FileUtils.extractFileKey("https://s3.example.com/bucket-name/documents/123-abc.pdf"))
+          .isEqualTo("documents/123-abc.pdf");
+      assertThat(
+              FileUtils.extractFileKey("http://localhost:9000/studyweb-bucket/exams/exam-123.pdf"))
+          .isEqualTo("exams/exam-123.pdf");
+      assertThat(FileUtils.extractFileKey("https://minio.local/avatars/user-avatar.png"))
+          .isEqualTo("avatars/user-avatar.png");
     }
   }
 }

@@ -150,8 +150,7 @@ class DocumentServiceTest {
     @DisplayName("Should successfully upload document with badges")
     void shouldUploadDocumentSuccessfully() {
       MockMultipartFile file =
-          new MockMultipartFile(
-              "file", "guide.pdf", "application/pdf", "content".getBytes());
+          new MockMultipartFile("file", "guide.pdf", "application/pdf", "content".getBytes());
       CreateDocumentRequest request =
           new CreateDocumentRequest(
               file,
@@ -165,15 +164,17 @@ class DocumentServiceTest {
               List.of(sampleBadge.getId()));
 
       when(fileService.uploadDocumentFile(file))
-          .thenReturn(new UploadDocumentResult(100L, "documents/guide.pdf", "https://s3/guide.pdf"));
+          .thenReturn(
+              new UploadDocumentResult(100L, "documents/guide.pdf", "https://s3/guide.pdf"));
       when(badgeRepository.findAllById(List.of(sampleBadge.getId())))
           .thenReturn(List.of(sampleBadge));
       when(documentRepository.save(any(Document.class)))
-          .thenAnswer(inv -> {
-            Document doc = inv.getArgument(0);
-            doc.setId(UUID.randomUUID());
-            return doc;
-          });
+          .thenAnswer(
+              inv -> {
+                Document doc = inv.getArgument(0);
+                doc.setId(UUID.randomUUID());
+                return doc;
+              });
 
       DocumentResponse response = documentService.uploadDocument(request);
 
@@ -189,11 +190,15 @@ class DocumentServiceTest {
     }
 
     @Test
-    @DisplayName("Should auto-detect fileType from uploaded file extension when not explicitly provided")
+    @DisplayName(
+        "Should auto-detect fileType from uploaded file extension when not explicitly provided")
     void shouldAutoDetectFileTypeWhenExplicitTypeIsNull() {
       MockMultipartFile docxFile =
           new MockMultipartFile(
-              "file", "lecture_notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content".getBytes());
+              "file",
+              "lecture_notes.docx",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "content".getBytes());
       CreateDocumentRequest request =
           new CreateDocumentRequest(
               docxFile,
@@ -207,19 +212,52 @@ class DocumentServiceTest {
               null);
 
       when(fileService.uploadDocumentFile(docxFile))
-          .thenReturn(new UploadDocumentResult(50L, "documents/lecture_notes.docx", "https://s3/lecture_notes.docx"));
+          .thenReturn(
+              new UploadDocumentResult(
+                  50L, "documents/lecture_notes.docx", "https://s3/lecture_notes.docx"));
       when(documentRepository.save(any(Document.class)))
-          .thenAnswer(inv -> {
-            Document doc = inv.getArgument(0);
-            doc.setId(UUID.randomUUID());
-            return doc;
-          });
+          .thenAnswer(
+              inv -> {
+                Document doc = inv.getArgument(0);
+                doc.setId(UUID.randomUUID());
+                return doc;
+              });
 
       DocumentResponse response = documentService.uploadDocument(request);
 
       assertThat(response).isNotNull();
       verify(documentRepository).save(documentCaptor.capture());
       assertThat(documentCaptor.getValue().getFileType()).isEqualTo(DocumentFileType.DOCX);
+    }
+
+    @Test
+    @DisplayName("Should rollback S3 upload if database save fails")
+    void shouldRollbackS3UploadWhenDatabaseSaveFails() {
+      MockMultipartFile file =
+          new MockMultipartFile("file", "guide.pdf", "application/pdf", "content".getBytes());
+      CreateDocumentRequest request =
+          new CreateDocumentRequest(
+              file,
+              "Complete Guide",
+              DocType.THEORY,
+              DocumentFileType.PDF,
+              15,
+              "Description",
+              null,
+              AccessTier.PUBLIC,
+              null);
+
+      when(fileService.uploadDocumentFile(file))
+          .thenReturn(
+              new UploadDocumentResult(100L, "documents/guide.pdf", "https://s3/guide.pdf"));
+      when(documentRepository.save(any(Document.class)))
+          .thenThrow(new RuntimeException("Database error"));
+
+      assertThatThrownBy(() -> documentService.uploadDocument(request))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Database error");
+
+      verify(fileService).deleteFile("documents/guide.pdf");
     }
   }
 
@@ -245,10 +283,8 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should throw VIP_ONLY when normal user views VIP document")
     void shouldBlockNormalUserFromViewingVipDocument() {
-      when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
-      when(userRepository.findByGmail("learner@gmail.com"))
-          .thenReturn(Optional.of(normalUser));
+      when(documentRepository.findById(vipDocument.getId())).thenReturn(Optional.of(vipDocument));
+      when(userRepository.findByGmail("learner@gmail.com")).thenReturn(Optional.of(normalUser));
 
       assertThatThrownBy(
               () -> documentService.getDocumentById(vipDocument.getId(), "learner@gmail.com"))
@@ -262,10 +298,8 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should allow VIP user to view VIP document")
     void shouldAllowVipUserToViewVipDocument() {
-      when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
-      when(userRepository.findByGmail("vip@gmail.com"))
-          .thenReturn(Optional.of(vipUser));
+      when(documentRepository.findById(vipDocument.getId())).thenReturn(Optional.of(vipDocument));
+      when(userRepository.findByGmail("vip@gmail.com")).thenReturn(Optional.of(vipUser));
 
       DocumentResponse response =
           documentService.getDocumentById(vipDocument.getId(), "vip@gmail.com");
@@ -277,8 +311,7 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should allow Assistant to view VIP document")
     void shouldAllowAssistantToViewVipDocument() {
-      when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
+      when(documentRepository.findById(vipDocument.getId())).thenReturn(Optional.of(vipDocument));
       when(userRepository.findByGmail("assistant@gmail.com"))
           .thenReturn(Optional.of(assistantUser));
 
@@ -339,10 +372,8 @@ class DocumentServiceTest {
     @Test
     @DisplayName("Should throw VIP_ONLY when normal user downloads VIP document")
     void shouldBlockNormalUserFromDownloadingVipDocument() {
-      when(documentRepository.findById(vipDocument.getId()))
-          .thenReturn(Optional.of(vipDocument));
-      when(userRepository.findByGmail("learner@gmail.com"))
-          .thenReturn(Optional.of(normalUser));
+      when(documentRepository.findById(vipDocument.getId())).thenReturn(Optional.of(vipDocument));
+      when(userRepository.findByGmail("learner@gmail.com")).thenReturn(Optional.of(normalUser));
 
       assertThatThrownBy(
               () -> documentService.downloadDocument(vipDocument.getId(), "learner@gmail.com"))
@@ -371,8 +402,7 @@ class DocumentServiceTest {
 
       when(documentRepository.findById(vipDocument.getId()))
           .thenReturn(Optional.of(vipDocument), Optional.of(updatedDoc));
-      when(userRepository.findByGmail("vip@gmail.com"))
-          .thenReturn(Optional.of(vipUser));
+      when(userRepository.findByGmail("vip@gmail.com")).thenReturn(Optional.of(vipUser));
 
       DocumentDownloadResponse response =
           documentService.downloadDocument(vipDocument.getId(), "vip@gmail.com");
@@ -450,8 +480,7 @@ class DocumentServiceTest {
 
       when(documentRepository.findById(publicDocument.getId()))
           .thenReturn(Optional.of(publicDocument));
-      when(badgeRepository.findAllById(List.of(newBadge.getId())))
-          .thenReturn(List.of(newBadge));
+      when(badgeRepository.findAllById(List.of(newBadge.getId()))).thenReturn(List.of(newBadge));
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
       DocumentResponse response =
@@ -466,27 +495,19 @@ class DocumentServiceTest {
     }
 
     @Test
-    @DisplayName("Should update document file and auto-detect fileType")
+    @DisplayName("Should update document file and auto-detect fileType, and delete old file")
     void shouldUpdateDocumentWithFileAndAutoDetectFileType() {
       MockMultipartFile xlsxFile =
           new MockMultipartFile(
               "file", "report.xlsx", "application/vnd.ms-excel", "content".getBytes());
       UpdateDocumentRequest updateRequest =
-          new UpdateDocumentRequest(
-              xlsxFile,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null);
+          new UpdateDocumentRequest(xlsxFile, null, null, null, null, null, null, null, null);
 
       when(documentRepository.findById(publicDocument.getId()))
           .thenReturn(Optional.of(publicDocument));
       when(fileService.uploadDocumentFile(xlsxFile))
-          .thenReturn(new UploadDocumentResult(100L, "documents/report.xlsx", "https://s3/report.xlsx"));
+          .thenReturn(
+              new UploadDocumentResult(100L, "documents/report.xlsx", "https://s3/report.xlsx"));
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
 
       DocumentResponse response =
@@ -496,10 +517,36 @@ class DocumentServiceTest {
       verify(documentRepository).save(documentCaptor.capture());
       assertThat(documentCaptor.getValue().getFileType()).isEqualTo(DocumentFileType.XLSX);
       assertThat(documentCaptor.getValue().getFileUrl()).isEqualTo("https://s3/report.xlsx");
+      verify(fileService).deleteFile("https://s3.example.com/grammar.pdf");
     }
 
     @Test
-    @DisplayName("Should delete document")
+    @DisplayName("Should rollback S3 upload if update fails after new file upload")
+    void shouldRollbackS3UploadWhenUpdateFailsWithNewFile() {
+      MockMultipartFile xlsxFile =
+          new MockMultipartFile(
+              "file", "report.xlsx", "application/vnd.ms-excel", "content".getBytes());
+      UpdateDocumentRequest updateRequest =
+          new UpdateDocumentRequest(xlsxFile, null, null, null, null, null, null, null, null);
+
+      when(documentRepository.findById(publicDocument.getId()))
+          .thenReturn(Optional.of(publicDocument));
+      when(fileService.uploadDocumentFile(xlsxFile))
+          .thenReturn(
+              new UploadDocumentResult(100L, "documents/report.xlsx", "https://s3/report.xlsx"));
+      when(documentRepository.save(any(Document.class)))
+          .thenThrow(new RuntimeException("Database error during update"));
+
+      assertThatThrownBy(
+              () -> documentService.updateDocument(publicDocument.getId(), updateRequest))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Database error during update");
+
+      verify(fileService).deleteFile("documents/report.xlsx");
+    }
+
+    @Test
+    @DisplayName("Should delete document from repository and delete file from S3")
     void shouldDeleteDocument() {
       when(documentRepository.findById(publicDocument.getId()))
           .thenReturn(Optional.of(publicDocument));
@@ -507,6 +554,7 @@ class DocumentServiceTest {
       documentService.deleteDocument(publicDocument.getId());
 
       verify(documentRepository).delete(publicDocument);
+      verify(fileService).deleteFile("https://s3.example.com/grammar.pdf");
     }
   }
 }
