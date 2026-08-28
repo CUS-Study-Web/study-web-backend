@@ -5,12 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
-import java.util.UUID;
 
 public record CreateVipAccountRequest(
     String name,
     @Email(message = "Invalid email format") String gmail,
-    @NotNull(message = "Primary course ID is required") UUID primaryCourseId,
     @NotNull(message = "Start date is required") LocalDate startDate,
     @NotNull(message = "End date is required") LocalDate endDate,
     String note,

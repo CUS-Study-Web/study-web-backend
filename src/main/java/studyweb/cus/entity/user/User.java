@@ -4,10 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,7 +14,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
-import studyweb.cus.entity.course.Course;
 import studyweb.cus.enums.Gender;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -33,10 +29,6 @@ import studyweb.cus.enums.UserTier;
 @AllArgsConstructor
 @Builder
 public class User extends AbstractBaseEntity {
-
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "course_id")
-  private Course primaryCourse;
 
   @Column(name = "gmail", nullable = false, unique = true, length = 150)
   private String gmail;
