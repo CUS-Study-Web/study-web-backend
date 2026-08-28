@@ -106,19 +106,6 @@ class BadgeServiceTest {
                   assertThat(((BadgeException) ex).getCode())
                       .isEqualTo(BadgeErrorCode.BADGE_NAME_EXISTS.code()));
     }
-
-    @Test
-    @DisplayName("Should throw BADGE_NAME_EMPTY when badge name is blank")
-    void shouldThrowWhenBadgeNameEmpty() {
-      BadgeRequest request = new BadgeRequest("   ");
-
-      assertThatThrownBy(() -> badgeService.createBadge(request, "admin@studyweb.edu"))
-          .isInstanceOf(BadgeException.class)
-          .satisfies(
-              ex ->
-                  assertThat(((BadgeException) ex).getCode())
-                      .isEqualTo(BadgeErrorCode.BADGE_NAME_EMPTY.code()));
-    }
   }
 
   @Nested

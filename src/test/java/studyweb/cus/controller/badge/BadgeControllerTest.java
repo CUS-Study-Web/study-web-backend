@@ -134,6 +134,20 @@ class BadgeControllerTest {
         .andExpect(status().isForbidden());
   }
 
+  @Test
+  @DisplayName("POST /api/badges - Blank name returns Bad Request")
+  void createBadge_blankName_returnsBadRequest() throws Exception {
+    BadgeRequest request = new BadgeRequest("   ");
+
+    mockMvc
+        .perform(
+            post("/api/badges")
+                .with(authenticatedAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest());
+  }
+
   // --- List Badges Tests ---
 
   @Test
@@ -221,6 +235,20 @@ class BadgeControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  @DisplayName("PUT /api/badges/{id} - Blank name returns Bad Request")
+  void updateBadge_blankName_returnsBadRequest() throws Exception {
+    BadgeRequest request = new BadgeRequest("   ");
+
+    mockMvc
+        .perform(
+            put("/api/badges/{id}", BADGE_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
