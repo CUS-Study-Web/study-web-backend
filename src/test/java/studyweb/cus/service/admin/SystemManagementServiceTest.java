@@ -71,7 +71,6 @@ import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
-import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
@@ -109,7 +108,6 @@ class SystemManagementServiceTest {
 
   @MockitoBean private UserRepository userRepository;
   @MockitoBean private UserCourseProgressRepository userCourseProgressRepository;
-  @MockitoBean private CourseRepository courseRepository;
   @MockitoBean private AssessmentAttemptRepository assessmentAttemptRepository;
   @MockitoBean private AnswerKeyRepository answerKeyRepository;
   @MockitoBean private AssessmentRepository assessmentRepository;
@@ -261,7 +259,6 @@ class SystemManagementServiceTest {
           User.builder()
               .gmail(GMAIL_1)
               .name("Nguyễn Văn A")
-              .primaryCourse(course)
               .avatarUrl("https://cdn.studyweb.edu/avatars/user1.png")
               .build();
       user.setId(USER_ID_1);
@@ -352,7 +349,7 @@ class SystemManagementServiceTest {
       Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
 
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").primaryCourse(course).build();
+      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
       user.setId(USER_ID_1);
 
       UserCourseProgress progress =
@@ -403,7 +400,7 @@ class SystemManagementServiceTest {
       Course course = Course.builder().title("Lập Trình Web Cơ Bản").build();
       course.setId(courseId);
 
-      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").primaryCourse(course).build();
+      User user = User.builder().gmail(GMAIL_1).name("Nguyễn Văn A").build();
       user.setId(USER_ID_1);
 
       UserCourseProgress progress =
@@ -485,7 +482,7 @@ class SystemManagementServiceTest {
       Course course1 = Course.builder().title("Java Course").build();
       course1.setId(UUID.randomUUID());
 
-      User user1 = User.builder().gmail(GMAIL_1).name("Learner One").primaryCourse(course1).build();
+      User user1 = User.builder().gmail(GMAIL_1).name("Learner One").build();
       user1.setId(USER_ID_1);
 
       User user2 = User.builder().gmail(GMAIL_2).name("Learner Two").build();
@@ -1024,7 +1021,6 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("New user creates VIP user entity with LEARNER role and VIP tier")
     void createVipAccount_newUser_encodesDefaultPasswordAndSaves() throws Exception {
-      UUID courseId = UUID.randomUUID();
       LocalDate start = LocalDate.of(2026, 8, 18);
       LocalDate end = LocalDate.of(2027, 8, 18);
 
@@ -1032,17 +1028,12 @@ class SystemManagementServiceTest {
           new CreateVipAccountRequest(
               "Trần Thị B",
               "vip.learner@studyweb.edu",
-              courseId,
               start,
               end,
               "VIP created note",
               "Password@123");
 
-      Course course = Course.builder().title("Primary Course").build();
-      course.setId(courseId);
-
       when(userRepository.findByGmail(request.gmail())).thenReturn(Optional.empty());
-      when(courseRepository.requireCourse(courseId)).thenReturn(course);
       when(passwordEncoder.encode("Password@123")).thenReturn("$2a$10$encodedPasswordHash");
 
       mockMvc
@@ -1062,7 +1053,6 @@ class SystemManagementServiceTest {
       assertThat(saved.getTier()).isEqualTo(UserTier.VIP);
       assertThat(saved.getStatus()).isEqualTo(UserStatus.ACTIVE);
       assertThat(saved.getPassword()).isEqualTo("$2a$10$encodedPasswordHash");
-      assertThat(saved.getPrimaryCourse()).isEqualTo(course);
       assertThat(saved.getVipStartDate()).isEqualTo(start);
       assertThat(saved.getVipEndDate()).isEqualTo(end);
     }
@@ -1070,12 +1060,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("Active user exists -> throws 409 Conflict USER_EXISTED")
     void createVipAccount_activeUserExists_throws409() throws Exception {
-      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
               "existing@studyweb.edu",
-              courseId,
               LocalDate.now(),
               LocalDate.now().plusYears(1),
               null,
@@ -1100,12 +1088,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("Existing email throws 409 Conflict USER_EXISTED")
     void createVipAccount_bannedUserExists_throws403AccountBanned() throws Exception {
-      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
               "banned@studyweb.edu",
-              courseId,
               LocalDate.now(),
               LocalDate.now().plusYears(1),
               null,
@@ -1130,12 +1116,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("Existing email even if inactive throws 409 Conflict USER_EXISTED")
     void createVipAccount_inactiveUserExists_reactivatesEntity() throws Exception {
-      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
               "inactive@studyweb.edu",
-              courseId,
               LocalDate.now(),
               LocalDate.now().plusYears(1),
               null,
@@ -1160,12 +1144,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("Start date not before end date throws 400 Bad Request INVALID_PARAMETER")
     void createVipAccount_startDateAfterEndDate_throwsBadRequest() throws Exception {
-      UUID courseId = UUID.randomUUID();
       CreateVipAccountRequest request =
           new CreateVipAccountRequest(
               "Trần Thị B",
               "newvip@studyweb.edu",
-              courseId,
               LocalDate.of(2027, 8, 18),
               LocalDate.of(2026, 8, 18),
               null,
@@ -1194,9 +1176,8 @@ class SystemManagementServiceTest {
   class UpdateAccountWebMvcServiceTests {
 
     @Test
-    @DisplayName("Existing user mutates fields, primary course, and encodes new password")
+    @DisplayName("Existing user mutates fields and encodes new password")
     void updateAccount_existingUser_updatesAndSaves() throws Exception {
-      UUID courseId = UUID.randomUUID();
       LocalDate start = LocalDate.of(2026, 8, 18);
       LocalDate end = LocalDate.of(2027, 8, 18);
 
@@ -1204,7 +1185,6 @@ class SystemManagementServiceTest {
           new UpdateAccountRequest(
               "Trần Thị B (Updated)",
               GMAIL_1,
-              courseId,
               start,
               end,
               "Updated to VIP",
@@ -1221,12 +1201,8 @@ class SystemManagementServiceTest {
               .build();
       existingUser.setId(USER_ID_1);
 
-      Course course = Course.builder().title("Updated Course").build();
-      course.setId(courseId);
-
       when(userRepository.findByIdAndRole(USER_ID_1, UserRole.LEARNER))
           .thenReturn(Optional.of(existingUser));
-      when(courseRepository.requireCourse(courseId)).thenReturn(course);
       when(passwordEncoder.encode("NewPass@123")).thenReturn("$2a$10$newEncodedPass");
 
       mockMvc
@@ -1239,7 +1215,6 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.message").value("Update learner account succesfully!"));
 
       assertThat(existingUser.getName()).isEqualTo("Trần Thị B (Updated)");
-      assertThat(existingUser.getPrimaryCourse()).isEqualTo(course);
       assertThat(existingUser.getTier()).isEqualTo(UserTier.VIP);
       assertThat(existingUser.getPassword()).isEqualTo("$2a$10$newEncodedPass");
       assertThat(existingUser.getVipStartDate()).isEqualTo(start);
@@ -1249,12 +1224,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("User not found throws 404 User Not Found")
     void updateAccount_userNotFound_returns404() throws Exception {
-      UUID courseId = UUID.randomUUID();
       UpdateAccountRequest request =
           new UpdateAccountRequest(
               "Trần Thị B",
               GMAIL_1,
-              courseId,
               LocalDate.now(),
               LocalDate.now().plusYears(1),
               null,
@@ -1277,12 +1250,10 @@ class SystemManagementServiceTest {
     @Test
     @DisplayName("Start date not before end date throws 400 Bad Request INVALID_PARAMETER")
     void updateAccount_startDateAfterEndDate_throwsBadRequest() throws Exception {
-      UUID courseId = UUID.randomUUID();
       UpdateAccountRequest request =
           new UpdateAccountRequest(
               "Trần Thị B",
               GMAIL_1,
-              courseId,
               LocalDate.of(2027, 8, 18),
               LocalDate.of(2026, 8, 18),
               null,
@@ -1345,8 +1316,7 @@ class SystemManagementServiceTest {
 
       User u1 = User.builder().name("User 1").gmail("u1@studyweb.edu").build();
       u1.setId(USER_ID_1);
-      User u2 =
-          User.builder().name("User 2").gmail("u2@studyweb.edu").primaryCourse(course2).build();
+      User u2 = User.builder().name("User 2").gmail("u2@studyweb.edu").build();
       u2.setId(USER_ID_2);
 
       UserCourseProgress progress1 = UserCourseProgress.builder().user(u1).course(course1).build();

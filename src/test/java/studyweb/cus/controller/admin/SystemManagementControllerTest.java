@@ -111,7 +111,6 @@ class SystemManagementControllerTest {
     return new CreateVipAccountRequest(
         "Trần Thị B",
         "vip.learner@studyweb.edu",
-        COURSE_ID,
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
         "Kích hoạt gói VIP 1 năm qua admin",
@@ -122,7 +121,6 @@ class SystemManagementControllerTest {
     return new UpdateAccountRequest(
         "Trần Thị B",
         "vip.learner@studyweb.edu",
-        COURSE_ID,
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
         "Ghi chú cập nhật",
@@ -382,7 +380,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Trần Thị B",
               "vip.learner@studyweb.edu",
-              COURSE_ID,
               start,
               end,
               "Ghi chú kích hoạt",
@@ -406,7 +403,6 @@ class SystemManagementControllerTest {
       CreateVipAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
       assertThat(bound.startDate()).isEqualTo(start);
       assertThat(bound.endDate()).isEqualTo(end);
       assertThat(bound.note()).isEqualTo("Ghi chú kích hoạt");
@@ -436,7 +432,6 @@ class SystemManagementControllerTest {
       UpdateAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
       assertThat(bound.tier()).isEqualTo(UserTier.VIP);
       assertThat(bound.note()).isEqualTo("Ghi chú cập nhật");
     }
@@ -556,7 +551,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -590,7 +584,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               invalidGmail,
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -610,7 +603,6 @@ class SystemManagementControllerTest {
           new UpdateAccountRequest(
               "Nguyễn Văn A",
               invalidGmail,
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -638,7 +630,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               null,
               LocalDate.of(2027, 8, 18),
               null,
@@ -664,7 +655,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               null,
               null,
