@@ -751,6 +751,7 @@ class AssessmentServiceTest {
     service.deleteAssessment(courseId, assessmentId);
 
     assertThat(assessment.getDeletedAt()).isNotNull();
+    verify(fileService).deleteFile("exams/exam.pdf");
   }
 
   @Test
