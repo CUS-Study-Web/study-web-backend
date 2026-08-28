@@ -32,11 +32,7 @@ public class BadgeServiceImpl implements BadgeService {
   @Override
   @Transactional
   public BadgeResponse createBadge(BadgeRequest request, String adminEmail) {
-    String name = request.name() != null ? request.name().trim() : "";
-    if (name.isBlank()) {
-      throw new BadgeException(BadgeErrorCode.BADGE_NAME_EMPTY);
-    }
-    if (badgeRepository.existsByName(name)) {
+    if (badgeRepository.existsByName(request.name())) {
       throw new BadgeException(BadgeErrorCode.BADGE_NAME_EXISTS);
     }
 
@@ -45,7 +41,7 @@ public class BadgeServiceImpl implements BadgeService {
       createdBy = userRepository.findByGmail(adminEmail).orElse(null);
     }
 
-    Badge badge = Badge.builder().name(name).createdBy(createdBy).build();
+    Badge badge = Badge.builder().name(request.name()).createdBy(createdBy).build();
     Badge savedBadge = badgeRepository.save(badge);
     log.info("Badge created successfully with ID {}", savedBadge.getId());
     return badgeMapper.toResponse(savedBadge);
@@ -85,15 +81,11 @@ public class BadgeServiceImpl implements BadgeService {
   public BadgeResponse updateBadge(UUID id, BadgeRequest request) {
     log.info("Updating badge ID {}", id);
     Badge badge = requireBadge(id);
-    String name = request.name() != null ? request.name().trim() : "";
-    if (name.isBlank()) {
-      throw new BadgeException(BadgeErrorCode.BADGE_NAME_EMPTY);
-    }
-    if (badgeRepository.existsByNameAndIdNot(name, id)) {
+    if (badgeRepository.existsByNameAndIdNot(request.name(), id)) {
       throw new BadgeException(BadgeErrorCode.BADGE_NAME_EXISTS);
     }
 
-    badge.setName(name);
+    badge.setName(request.name());
     Badge updatedBadge = badgeRepository.save(badge);
     log.info("Badge ID {} updated successfully", id);
     return badgeMapper.toResponse(updatedBadge);
