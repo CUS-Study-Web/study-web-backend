@@ -23,4 +23,22 @@ public record DocumentResponse(
     AccessTier accessTier,
     List<BadgeResponse> badges,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt) {}
+    LocalDateTime updatedAt) {
+
+  public DocumentResponse withMaskedFileUrl() {
+    return new DocumentResponse(
+        id,
+        title,
+        docType,
+        fileType,
+        null,
+        numPages,
+        description,
+        downloadCount,
+        youtubeUrl,
+        accessTier,
+        badges,
+        createdAt,
+        updatedAt);
+  }
+}

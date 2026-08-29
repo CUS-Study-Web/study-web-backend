@@ -281,7 +281,7 @@ class DocumentControllerTest {
   @DisplayName("GET /api/documents - List documents with pagination")
   void listDocuments_authenticatedAllowed() throws Exception {
     Pageable pageable = PageRequest.of(0, 10);
-    when(documentService.listDocuments(any(), any(), any(), any(), any(Pageable.class)))
+    when(documentService.listDocuments(any(), any(), any(), any(), any(Pageable.class), any()))
         .thenReturn(new PageImpl<>(List.of(sampleDocumentResponse()), pageable, 1));
 
     mockMvc
