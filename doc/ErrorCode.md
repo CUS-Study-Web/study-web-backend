@@ -73,3 +73,19 @@
 | UPLOAD_FAILED | FILE_003 | File upload failed |
 | DELETE_FAILED | FILE_004 | File delete failed |
 | FILE_TOO_LARGE | FILE_005 | File too large |
+
+## Document (`DocumentErrorCode`)
+
+| Enum Name | Code | Message |
+|---|---|---|
+| DOCUMENT_NOT_FOUND | DOC_001 | Document not found |
+| VIP_ONLY | DOC_002 | This document is for VIP members only |
+| UNSUPPORTED_FILE_TYPE | DOC_004 | Unsupported document file type |
+
+## Badge (`BadgeErrorCode`)
+
+| Enum Name | Code | Message |
+|---|---|---|
+| BADGE_NOT_FOUND | BADGE_001 | Badge not found |
+| BADGE_NAME_EXISTS | BADGE_002 | A badge with this name already exists |
+
