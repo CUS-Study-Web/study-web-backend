@@ -478,6 +478,7 @@ class DocumentServiceTest {
       assertThat(guestDoc.description()).isEqualTo(publicDocument.getDescription());
       assertThat(guestDoc.numPages()).isEqualTo(publicDocument.getNumPages());
       assertThat(guestDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
+      assertThat(guestDoc.accessTier()).isEqualTo(publicDocument.getAccessTier());
       assertThat(guestDoc.badges()).isNotNull();
     }
 

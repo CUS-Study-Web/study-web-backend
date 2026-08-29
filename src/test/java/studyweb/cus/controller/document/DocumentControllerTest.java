@@ -124,6 +124,7 @@ class DocumentControllerTest {
         "A comprehensive guide",
         12,
         0,
+        AccessTier.PUBLIC,
         List.of(
             new BadgeResponse(BADGE_ID, "Toán", null, LocalDateTime.now(), LocalDateTime.now())));
   }
@@ -308,10 +309,10 @@ class DocumentControllerTest {
         .andExpect(jsonPath("$.data[0].description").value("A comprehensive guide"))
         .andExpect(jsonPath("$.data[0].numPages").value(12))
         .andExpect(jsonPath("$.data[0].downloadCount").value(0))
+        .andExpect(jsonPath("$.data[0].accessTier").value("PUBLIC"))
         .andExpect(jsonPath("$.data[0].badges[0].name").value("Toán"))
         .andExpect(jsonPath("$.data[0].fileUrl").doesNotExist())
         .andExpect(jsonPath("$.data[0].youtubeUrl").doesNotExist())
-        .andExpect(jsonPath("$.data[0].accessTier").doesNotExist())
         .andExpect(jsonPath("$.paging.total").value(1));
   }
 
