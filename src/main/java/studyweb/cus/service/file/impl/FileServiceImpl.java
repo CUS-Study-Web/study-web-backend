@@ -9,9 +9,7 @@ import static studyweb.cus.constant.FileConstants.FOLDER_DOCUMENTS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXAMS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXERCISES;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +25,7 @@ import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.exception.file.FileErrorCode;
 import studyweb.cus.exception.file.FileException;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.util.FileUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -38,8 +37,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadDocumentFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -48,8 +49,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadAvatarFile(MultipartFile file) {
-    long maxAvatarSize = s3Properties.getMaxsizeavatarupload() != null ? s3Properties.getMaxsizeavatarupload()
-        : 10485760L;
+    long maxAvatarSize =
+        s3Properties.getMaxsizeavatarupload() != null
+            ? s3Properties.getMaxsizeavatarupload()
+            : 10485760L;
     if (file.getSize() > maxAvatarSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -58,8 +61,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadExerciseFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -68,8 +73,10 @@ public class FileServiceImpl implements FileService {
 
   @Override
   public UploadDocumentResult uploadExamFile(MultipartFile file) {
-    long maxDocSize = s3Properties.getMaxsizedocumentupload() != null ? s3Properties.getMaxsizedocumentupload()
-        : 52428800L;
+    long maxDocSize =
+        s3Properties.getMaxsizedocumentupload() != null
+            ? s3Properties.getMaxsizedocumentupload()
+            : 52428800L;
     if (file.getSize() > maxDocSize) {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
@@ -133,14 +140,7 @@ public class FileServiceImpl implements FileService {
   }
 
   private String extensionOf(String fileName) {
-    if (fileName == null) {
-      return null;
-    }
-    int dot = fileName.lastIndexOf('.');
-    if (dot < 0 || dot == fileName.length() - 1) {
-      return null;
-    }
-    return fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    return FileUtils.getExtension(fileName);
   }
 
   @Override
@@ -148,14 +148,16 @@ public class FileServiceImpl implements FileService {
     if (fileKey == null || fileKey.isBlank()) {
       return;
     }
+    String resolvedKey = FileUtils.extractFileKey(fileKey);
+    if (resolvedKey == null || resolvedKey.isBlank()) {
+      return;
+    }
     try {
-      s3Client.deleteObject(DeleteObjectRequest.builder()
-          .bucket(s3Properties.getBucket())
-          .key(fileKey)
-          .build());
-      log.info("Deleted file from S3: {}", fileKey);
+      s3Client.deleteObject(
+          DeleteObjectRequest.builder().bucket(s3Properties.getBucket()).key(resolvedKey).build());
+      log.info("Deleted file from S3: {}", resolvedKey);
     } catch (Exception e) {
-      log.error("Failed to delete file {} from S3", fileKey, e);
+      log.error("Failed to delete file {} from S3", resolvedKey, e);
     }
   }
 

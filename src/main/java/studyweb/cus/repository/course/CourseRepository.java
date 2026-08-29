@@ -24,5 +24,6 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
   Page<Course> findByDeletedAtIsNullAndStatus(Pageable pageable, CourseCreateStatus status);
 
-  Page<Course> findByDeletedAtIsNullAndStatusIn(Pageable pageable, Collection<CourseCreateStatus> statuses);
+  Page<Course> findByDeletedAtIsNullAndStatusIn(
+      Pageable pageable, Collection<CourseCreateStatus> statuses);
 }
