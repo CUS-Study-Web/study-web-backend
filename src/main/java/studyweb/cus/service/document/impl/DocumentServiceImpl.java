@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.badge.Badge;
@@ -153,6 +154,40 @@ public class DocumentServiceImpl implements DocumentService {
         };
 
     return documentRepository.findAll(spec, pageable).map(documentMapper::toResponse);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Page<DocumentGuestResponse> listDocumentsForGuest(
+      DocType docType, UUID badgeId, String search, Pageable pageable) {
+    log.info(
+        "Listing documents for guest: docType={}, badgeId={}, search='{}'",
+        docType,
+        badgeId,
+        search);
+
+    Specification<Document> spec =
+        (root, query, cb) -> {
+          List<Predicate> predicates = new ArrayList<>();
+          if (docType != null) {
+            predicates.add(cb.equal(root.get("docType"), docType));
+          }
+          if (badgeId != null) {
+            Join<Document, DocumentBadge> badgesJoin = root.join("documentBadges");
+            predicates.add(cb.equal(badgesJoin.get("badge").get("id"), badgeId));
+            predicates.add(cb.isNull(badgesJoin.get("deletedAt")));
+          }
+          if (search != null && !search.isBlank()) {
+            predicates.add(
+                cb.like(cb.lower(root.get("title")), "%" + search.trim().toLowerCase() + "%"));
+          }
+          if (query != null) {
+            query.distinct(true);
+          }
+          return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+    return documentRepository.findAll(spec, pageable).map(documentMapper::toGuestResponse);
   }
 
   @Override

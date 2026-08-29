@@ -8,6 +8,7 @@ import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 import studyweb.cus.dto.response.badge.BadgeResponse;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.entity.document.Document;
 import studyweb.cus.entity.document.DocumentBadge;
@@ -24,6 +25,12 @@ public interface DocumentMapper {
       target = "badges",
       qualifiedByName = "mapDocumentBadges")
   DocumentResponse toResponse(Document document);
+
+  @Mapping(
+      source = "document.documentBadges",
+      target = "badges",
+      qualifiedByName = "mapDocumentBadges")
+  DocumentGuestResponse toGuestResponse(Document document);
 
   @Mapping(source = "document.id", target = "id")
   @Mapping(source = "document.title", target = "title")

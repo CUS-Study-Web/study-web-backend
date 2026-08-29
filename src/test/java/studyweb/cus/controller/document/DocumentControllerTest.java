@@ -47,6 +47,7 @@ import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.badge.BadgeResponse;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
@@ -76,7 +77,12 @@ class DocumentControllerTest {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
       http.csrf(AbstractHttpConfigurer::disable)
-          .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+          .authorizeHttpRequests(
+              auth ->
+                  auth.requestMatchers(HttpMethod.GET, "/api/documents/guest")
+                      .permitAll()
+                      .anyRequest()
+                      .authenticated())
           .httpBasic(Customizer.withDefaults());
       return http.build();
     }
@@ -109,6 +115,17 @@ class DocumentControllerTest {
             new BadgeResponse(BADGE_ID, "Toán", null, LocalDateTime.now(), LocalDateTime.now())),
         LocalDateTime.now(),
         LocalDateTime.now());
+  }
+
+  private DocumentGuestResponse sampleDocumentGuestResponse() {
+    return new DocumentGuestResponse(
+        DOCUMENT_ID,
+        "Grammar Guide",
+        "A comprehensive guide",
+        12,
+        0,
+        List.of(
+            new BadgeResponse(BADGE_ID, "Toán", null, LocalDateTime.now(), LocalDateTime.now())));
   }
 
   // --- Upload Tests ---
@@ -272,6 +289,53 @@ class DocumentControllerTest {
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.data[0].title").value("Grammar Guide"))
         .andExpect(jsonPath("$.data[0].badges[0].name").value("Toán"));
+  }
+
+  @Test
+  @DisplayName("GET /api/documents/guest - Unauthenticated guest can list documents")
+  void listDocumentsForGuest_unauthenticatedAllowed() throws Exception {
+    Pageable pageable = PageRequest.of(0, 10);
+    when(documentService.listDocumentsForGuest(any(), any(), any(), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(sampleDocumentGuestResponse()), pageable, 1));
+
+    mockMvc
+        .perform(get("/api/documents/guest"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Documents fetched successfully!"))
+        .andExpect(jsonPath("$.data[0].id").value(DOCUMENT_ID.toString()))
+        .andExpect(jsonPath("$.data[0].title").value("Grammar Guide"))
+        .andExpect(jsonPath("$.data[0].description").value("A comprehensive guide"))
+        .andExpect(jsonPath("$.data[0].numPages").value(12))
+        .andExpect(jsonPath("$.data[0].downloadCount").value(0))
+        .andExpect(jsonPath("$.data[0].badges[0].name").value("Toán"))
+        .andExpect(jsonPath("$.data[0].fileUrl").doesNotExist())
+        .andExpect(jsonPath("$.data[0].youtubeUrl").doesNotExist())
+        .andExpect(jsonPath("$.data[0].accessTier").doesNotExist())
+        .andExpect(jsonPath("$.paging.total").value(1));
+  }
+
+  @Test
+  @DisplayName("GET /api/documents/guest - Guest can list documents with filters")
+  void listDocumentsForGuest_withFilters() throws Exception {
+    Pageable pageable = PageRequest.of(0, 10);
+    when(documentService.listDocumentsForGuest(
+            eq(DocType.THEORY), eq(BADGE_ID), eq("grammar"), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(sampleDocumentGuestResponse()), pageable, 1));
+
+    mockMvc
+        .perform(
+            get("/api/documents/guest")
+                .param("docType", "THEORY")
+                .param("badgeId", BADGE_ID.toString())
+                .param("search", "grammar"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data[0].title").value("Grammar Guide"));
+
+    verify(documentService)
+        .listDocumentsForGuest(
+            eq(DocType.THEORY), eq(BADGE_ID), eq("grammar"), any(Pageable.class));
   }
 
   // --- Download Tests ---
