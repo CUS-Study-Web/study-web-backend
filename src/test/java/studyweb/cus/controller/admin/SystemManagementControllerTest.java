@@ -1496,7 +1496,7 @@ class SystemManagementControllerTest {
     @Test
     @DisplayName("GET /learners/counts/locked -> returns locked accounts count 200 OK")
     void getLockedAccountsCount_returns200() throws Exception {
-      when(systemManagementService.getUserCount(null, null, UserStatus.INACTIVE))
+      when(systemManagementService.getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE))
           .thenReturn(new UserCountResponse(2));
 
       mockMvc
@@ -1508,7 +1508,7 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.message").value("Locked accounts count fetched successfully!"))
           .andExpect(jsonPath("$.data.count").value(2));
 
-      verify(systemManagementService).getUserCount(null, null, UserStatus.INACTIVE);
+      verify(systemManagementService).getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE);
     }
   }
 }

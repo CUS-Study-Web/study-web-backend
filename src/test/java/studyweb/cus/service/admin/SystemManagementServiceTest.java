@@ -1636,9 +1636,10 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("Counts locked accounts via status INACTIVE")
+    @DisplayName("Counts locked learner accounts via role LEARNER and status INACTIVE")
     void getUserCount_lockedAccounts_returnsCount() throws Exception {
-      when(userRepository.countByStatus(UserStatus.INACTIVE)).thenReturn(3);
+      when(userRepository.countByRoleAndStatus(UserRole.LEARNER, UserStatus.INACTIVE))
+          .thenReturn(3);
 
       mockMvc
           .perform(
@@ -1648,7 +1649,7 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.count").value(3));
 
-      verify(userRepository).countByStatus(UserStatus.INACTIVE);
+      verify(userRepository).countByRoleAndStatus(UserRole.LEARNER, UserStatus.INACTIVE);
     }
   }
 }
