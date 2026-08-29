@@ -88,4 +88,4 @@
 |---|---|---|
 | BADGE_NOT_FOUND | BADGE_001 | Badge not found |
 | BADGE_NAME_EXISTS | BADGE_002 | A badge with this name already exists |
-
+
