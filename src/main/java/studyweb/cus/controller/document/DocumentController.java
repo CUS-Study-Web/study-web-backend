@@ -93,13 +93,15 @@ public class DocumentController extends AbstractBaseController {
       @RequestParam(required = false) AccessTier accessTier,
       @RequestParam(required = false) UUID badgeId,
       @RequestParam(required = false) String search,
-      @PageableDefault(size = 10) Pageable pageable) {
+      @PageableDefault(size = 10) Pageable pageable,
+      @AuthenticationPrincipal String email) {
     log.info(
-        "[GET /api/documents] Listing documents page {}, size {}",
+        "[GET /api/documents] Listing documents page {}, size {}, user '{}'",
         pageable.getPageNumber(),
-        pageable.getPageSize());
+        pageable.getPageSize(),
+        email);
     return paging(
-        documentService.listDocuments(docType, accessTier, badgeId, search, pageable),
+        documentService.listDocuments(docType, accessTier, badgeId, search, pageable, email),
         "Documents fetched successfully!");
   }
 

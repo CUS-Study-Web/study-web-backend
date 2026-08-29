@@ -18,7 +18,12 @@ public interface DocumentService {
   DocumentResponse getDocumentById(UUID id, String userEmail);
 
   Page<DocumentResponse> listDocuments(
-      DocType docType, AccessTier accessTier, UUID badgeId, String search, Pageable pageable);
+      DocType docType,
+      AccessTier accessTier,
+      UUID badgeId,
+      String search,
+      Pageable pageable,
+      String userEmail);
 
   Page<DocumentGuestResponse> listDocumentsForGuest(
       DocType docType, UUID badgeId, String search, Pageable pageable);

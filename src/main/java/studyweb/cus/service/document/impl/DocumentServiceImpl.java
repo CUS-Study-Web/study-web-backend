@@ -121,13 +121,19 @@ public class DocumentServiceImpl implements DocumentService {
   @Override
   @Transactional(readOnly = true)
   public Page<DocumentResponse> listDocuments(
-      DocType docType, AccessTier accessTier, UUID badgeId, String search, Pageable pageable) {
+      DocType docType,
+      AccessTier accessTier,
+      UUID badgeId,
+      String search,
+      Pageable pageable,
+      String userEmail) {
     log.info(
-        "Listing documents: docType={}, accessTier={}, badgeId={}, search='{}'",
+        "Listing documents: docType={}, accessTier={}, badgeId={}, search='{}', user='{}'",
         docType,
         accessTier,
         badgeId,
-        search);
+        search,
+        userEmail);
 
     Specification<Document> spec =
         (root, query, cb) -> {
@@ -153,7 +159,18 @@ public class DocumentServiceImpl implements DocumentService {
           return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-    return documentRepository.findAll(spec, pageable).map(documentMapper::toResponse);
+    boolean hasVip = hasVipAccess(userEmail);
+
+    return documentRepository
+        .findAll(spec, pageable)
+        .map(
+            doc -> {
+              DocumentResponse response = documentMapper.toResponse(doc);
+              if (!hasVip && doc.getAccessTier() == AccessTier.VIP) {
+                return response.withMaskedFileUrl();
+              }
+              return response;
+            });
   }
 
   @Override
@@ -304,6 +321,20 @@ public class DocumentServiceImpl implements DocumentService {
     return documentRepository
         .findById(id)
         .orElseThrow(() -> new DocumentException(DocumentErrorCode.DOCUMENT_NOT_FOUND));
+  }
+
+  private boolean hasVipAccess(String userEmail) {
+    if (userEmail == null || userEmail.isBlank()) {
+      return false;
+    }
+    return userRepository
+        .findByGmail(userEmail)
+        .map(
+            user ->
+                user.getRole() == UserRole.ASSISTANT
+                    || user.getRole() == UserRole.ADMIN
+                    || user.getTier() == UserTier.VIP)
+        .orElse(false);
   }
 
   private void checkVipAccess(Document document, String userEmail) {

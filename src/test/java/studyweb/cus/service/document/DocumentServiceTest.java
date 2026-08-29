@@ -453,12 +453,63 @@ class DocumentServiceTest {
       Pageable pageable = PageRequest.of(0, 10);
       Page<Document> page = new PageImpl<>(List.of(publicDocument), pageable, 1);
       when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+      when(userRepository.findByGmail("learner@gmail.com")).thenReturn(Optional.of(normalUser));
 
       Page<DocumentResponse> result =
-          documentService.listDocuments(null, null, null, null, pageable);
+          documentService.listDocuments(null, null, null, null, pageable, "learner@gmail.com");
 
       assertThat(result.getContent()).hasSize(1);
       assertThat(result.getContent().get(0).title()).isEqualTo(publicDocument.getTitle());
+      assertThat(result.getContent().get(0).fileUrl()).isEqualTo(publicDocument.getFileUrl());
+    }
+
+    @Test
+    @DisplayName("Should mask fileUrl for normal user when listing VIP document")
+    void shouldMaskFileUrlForNormalUserWhenListingVipDocument() {
+      Pageable pageable = PageRequest.of(0, 10);
+      Page<Document> page = new PageImpl<>(List.of(publicDocument, vipDocument), pageable, 2);
+      when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+      when(userRepository.findByGmail("learner@gmail.com")).thenReturn(Optional.of(normalUser));
+
+      Page<DocumentResponse> result =
+          documentService.listDocuments(null, null, null, null, pageable, "learner@gmail.com");
+
+      assertThat(result.getContent()).hasSize(2);
+      DocumentResponse publicDocRes = result.getContent().get(0);
+      DocumentResponse vipDocRes = result.getContent().get(1);
+
+      assertThat(publicDocRes.fileUrl()).isEqualTo(publicDocument.getFileUrl());
+      assertThat(vipDocRes.fileUrl()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should retain fileUrl for VIP user when listing VIP document")
+    void shouldRetainFileUrlForVipUserWhenListingVipDocument() {
+      Pageable pageable = PageRequest.of(0, 10);
+      Page<Document> page = new PageImpl<>(List.of(vipDocument), pageable, 1);
+      when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+      when(userRepository.findByGmail("vip@gmail.com")).thenReturn(Optional.of(vipUser));
+
+      Page<DocumentResponse> result =
+          documentService.listDocuments(null, null, null, null, pageable, "vip@gmail.com");
+
+      assertThat(result.getContent()).hasSize(1);
+      assertThat(result.getContent().get(0).fileUrl()).isEqualTo(vipDocument.getFileUrl());
+    }
+
+    @Test
+    @DisplayName("Should retain fileUrl for Assistant user when listing VIP document")
+    void shouldRetainFileUrlForAssistantUserWhenListingVipDocument() {
+      Pageable pageable = PageRequest.of(0, 10);
+      Page<Document> page = new PageImpl<>(List.of(vipDocument), pageable, 1);
+      when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+      when(userRepository.findByGmail("assistant@gmail.com")).thenReturn(Optional.of(assistantUser));
+
+      Page<DocumentResponse> result =
+          documentService.listDocuments(null, null, null, null, pageable, "assistant@gmail.com");
+
+      assertThat(result.getContent()).hasSize(1);
+      assertThat(result.getContent().get(0).fileUrl()).isEqualTo(vipDocument.getFileUrl());
     }
 
     @Test
