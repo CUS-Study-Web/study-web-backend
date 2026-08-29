@@ -10,6 +10,8 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+  flyway:
+    enabled: false
 logging:
   file:
     name: logs/backend.log
