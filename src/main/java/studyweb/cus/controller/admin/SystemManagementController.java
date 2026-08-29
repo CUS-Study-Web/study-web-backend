@@ -154,7 +154,7 @@ public class SystemManagementController extends AbstractBaseController {
   public ResponseEntity<SingleResponse<UserCountResponse>> getLockedAccountsCount() {
     log.info("[GET /api/system-management/learners/counts/locked]");
     return successSingle(
-        systemManagementService.getUserCount(null, null, UserStatus.INACTIVE),
+        systemManagementService.getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE),
         "Locked accounts count fetched successfully!");
   }
 
