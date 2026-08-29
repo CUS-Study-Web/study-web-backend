@@ -21,6 +21,7 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.content.PricingPageContent;
@@ -28,7 +29,6 @@ import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
 import studyweb.cus.entity.course.AssessmentAttemptDetail;
-import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
@@ -46,7 +46,6 @@ import studyweb.cus.repository.content.PricingPageContentRepository;
 import studyweb.cus.repository.course.AnswerKeyRepository;
 import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
-import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
@@ -58,7 +57,6 @@ import studyweb.cus.service.admin.SystemManagementService;
 public class SystemManagementServiceImpl implements SystemManagementService {
   private final UserRepository userRepository;
   private final UserCourseProgressRepository userCourseProgressRepository;
-  private final CourseRepository courseRepository;
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final AssessmentRepository assessmentRepository;
@@ -84,15 +82,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         userCourseProgressRepository.findPrimaryCourseByUserIds(userIds).stream()
             .filter(ucp -> ucp.getUser() != null)
             .collect(Collectors.toMap(e -> e.getUser().getId(), e -> e, (e1, e2) -> e1));
-
-    Map<String, UserCourseProgress> progressByUserAndCourse =
-        userCourseProgressRepository.findByUserIds(userIds).stream()
-            .filter(ucp -> ucp.getUser() != null && ucp.getCourse() != null)
-            .collect(
-                Collectors.toMap(
-                    ucp -> ucp.getUser().getId() + ":" + ucp.getCourse().getId(),
-                    ucp -> ucp,
-                    (existing, replacement) -> existing));
 
     List<AssessmentAttempt> attempts =
         assessmentAttemptRepository.findAllByUserIdsWithExam(userIds);
@@ -132,12 +121,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
         user -> {
           double avgScore = 0.0;
           int numExams = 0;
-          Course primaryCourse = user.getPrimaryCourse();
-          UserCourseProgress userProgress = null;
+          UserCourseProgress userProgress = maxProgressByUser.get(user.getId());
 
-          if (primaryCourse != null) {
-            String groupKey = user.getId() + ":" + primaryCourse.getId();
-            userProgress = progressByUserAndCourse.get(groupKey);
+          if (userProgress != null && userProgress.getCourse() != null) {
+            String groupKey = user.getId() + ":" + userProgress.getCourse().getId();
             List<AssessmentAttempt> primaryCourseAttempts =
                 attemptsByUserAndCourse.getOrDefault(groupKey, List.of());
 
@@ -153,26 +140,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                         })
                     .average()
                     .orElse(0.0);
-          } else {
-            userProgress = maxProgressByUser.get(user.getId());
-            if (userProgress != null && userProgress.getCourse() != null) {
-              String groupKey = user.getId() + ":" + userProgress.getCourse().getId();
-              List<AssessmentAttempt> primaryCourseAttempts =
-                  attemptsByUserAndCourse.getOrDefault(groupKey, List.of());
-
-              numExams = primaryCourseAttempts.size();
-              avgScore =
-                  primaryCourseAttempts.stream()
-                      .mapToDouble(
-                          aa -> {
-                            Map<Integer, AnswerChoice> keys =
-                                answerKeysByExam.getOrDefault(
-                                    aa.getExam() != null ? aa.getExam().getId() : null, Map.of());
-                            return calculateAttemptScore(aa, keys);
-                          })
-                      .average()
-                      .orElse(0.0);
-            }
           }
 
           return systemManagementMapper.toLearnerSummary(user, userProgress, avgScore, numExams);
@@ -209,13 +176,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           SystemErrorCode.INVALID_PARAMETER, "Start date must be before end date");
     }
 
-    Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
-
     String encodedPassword = passwordEncoder.encode(request.password());
 
     userRepository.save(
         User.builder()
-            .primaryCourse(primaryCourse)
             .name(request.name())
             .gmail(request.gmail())
             .tier(UserTier.VIP)
@@ -249,10 +213,6 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           SystemErrorCode.INVALID_PARAMETER, "Start date must be before end date");
     }
 
-    if (request.primaryCourseId() != null) {
-      Course primaryCourse = courseRepository.requireCourse(request.primaryCourseId());
-      user.setPrimaryCourse(primaryCourse);
-    }
     if (request.name() != null) {
       user.setName(request.name());
     }
@@ -389,6 +349,24 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           }
           return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
         });
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserCountResponse getUserCount(UserRole role, UserTier tier, UserStatus status) {
+    int count;
+    if (status != null && role != null) {
+      count = userRepository.countByRoleAndStatus(role, status);
+    } else if (status != null) {
+      count = userRepository.countByStatus(status);
+    } else if (role != null && tier != null) {
+      count = userRepository.countByRoleAndTier(role, tier);
+    } else if (role != null) {
+      count = userRepository.countByRole(role);
+    } else {
+      count = (int) userRepository.count();
+    }
+    return new UserCountResponse(count);
   }
 
   @Override

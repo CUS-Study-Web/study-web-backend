@@ -54,6 +54,7 @@ import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.enums.UserRole;
@@ -111,7 +112,6 @@ class SystemManagementControllerTest {
     return new CreateVipAccountRequest(
         "Trần Thị B",
         "vip.learner@studyweb.edu",
-        COURSE_ID,
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
         "Kích hoạt gói VIP 1 năm qua admin",
@@ -122,7 +122,6 @@ class SystemManagementControllerTest {
     return new UpdateAccountRequest(
         "Trần Thị B",
         "vip.learner@studyweb.edu",
-        COURSE_ID,
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
         "Ghi chú cập nhật",
@@ -382,7 +381,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Trần Thị B",
               "vip.learner@studyweb.edu",
-              COURSE_ID,
               start,
               end,
               "Ghi chú kích hoạt",
@@ -406,7 +404,6 @@ class SystemManagementControllerTest {
       CreateVipAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
       assertThat(bound.startDate()).isEqualTo(start);
       assertThat(bound.endDate()).isEqualTo(end);
       assertThat(bound.note()).isEqualTo("Ghi chú kích hoạt");
@@ -436,7 +433,6 @@ class SystemManagementControllerTest {
       UpdateAccountRequest bound = captor.getValue();
       assertThat(bound.name()).isEqualTo("Trần Thị B");
       assertThat(bound.gmail()).isEqualTo("vip.learner@studyweb.edu");
-      assertThat(bound.primaryCourseId()).isEqualTo(COURSE_ID);
       assertThat(bound.tier()).isEqualTo(UserTier.VIP);
       assertThat(bound.note()).isEqualTo("Ghi chú cập nhật");
     }
@@ -556,7 +552,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -590,7 +585,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               invalidGmail,
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -610,7 +604,6 @@ class SystemManagementControllerTest {
           new UpdateAccountRequest(
               "Nguyễn Văn A",
               invalidGmail,
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               LocalDate.of(2027, 8, 18),
               null,
@@ -638,7 +631,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               null,
               LocalDate.of(2027, 8, 18),
               null,
@@ -664,7 +656,6 @@ class SystemManagementControllerTest {
           new CreateVipAccountRequest(
               "Nguyễn Văn A",
               "valid@studyweb.edu",
-              COURSE_ID,
               LocalDate.of(2026, 8, 18),
               null,
               null,
@@ -1437,6 +1428,87 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.message").value("VIP request disapproved successfully."));
 
       verify(systemManagementService).disapproveVipRequest(VIP_REQUEST_ID_1);
+    }
+  }
+
+  // =========================================================================
+  // 9. USER COUNT ENDPOINTS TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("9. User Count Endpoints Tests")
+  @WithMockUser(roles = "ADMIN")
+  class UserCountEndpointsTests {
+
+    @Test
+    @DisplayName("GET /learners/counts/normal -> returns normal learners count 200 OK")
+    void getNormalLearnersCount_returns200() throws Exception {
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.NORMAL, null))
+          .thenReturn(new UserCountResponse(15));
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/normal")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Normal learners count fetched successfully!"))
+          .andExpect(jsonPath("$.data.count").value(15));
+
+      verify(systemManagementService).getUserCount(UserRole.LEARNER, UserTier.NORMAL, null);
+    }
+
+    @Test
+    @DisplayName("GET /learners/counts/vip -> returns VIP learners count 200 OK")
+    void getVipLearnersCount_returns200() throws Exception {
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.VIP, null))
+          .thenReturn(new UserCountResponse(5));
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/vip")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("VIP learners count fetched successfully!"))
+          .andExpect(jsonPath("$.data.count").value(5));
+
+      verify(systemManagementService).getUserCount(UserRole.LEARNER, UserTier.VIP, null);
+    }
+
+    @Test
+    @DisplayName("GET /assistants/counts -> returns assistants count 200 OK")
+    void getAssistantsCount_returns200() throws Exception {
+      when(systemManagementService.getUserCount(UserRole.ASSISTANT, null, null))
+          .thenReturn(new UserCountResponse(3));
+
+      mockMvc
+          .perform(
+              get("/api/system-management/assistants/counts")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Assistants count fetched successfully!"))
+          .andExpect(jsonPath("$.data.count").value(3));
+
+      verify(systemManagementService).getUserCount(UserRole.ASSISTANT, null, null);
+    }
+
+    @Test
+    @DisplayName("GET /learners/counts/locked -> returns locked accounts count 200 OK")
+    void getLockedAccountsCount_returns200() throws Exception {
+      when(systemManagementService.getUserCount(null, null, UserStatus.INACTIVE))
+          .thenReturn(new UserCountResponse(2));
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/locked")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Locked accounts count fetched successfully!"))
+          .andExpect(jsonPath("$.data.count").value(2));
+
+      verify(systemManagementService).getUserCount(null, null, UserStatus.INACTIVE);
     }
   }
 }

@@ -8,13 +8,16 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 
 public interface SystemManagementService {
+  UserCountResponse getUserCount(UserRole role, UserTier tier, UserStatus status);
   Page<LearnerSummaryResponse> listLearners(String search, UserStatus status, Pageable pageable);
 
   void switchUserStatus(UUID id, UserStatus status, UserRole role);

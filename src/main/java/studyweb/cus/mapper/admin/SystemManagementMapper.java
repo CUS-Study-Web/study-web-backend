@@ -26,7 +26,7 @@ public interface SystemManagementMapper {
   @Mapping(target = "name", source = "user.name")
   @Mapping(target = "status", source = "user.status")
   @Mapping(target = "tier", source = "user.tier")
-  @Mapping(target = "primaryCourse", expression = "java(resolvePrimaryCourse(user, progress))")
+  @Mapping(target = "primaryCourse", expression = "java(resolvePrimaryCourse(progress))")
   @Mapping(target = "progress", source = "progress.progressPercent", defaultValue = "0.0")
   @Mapping(target = "averageScore", source = "averageScore", qualifiedByName = "roundGpa")
   @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
@@ -38,12 +38,7 @@ public interface SystemManagementMapper {
   LearnerSummaryResponse toLearnerSummary(
       User user, UserCourseProgress progress, Double averageScore, int numExams);
 
-  default String resolvePrimaryCourse(User user, UserCourseProgress progress) {
-    if (user != null
-        && user.getPrimaryCourse() != null
-        && user.getPrimaryCourse().getTitle() != null) {
-      return user.getPrimaryCourse().getTitle();
-    }
+  default String resolvePrimaryCourse(UserCourseProgress progress) {
     if (progress != null
         && progress.getCourse() != null
         && progress.getCourse().getTitle() != null) {
