@@ -49,6 +49,7 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
@@ -1576,6 +1577,78 @@ class SystemManagementServiceTest {
           .andExpect(jsonPath("$.errorCode").value(AdminErrorCode.USER_LOCKED.code()));
 
       verify(vipRequestRepository, never()).disapproveVip(any());
+    }
+  }
+
+  // =========================================================================
+  // 13. USER COUNT - WEB MVC SERVICE TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("13. getUserCount - WebMvc Service Tests")
+  class UserCountWebMvcServiceTests {
+
+    @Test
+    @DisplayName("Counts normal learners via role LEARNER and tier NORMAL")
+    void getUserCount_normalLearners_returnsCount() throws Exception {
+      when(userRepository.countByRoleAndTier(UserRole.LEARNER, UserTier.NORMAL)).thenReturn(20);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/normal")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.count").value(20));
+
+      verify(userRepository).countByRoleAndTier(UserRole.LEARNER, UserTier.NORMAL);
+    }
+
+    @Test
+    @DisplayName("Counts VIP learners via role LEARNER and tier VIP")
+    void getUserCount_vipLearners_returnsCount() throws Exception {
+      when(userRepository.countByRoleAndTier(UserRole.LEARNER, UserTier.VIP)).thenReturn(8);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/vip")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.count").value(8));
+
+      verify(userRepository).countByRoleAndTier(UserRole.LEARNER, UserTier.VIP);
+    }
+
+    @Test
+    @DisplayName("Counts assistants via role ASSISTANT")
+    void getUserCount_assistants_returnsCount() throws Exception {
+      when(userRepository.countByRole(UserRole.ASSISTANT)).thenReturn(4);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/assistants/counts")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.count").value(4));
+
+      verify(userRepository).countByRole(UserRole.ASSISTANT);
+    }
+
+    @Test
+    @DisplayName("Counts locked accounts via status INACTIVE")
+    void getUserCount_lockedAccounts_returnsCount() throws Exception {
+      when(userRepository.countByStatus(UserStatus.INACTIVE)).thenReturn(3);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/learners/counts/locked")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.data.count").value(3));
+
+      verify(userRepository).countByStatus(UserStatus.INACTIVE);
     }
   }
 }
