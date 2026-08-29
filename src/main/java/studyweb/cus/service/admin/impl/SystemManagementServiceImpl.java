@@ -21,6 +21,7 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.content.PricingPageContent;
@@ -348,6 +349,24 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           }
           return systemManagementMapper.toVipRequestResponse(vr, mainCourse);
         });
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserCountResponse getUserCount(UserRole role, UserTier tier, UserStatus status) {
+    int count;
+    if (status != null && role != null) {
+      count = userRepository.countByRoleAndStatus(role, status);
+    } else if (status != null) {
+      count = userRepository.countByStatus(status);
+    } else if (role != null && tier != null) {
+      count = userRepository.countByRoleAndTier(role, tier);
+    } else if (role != null) {
+      count = userRepository.countByRole(role);
+    } else {
+      count = (int) userRepository.count();
+    }
+    return new UserCountResponse(count);
   }
 
   @Override

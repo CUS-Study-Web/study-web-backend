@@ -27,10 +27,12 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.service.admin.SystemManagementService;
 
@@ -123,6 +125,39 @@ public class SystemManagementController extends AbstractBaseController {
     return success("Update learner account succesfully!");
   }
 
+  @GetMapping("/learners/counts/normal")
+  @Operation(
+      summary = "Get Normal Learners Count",
+      description = "Get count of normal learner accounts")
+  public ResponseEntity<SingleResponse<UserCountResponse>> getNormalLearnersCount() {
+    log.info("[GET /api/system-management/learners/counts/normal]");
+    return successSingle(
+        systemManagementService.getUserCount(UserRole.LEARNER, UserTier.NORMAL, null),
+        "Normal learners count fetched successfully!");
+  }
+
+  @GetMapping("/learners/counts/vip")
+  @Operation(
+      summary = "Get VIP Learners Count",
+      description = "Get count of VIP learner accounts")
+  public ResponseEntity<SingleResponse<UserCountResponse>> getVipLearnersCount() {
+    log.info("[GET /api/system-management/learners/counts/vip]");
+    return successSingle(
+        systemManagementService.getUserCount(UserRole.LEARNER, UserTier.VIP, null),
+        "VIP learners count fetched successfully!");
+  }
+
+  @GetMapping("/learners/counts/locked")
+  @Operation(
+      summary = "Get Locked Accounts Count",
+      description = "Get count of locked accounts (status INACTIVE)")
+  public ResponseEntity<SingleResponse<UserCountResponse>> getLockedAccountsCount() {
+    log.info("[GET /api/system-management/learners/counts/locked]");
+    return successSingle(
+        systemManagementService.getUserCount(null, null, UserStatus.INACTIVE),
+        "Locked accounts count fetched successfully!");
+  }
+
   // =========================================================================
   // Assistant Management Endpoints
   // =========================================================================
@@ -182,6 +217,17 @@ public class SystemManagementController extends AbstractBaseController {
     log.info("[PATCH /api/system-management/assistants/{id}] Ban assistant id: {}", id);
     systemManagementService.switchUserStatus(id, UserStatus.BANNED, UserRole.ASSISTANT);
     return success("Ban assistant successfully.");
+  }
+
+  @GetMapping("/assistants/counts")
+  @Operation(
+      summary = "Get Assistants Count",
+      description = "Get count of assistant accounts")
+  public ResponseEntity<SingleResponse<UserCountResponse>> getAssistantsCount() {
+    log.info("[GET /api/system-management/assistants/counts]");
+    return successSingle(
+        systemManagementService.getUserCount(UserRole.ASSISTANT, null, null),
+        "Assistants count fetched successfully!");
   }
 
   // =========================================================================

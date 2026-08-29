@@ -11,8 +11,17 @@ import org.springframework.data.repository.query.Param;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+  int countByRoleAndTier(UserRole role, UserTier tier);
+
+  int countByRole(UserRole role);
+
+  int countByStatus(UserStatus status);
+
+  int countByRoleAndStatus(UserRole role, UserStatus status);
 
   boolean existsByGmail(String gmail);
 
