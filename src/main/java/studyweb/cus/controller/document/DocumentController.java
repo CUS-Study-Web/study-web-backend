@@ -28,6 +28,7 @@ import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
@@ -52,6 +53,24 @@ public class DocumentController extends AbstractBaseController {
     log.info("[POST /api/documents] Creating document '{}'", request.title());
     return successSingle(
         documentService.uploadDocument(request), "Document uploaded successfully!");
+  }
+
+  @GetMapping("/guest")
+  @Operation(
+      summary = "List Documents for Guest",
+      description = "List documents with restricted fields for guests without authentication")
+  public ResponseEntity<PageResponse<DocumentGuestResponse>> listDocumentsForGuest(
+      @RequestParam(required = false) DocType docType,
+      @RequestParam(required = false) UUID badgeId,
+      @RequestParam(required = false) String search,
+      @PageableDefault(size = 10) Pageable pageable) {
+    log.info(
+        "[GET /api/documents/guest] Listing documents for guest page {}, size {}",
+        pageable.getPageNumber(),
+        pageable.getPageSize());
+    return paging(
+        documentService.listDocumentsForGuest(docType, badgeId, search, pageable),
+        "Documents fetched successfully!");
   }
 
   @GetMapping("/{id}")

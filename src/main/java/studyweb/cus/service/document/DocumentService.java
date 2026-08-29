@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
@@ -18,6 +19,9 @@ public interface DocumentService {
 
   Page<DocumentResponse> listDocuments(
       DocType docType, AccessTier accessTier, UUID badgeId, String search, Pageable pageable);
+
+  Page<DocumentGuestResponse> listDocumentsForGuest(
+      DocType docType, UUID badgeId, String search, Pageable pageable);
 
   DocumentDownloadResponse downloadDocument(UUID id, String userEmail);
 

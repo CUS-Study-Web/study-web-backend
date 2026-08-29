@@ -30,6 +30,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import studyweb.cus.dto.request.document.CreateDocumentRequest;
 import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
+import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.badge.Badge;
@@ -458,6 +459,26 @@ class DocumentServiceTest {
 
       assertThat(result.getContent()).hasSize(1);
       assertThat(result.getContent().get(0).title()).isEqualTo(publicDocument.getTitle());
+    }
+
+    @Test
+    @DisplayName("Should list documents for guest with restricted fields and pagination")
+    void shouldListDocumentsForGuest() {
+      Pageable pageable = PageRequest.of(0, 10);
+      Page<Document> page = new PageImpl<>(List.of(publicDocument), pageable, 1);
+      when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+
+      Page<DocumentGuestResponse> result =
+          documentService.listDocumentsForGuest(null, null, null, pageable);
+
+      assertThat(result.getContent()).hasSize(1);
+      DocumentGuestResponse guestDoc = result.getContent().get(0);
+      assertThat(guestDoc.id()).isEqualTo(publicDocument.getId());
+      assertThat(guestDoc.title()).isEqualTo(publicDocument.getTitle());
+      assertThat(guestDoc.description()).isEqualTo(publicDocument.getDescription());
+      assertThat(guestDoc.numPages()).isEqualTo(publicDocument.getNumPages());
+      assertThat(guestDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
+      assertThat(guestDoc.badges()).isNotNull();
     }
 
     @Test
