@@ -17,3 +17,12 @@ spring:
     out-of-order: true
     connect-retries: 30
     connect-retries-interval: 5
+
+s3:
+  endpoint: ${S3_URL}
+  access-key: ${S3_ACCESS_KEY_STAGING}
+  secret-key: ${S3_SECRET_KEY_STAGING}
+  bucket: ${S3_BUCKET_STAGING}
+  region: ${S3_REGION:ap-southeast-1}
+  max-size-document-upload: ${MAX_SIZE_DOCUMENT_UPLOAD:104857600}
+  max-size-avatar-upload: ${MAX_SIZE_AVATAR_UPLOAD:20971520}
