@@ -31,15 +31,6 @@ app:
     max-attempts: ${OTP_MAX_ATTEMPTS}
     cooldown-seconds: ${OTP_COOLDOWN_SECONDS}
 
-s3:
-  endpoint: ${S3_URL:}
-  access-key: ${S3_ACCESS_KEY}
-  secret-key: ${S3_SECRET_KEY}
-  bucket: ${S3_BUCKET}
-  region: ${S3_REGION:ap-southeast-1}
-  max-size-document-upload: ${MAX_SIZE_DOCUMENT_UPLOAD:104857600}
-  max-size-avatar-upload: ${MAX_SIZE_AVATAR_UPLOAD:20971520}
-
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 thread:
