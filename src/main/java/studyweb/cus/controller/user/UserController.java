@@ -16,6 +16,7 @@ import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
@@ -54,5 +55,17 @@ public class UserController extends AbstractBaseController {
     log.info("[POST /api/user/change-password] Changing password for email: {}", email);
     userService.changePassword(email, request);
     return success("Password changed successfully!");
+  }
+
+  @PostMapping("/vip-subscription")
+  @Operation(
+      summary = "Subscribe to VIP",
+      description = "Submit a VIP status subscription request for the authenticated learner")
+  public ResponseEntity<SuccessResponse> subscribeVip(
+      @AuthenticationPrincipal String email,
+      @RequestBody(required = false) VipSubscriptionRequest request) {
+    log.info("[POST /api/user/vip-subscription] Submitting VIP subscription for email: {}", email);
+    userService.subscribeVip(email, request);
+    return success("VIP subscription request submitted successfully!");
   }
 }
