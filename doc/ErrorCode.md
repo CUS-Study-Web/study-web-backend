@@ -39,6 +39,11 @@
 | USER_NOT_FOUND | USER_001 | User not found |
 | USER_NOT_AUTHENTICATED | USER_002 | User is not authenticated |
 | INVALID_USER_INPUT | USER_003 | User input wrong format request |
+| ALREADY_VIP | USER_004 | User is already a VIP member |
+| VIP_REQUEST_PENDING | USER_005 | A VIP request is already pending approval |
+| ROLE_NOT_ALLOWED | USER_006 | Only learners can subscribe for VIP status |
+| USER_LOCKED | USER_007 | User is locked |
+| USER_BANNED | USER_008 | User is banned |
 
 ## Course (`CourseErrorCode`)
 
