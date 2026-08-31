@@ -1,10 +1,12 @@
 package studyweb.cus.repository.user;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,16 @@ import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+  @Query("SELECT u.gmail FROM User u WHERE u.tier = :tier AND u.vipEndDate < :date")
+  List<String> findGmailsByTierAndVipEndDateBefore(
+      @Param("tier") UserTier tier, @Param("date") LocalDate date);
+
+  @Modifying
+  @Query(
+      "UPDATE User u SET u.tier = studyweb.cus.enums.UserTier.NORMAL, u.updatedAt = CURRENT_TIMESTAMP "
+          + "WHERE u.tier = studyweb.cus.enums.UserTier.VIP AND u.vipEndDate < :today")
+  int downgradeExpiredVipUsers(@Param("today") LocalDate today);
 
   int countByRoleAndTier(UserRole role, UserTier tier);
 
