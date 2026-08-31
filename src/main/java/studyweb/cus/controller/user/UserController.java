@@ -65,7 +65,19 @@ public class UserController extends AbstractBaseController {
       @AuthenticationPrincipal String email,
       @RequestBody(required = false) VipSubscriptionRequest request) {
     log.info("[POST /api/user/vip-subscription] Submitting VIP subscription for email: {}", email);
-    userService.subscribeVip(email, request);
+    userService.createVipRequest(email, request, false);
     return success("VIP subscription request submitted successfully!");
+  }
+
+  @PostMapping("/vip-renewal")
+  @Operation(
+      summary = "Renew VIP Subscription",
+      description = "Submit a VIP status renewal request for the authenticated learner")
+  public ResponseEntity<SuccessResponse> renewVip(
+      @AuthenticationPrincipal String email,
+      @RequestBody(required = false) VipSubscriptionRequest request) {
+    log.info("[POST /api/user/vip-renewal] Submitting VIP renewal for email: {}", email);
+    userService.createVipRequest(email, request, true);
+    return success("VIP renewal request submitted successfully!");
   }
 }

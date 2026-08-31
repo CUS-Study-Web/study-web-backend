@@ -89,7 +89,7 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional
-  public void subscribeVip(String email, VipSubscriptionRequest request) {
+  public void createVipRequest(String email, VipSubscriptionRequest request, boolean isRenewal) {
     User user =
         userRepository
             .findByGmail(email)
@@ -104,7 +104,10 @@ public class UserServiceImpl implements UserService {
     if (user.getRole() != UserRole.LEARNER) {
       throw new UserException(UserErrorCode.ROLE_NOT_ALLOWED);
     }
-    if (user.getTier() == UserTier.VIP) {
+    if (isRenewal && user.getTier() != UserTier.VIP) {
+      throw new UserException(UserErrorCode.NOT_VIP);
+    }
+    if (!isRenewal && user.getTier() == UserTier.VIP) {
       throw new UserException(UserErrorCode.ALREADY_VIP);
     }
     if (vipRequestRepository.existsByUserAndStatus(user, VipRequestStatus.WAITING)) {

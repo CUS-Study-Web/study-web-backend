@@ -14,5 +14,5 @@ public interface UserService {
 
   void changePassword(String email, ChangePasswordRequest request);
 
-  void subscribeVip(String email, VipSubscriptionRequest request);
+  void createVipRequest(String email, VipSubscriptionRequest request, boolean isRenewal);
 }
