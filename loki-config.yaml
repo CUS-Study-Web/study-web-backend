@@ -17,7 +17,7 @@ storage_config:
   object_store:
     s3:
       bucket_name: "${S3_BUCKET}"
-      endpoint: "${MINIO_HOST}"
+      endpoint: "${STORAGE_HOST_ENDPOINT}"
       region: "${S3_REGION}"
       access_key_id: "${S3_ACCESS_KEY}"
       secret_access_key: "${S3_SECRET_KEY}"
@@ -36,17 +36,13 @@ schema_config:
 query_range:
   results_cache:
     cache:
-      embedded_cache:
-        enabled: ${LOKI_QUERY_CACHE_ENABLED}
-        max_size_mb: ${LOKI_QUERY_CACHE_MAX_SIZE_MB}
-
-limits_config:
-  allow_structured_metadata: ${LOKI_ALLOW_STRUCTURED_METADATA}
-  volume_enabled: ${LOKI_VOLUME_ENABLED}
-  metric_aggregation_enabled: ${LOKI_METRIC_AGGREGATION_ENABLED}
-  retention_period: "${LOKI_RETENTION_PERIOD}"
+      redis:
+        endpoint: studyweb-redis:6379
+        expiration: "${LOKI_REDIS_EXPIRATION:-1h}"
 
 compactor:
   working_directory: "${LOKI_COMPACTOR_WORKING_DIR}"
-  retention_enabled: ${LOKI_COMPACTOR_RETENTION_ENABLED}
-  delete_request_store: "${LOKI_OBJECT_STORE}"
+
+ingester:
+  wal:
+    flush_on_shutdown: ${LOKI_INGESTER_WAL_FLUSH_ON_SHUTDOWN}
