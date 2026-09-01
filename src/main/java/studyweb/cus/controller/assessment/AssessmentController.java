@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SingleResponse;
@@ -34,6 +35,7 @@ import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentStartResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSubmitResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.assessment.LearnerAssessmentService;
 
@@ -47,6 +49,9 @@ public class AssessmentController extends AbstractBaseController {
   private final AssessmentService assessmentService;
   private final LearnerAssessmentService learnerAssessmentService;
 
+  @LogActivity(
+      action = ActionType.CREATE_ASSESSMENT,
+      description = "Assistant creates an assessment")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
@@ -103,6 +108,9 @@ public class AssessmentController extends AbstractBaseController {
         "Homework fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.UPDATE_ASSESSMENT,
+      description = "Assistant updates an assessment")
   @PatchMapping(value = "/{assessmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Update Assessment", description = "Update an existing homework or exam")
@@ -116,6 +124,9 @@ public class AssessmentController extends AbstractBaseController {
         "Assessment updated successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.DELETE_ASSESSMENT,
+      description = "Assistant deletes an assessment")
   @DeleteMapping("/{assessmentId}")
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Delete Assessment", description = "Soft-delete an assessment")
@@ -144,6 +155,7 @@ public class AssessmentController extends AbstractBaseController {
         "Assessment ready!");
   }
 
+  @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "User submits an assessment")
   @PostMapping("/{assessmentId}/submit")
   @PreAuthorize("hasRole('LEARNER')")
   @Operation(

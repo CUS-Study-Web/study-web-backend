@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.PagedResponse;
@@ -34,6 +35,7 @@ import studyweb.cus.dto.response.course.CourseDetailResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.service.course.CourseService;
@@ -189,6 +191,7 @@ public class CourseController extends AbstractBaseController {
         "Lessons fetched successfully!");
   }
 
+  @LogActivity(action = ActionType.CREATE_LESSON, description = "Assistant creates a lesson")
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -207,6 +210,7 @@ public class CourseController extends AbstractBaseController {
         courseService.createLesson(id, subjectId, request), "Lesson created successfully!");
   }
 
+  @LogActivity(action = ActionType.UPDATE_LESSON, description = "Assistant updates a lesson")
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -224,6 +228,7 @@ public class CourseController extends AbstractBaseController {
         "Lesson updated successfully!");
   }
 
+  @LogActivity(action = ActionType.DELETE_LESSON, description = "Assistant delete a lesson")
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(

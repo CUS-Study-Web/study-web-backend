@@ -12,12 +12,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.service.user.UserService;
@@ -57,6 +59,7 @@ public class UserController extends AbstractBaseController {
     return success("Password changed successfully!");
   }
 
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "User sends a VIP request")
   @PostMapping("/vip-subscription")
   @Operation(
       summary = "Subscribe to VIP",
@@ -69,6 +72,7 @@ public class UserController extends AbstractBaseController {
     return success("VIP subscription request submitted successfully!");
   }
 
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "User sends a VIP renewal request")
   @PostMapping("/vip-renewal")
   @Operation(
       summary = "Renew VIP Subscription",
