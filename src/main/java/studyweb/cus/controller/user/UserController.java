@@ -59,7 +59,7 @@ public class UserController extends AbstractBaseController {
     return success("Password changed successfully!");
   }
 
-  @LogActivity(action = ActionType.REQUEST_VIP, description = "User sends a VIP request")
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "Người dùng gửi yêu cầu VIP")
   @PostMapping("/vip-subscription")
   @Operation(
       summary = "Subscribe to VIP",
@@ -72,7 +72,7 @@ public class UserController extends AbstractBaseController {
     return success("VIP subscription request submitted successfully!");
   }
 
-  @LogActivity(action = ActionType.REQUEST_VIP, description = "User sends a VIP renewal request")
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "Người dùng gửi yêu cầu gia hạn VIP")
   @PostMapping("/vip-renewal")
   @Operation(
       summary = "Renew VIP Subscription",
