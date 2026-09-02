@@ -1,13 +1,16 @@
 package studyweb.cus.controller.admin;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +29,9 @@ import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
@@ -137,9 +142,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/learners/counts/vip")
-  @Operation(
-      summary = "Get VIP Learners Count",
-      description = "Get count of VIP learner accounts")
+  @Operation(summary = "Get VIP Learners Count", description = "Get count of VIP learner accounts")
   public ResponseEntity<SingleResponse<UserCountResponse>> getVipLearnersCount() {
     log.info("[GET /api/system-management/learners/counts/vip]");
     return successSingle(
@@ -220,9 +223,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/assistants/counts")
-  @Operation(
-      summary = "Get Assistants Count",
-      description = "Get count of assistant accounts")
+  @Operation(summary = "Get Assistants Count", description = "Get count of assistant accounts")
   public ResponseEntity<SingleResponse<UserCountResponse>> getAssistantsCount() {
     log.info("[GET /api/system-management/assistants/counts]");
     return successSingle(
@@ -285,5 +286,48 @@ public class SystemManagementController extends AbstractBaseController {
         id);
     systemManagementService.disapproveVipRequest(id);
     return success("VIP request disapproved successfully.");
+  }
+
+  // =========================================================================
+  // System Statistics Endpoints
+  // =========================================================================
+
+  @GetMapping("/stats/daily")
+  @Operation(
+      summary = "Get Daily System Statistics",
+      description =
+          "Retrieve daily statistics (logins access, registrations, VIP activations) for a date window ending on the specified date. Default window is 7 days.")
+  public ResponseEntity<SingleResponse<DailyStatsResponse>> getDailyStats(
+      @Parameter(
+              description =
+                  "End date of the query window (ISO format YYYY-MM-DD). Defaults to current date if omitted.",
+              example = "2026-07-23")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate date,
+      @Parameter(
+              description = "Number of days in the window ending on the given date. Defaults to 7.",
+              example = "7")
+          @RequestParam(required = false, defaultValue = "7")
+          Integer days) {
+    log.info("[GET /api/system-management/stats/daily] date='{}', days={}", date, days);
+    return successSingle(
+        systemManagementService.getDailyStats(date, days), "Daily stats fetched successfully!");
+  }
+
+  @GetMapping("/stats/monthly")
+  @Operation(
+      summary = "Get Monthly System Statistics",
+      description =
+          "Retrieve monthly breakdown statistics (logins/web access, registrations, VIP activations) across all 12 months (T1 to T12) for a given year.")
+  public ResponseEntity<SingleResponse<MonthlyStatsResponse>> getMonthlyStats(
+      @Parameter(
+              description = "Target year. Defaults to current year if omitted.",
+              example = "2026")
+          @RequestParam(required = false)
+          Integer year) {
+    log.info("[GET /api/system-management/stats/monthly] year='{}'", year);
+    return successSingle(
+        systemManagementService.getMonthlyStats(year), "Monthly stats fetched successfully!");
   }
 }
