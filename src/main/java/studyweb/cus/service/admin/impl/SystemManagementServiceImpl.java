@@ -2,15 +2,22 @@ package studyweb.cus.service.admin.impl;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +27,11 @@ import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatItemResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatItemResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
@@ -32,6 +43,7 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -50,6 +62,7 @@ import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.service.admin.SystemManagementService;
+import studyweb.cus.service.log.LokiQueryService;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +78,10 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final PricingPageContentRepository pricingPageContentRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
+  private final LokiQueryService lokiQueryService;
+
+  @Qualifier("lokiQueryExecutor")
+  private final Executor lokiQueryExecutor;
 
   @Override
   @Transactional(readOnly = true)
@@ -482,5 +499,115 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       return startDate.plusDays(1);
     }
     return startDate.plusMonths(1);
+  }
+
+  @Override
+  public DailyStatsResponse getDailyStats(LocalDate endDate, Integer days) {
+    LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
+    int windowDays = (days != null && days > 0) ? Math.min(days, 365) : 7;
+    LocalDate startDate = effectiveEndDate.minusDays(windowDays - 1);
+
+    List<CompletableFuture<DailyStatItemResponse>> futures = new ArrayList<>(windowDays);
+    for (int i = 0; i < windowDays; i++) {
+      LocalDate currentDate = startDate.plusDays(i);
+      long startNano =
+          currentDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000_000L;
+      long endNano =
+          currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+                  * 1_000_000L
+              - 1;
+
+      CompletableFuture<Integer> loginFuture =
+          CompletableFuture.supplyAsync(
+              () -> lokiQueryService.countEntries(ActionType.LOGIN.name(), startNano, endNano),
+              lokiQueryExecutor);
+      CompletableFuture<Integer> registerFuture =
+          CompletableFuture.supplyAsync(
+              () -> lokiQueryService.countEntries(ActionType.REGISTER.name(), startNano, endNano),
+              lokiQueryExecutor);
+      CompletableFuture<Integer> vipFuture =
+          CompletableFuture.supplyAsync(
+              () ->
+                  lokiQueryService.countEntries(ActionType.REQUEST_VIP.name(), startNano, endNano),
+              lokiQueryExecutor);
+
+      futures.add(
+          CompletableFuture.allOf(loginFuture, registerFuture, vipFuture)
+              .thenApply(
+                  v ->
+                      new DailyStatItemResponse(
+                          currentDate,
+                          loginFuture.join(),
+                          registerFuture.join(),
+                          vipFuture.join())));
+    }
+
+    try {
+      List<DailyStatItemResponse> items = futures.stream().map(CompletableFuture::join).toList();
+      return new DailyStatsResponse(startDate, effectiveEndDate, windowDays, items);
+    } catch (CompletionException e) {
+      if (e.getCause() instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw new SystemException(SystemErrorCode.INTERNAL_ERROR, e.getMessage());
+    }
+  }
+
+  @Override
+  public MonthlyStatsResponse getMonthlyStats(Integer year) {
+    int targetYear =
+        (year != null && year >= 1970 && year <= 2100) ? year : LocalDate.now().getYear();
+
+    List<CompletableFuture<MonthlyStatItemResponse>> futures = new ArrayList<>(12);
+    for (int month = 1; month <= 12; month++) {
+      final int m = month;
+      YearMonth yearMonth = YearMonth.of(targetYear, m);
+      long startNano =
+          yearMonth.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000_000L;
+      long endNano =
+          yearMonth
+                      .atEndOfMonth()
+                      .plusDays(1)
+                      .atStartOfDay(ZoneOffset.UTC)
+                      .toInstant()
+                      .toEpochMilli()
+                  * 1_000_000L
+              - 1;
+
+      CompletableFuture<Integer> loginFuture =
+          CompletableFuture.supplyAsync(
+              () -> lokiQueryService.countEntries(ActionType.LOGIN.name(), startNano, endNano),
+              lokiQueryExecutor);
+      CompletableFuture<Integer> registerFuture =
+          CompletableFuture.supplyAsync(
+              () -> lokiQueryService.countEntries(ActionType.REGISTER.name(), startNano, endNano),
+              lokiQueryExecutor);
+      CompletableFuture<Integer> vipFuture =
+          CompletableFuture.supplyAsync(
+              () ->
+                  lokiQueryService.countEntries(ActionType.REQUEST_VIP.name(), startNano, endNano),
+              lokiQueryExecutor);
+
+      futures.add(
+          CompletableFuture.allOf(loginFuture, registerFuture, vipFuture)
+              .thenApply(
+                  v ->
+                      new MonthlyStatItemResponse(
+                          m,
+                          targetYear,
+                          loginFuture.join(),
+                          registerFuture.join(),
+                          vipFuture.join())));
+    }
+
+    try {
+      List<MonthlyStatItemResponse> items = futures.stream().map(CompletableFuture::join).toList();
+      return new MonthlyStatsResponse(targetYear, items);
+    } catch (CompletionException e) {
+      if (e.getCause() instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw new SystemException(SystemErrorCode.INTERNAL_ERROR, e.getMessage());
+    }
   }
 }

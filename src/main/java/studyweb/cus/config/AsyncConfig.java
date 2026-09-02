@@ -20,6 +20,8 @@ public class AsyncConfig implements AsyncConfigurer {
 
   private String UpdateProgressThread = "CUS-Progress";
 
+  private String LokiQueryThread = "Loki-Query";
+
   @Bean(name = "uploadExecutor")
   public Executor uploadExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -27,6 +29,17 @@ public class AsyncConfig implements AsyncConfigurer {
     executor.setMaxPoolSize(maxPoolSize);
     executor.setQueueCapacity(queueCapacity);
     executor.setThreadNamePrefix(UpdateProgressThread);
+    executor.initialize();
+    return executor;
+  }
+
+  @Bean(name = "lokiQueryExecutor")
+  public Executor lokiQueryExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(corePoolSize);
+    executor.setMaxPoolSize(maxPoolSize);
+    executor.setQueueCapacity(queueCapacity);
+    executor.setThreadNamePrefix(LokiQueryThread);
     executor.initialize();
     return executor;
   }
