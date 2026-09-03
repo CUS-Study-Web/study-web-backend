@@ -46,3 +46,6 @@ compactor:
 ingester:
   wal:
     flush_on_shutdown: ${LOKI_INGESTER_WAL_FLUSH_ON_SHUTDOWN}
+
+limits_config:
+  max_query_length: ${LOKI_MAX_QUERY_LENGTH}
