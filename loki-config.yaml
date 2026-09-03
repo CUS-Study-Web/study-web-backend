@@ -16,12 +16,12 @@ storage_config:
   use_thanos_objstore: true
   object_store:
     s3:
-      bucket_name: "${S3_BUCKET}"
-      endpoint: "${STORAGE_HOST_ENDPOINT}"
-      region: "${S3_REGION}"
-      access_key_id: "${S3_ACCESS_KEY}"
-      secret_access_key: "${S3_SECRET_KEY}"
-      insecure: ${S3_INSECURE}
+      bucket_name: "${LOKI_S3_BUCKET}"
+      endpoint: "${LOKI_STORAGE_HOST_ENDPOINT}"
+      region: "${LOKI_S3_REGION}"
+      access_key_id: "${LOKI_S3_ACCESS_KEY}"
+      secret_access_key: "${LOKI_S3_SECRET_KEY}"
+      insecure: ${LOKI_S3_INSECURE}
 
 schema_config:
   configs:
