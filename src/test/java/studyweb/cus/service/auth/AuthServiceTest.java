@@ -31,8 +31,11 @@ import studyweb.cus.entity.redis.PasswordResetOtp;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.Gender;
 import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.auth.PasswordResetTokenRepository;
 import studyweb.cus.repository.auth.RefreshTokenRepository;
@@ -150,6 +153,36 @@ class AuthServiceTest {
   }
 
   @Test
+  void login_inactiveUserThrowsUserLocked() {
+    User user = user();
+    user.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("password1", user.getPassword())).thenReturn(true);
+
+    assertThatThrownBy(() -> authService.login(new LoginRequest(GMAIL, "password1")))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+  }
+
+  @Test
+  void login_bannedUserThrowsUserBanned() {
+    User user = user();
+    user.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
+    when(passwordEncoder.matches("password1", user.getPassword())).thenReturn(true);
+
+    assertThatThrownBy(() -> authService.login(new LoginRequest(GMAIL, "password1")))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+  }
+
+  @Test
   void login_successReturnsTokens() {
     User user = user();
     when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
@@ -163,6 +196,40 @@ class AuthServiceTest {
     assertThat(response.accessToken()).isEqualTo("access-token");
     assertThat(response.refreshToken()).isEqualTo("refresh-token");
     assertThat(response.user().gmail()).isEqualTo(GMAIL);
+  }
+
+  @Test
+  void refreshToken_inactiveUserThrowsUserLocked() {
+    User user = user();
+    user.setStatus(UserStatus.INACTIVE);
+    when(jwtUtils.validateToken(REFRESH_TOKEN)).thenReturn(true);
+    when(refreshTokenRepository.existsById(REFRESH_TOKEN)).thenReturn(true);
+    when(jwtUtils.getEmailFromToken(REFRESH_TOKEN)).thenReturn(GMAIL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> authService.refreshToken(REFRESH_TOKEN))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+  }
+
+  @Test
+  void refreshToken_bannedUserThrowsUserBanned() {
+    User user = user();
+    user.setStatus(UserStatus.BANNED);
+    when(jwtUtils.validateToken(REFRESH_TOKEN)).thenReturn(true);
+    when(refreshTokenRepository.existsById(REFRESH_TOKEN)).thenReturn(true);
+    when(jwtUtils.getEmailFromToken(REFRESH_TOKEN)).thenReturn(GMAIL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(Optional.of(user));
+
+    assertThatThrownBy(() -> authService.refreshToken(REFRESH_TOKEN))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
   }
 
   @Test

@@ -14,9 +14,12 @@ import studyweb.cus.dto.request.auth.ResetPasswordRequest;
 import studyweb.cus.dto.response.auth.AuthResponse;
 import studyweb.cus.entity.redis.PasswordResetOtp;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.user.UserErrorCode;
+import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.auth.PasswordResetTokenRepository;
 import studyweb.cus.repository.auth.RefreshTokenRepository;
@@ -79,6 +82,13 @@ public class AuthServiceImpl implements AuthService {
       throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
     }
 
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+
     String accessToken =
         jwtUtils.generateAccessToken(
             user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
@@ -103,6 +113,13 @@ public class AuthServiceImpl implements AuthService {
         userRepository
             .findByGmail(jwtUtils.getEmailFromToken(refreshToken))
             .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_REFRESH_TOKEN));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
 
     String newAccessToken =
         jwtUtils.generateAccessToken(
