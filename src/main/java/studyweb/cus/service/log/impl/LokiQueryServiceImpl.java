@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import studyweb.cus.constant.LokiConstants;
 import studyweb.cus.dto.response.admin.LokiIndexStatsResponse;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
@@ -31,8 +32,7 @@ public class LokiQueryServiceImpl implements LokiQueryService {
     }
 
     try {
-      String querySelector =
-          String.format("{app=\"studyweb\",log_type=\"activity\",action=\"%s\"}", action);
+      String querySelector = String.format(LokiConstants.ACTIVITY_LOG_ACTION_QUERY, action);
 
       URI uri =
           UriComponentsBuilder.fromUriString(lokiUrl)
@@ -44,11 +44,7 @@ public class LokiQueryServiceImpl implements LokiQueryService {
               .toUri();
 
       LokiIndexStatsResponse response =
-          restClient
-              .get()
-              .uri(uri)
-              .retrieve()
-              .body(LokiIndexStatsResponse.class);
+          restClient.get().uri(uri).retrieve().body(LokiIndexStatsResponse.class);
 
       return response != null ? response.getEntriesCount() : 0;
     } catch (Exception e) {
