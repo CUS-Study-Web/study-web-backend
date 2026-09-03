@@ -1,9 +1,11 @@
 package studyweb.cus.service.log.impl;
 
+import java.net.URI;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import studyweb.cus.dto.response.admin.LokiIndexStatsResponse;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
@@ -31,19 +33,20 @@ public class LokiQueryServiceImpl implements LokiQueryService {
     try {
       String querySelector =
           String.format("{app=\"studyweb\",log_type=\"activity\",action=\"%s\"}", action);
-      String endpoint = lokiUrl + "/loki/api/v1/index/stats";
+
+      URI uri =
+          UriComponentsBuilder.fromUriString(lokiUrl)
+              .path("/loki/api/v1/index/stats")
+              .queryParam("query", querySelector)
+              .queryParam("start", startNano)
+              .queryParam("end", endNano)
+              .build()
+              .toUri();
 
       LokiIndexStatsResponse response =
           restClient
               .get()
-              .uri(
-                  endpoint,
-                  uriBuilder ->
-                      uriBuilder
-                          .queryParam("query", querySelector)
-                          .queryParam("start", String.valueOf(startNano))
-                          .queryParam("end", String.valueOf(endNano))
-                          .build())
+              .uri(uri)
               .retrieve()
               .body(LokiIndexStatsResponse.class);
 
