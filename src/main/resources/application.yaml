@@ -37,7 +37,3 @@ thread:
   core-thread-pool-size: ${CORE_THREAD_POOL_SIZE:2}
   max-thread-pool-size: ${MAX_THREAD_POOL_SIZE:10}
   thread-queue-capacity: ${THREAD_QUEUE_CAPACITY:100}
-
-logging:
-  loki:
-    url: ${LOKI_URL}

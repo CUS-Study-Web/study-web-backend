@@ -26,3 +26,7 @@ s3:
   region: ${S3_REGION:ap-southeast-1}
   max-size-document-upload: ${MAX_SIZE_DOCUMENT_UPLOAD:104857600}
   max-size-avatar-upload: ${MAX_SIZE_AVATAR_UPLOAD:20971520}
+
+logging:
+  loki:
+    url: ${LOKI_URL_STAGING}
