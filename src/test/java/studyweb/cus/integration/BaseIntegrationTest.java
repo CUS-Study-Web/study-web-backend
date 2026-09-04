@@ -3,11 +3,16 @@ package studyweb.cus.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -35,6 +40,7 @@ import studyweb.cus.security.JwtUtils;
 @AutoConfigureMockMvc
 @TestPropertySource(
     properties = {
+      "spring.main.allow-bean-definition-overriding=true",
       "spring.jpa.hibernate.ddl-auto=create-drop",
       "spring.jpa.show-sql=false",
       "spring.flyway.enabled=false",
@@ -121,6 +127,15 @@ public abstract class BaseIntegrationTest {
     registry.add("aws.s3.secret-key", () -> "minioadmin");
   }
 
+  @TestConfiguration
+  public static class TestAsyncConfig {
+    @Bean(name = "uploadExecutor")
+    @Primary
+    public Executor uploadExecutor() {
+      return new SyncTaskExecutor();
+    }
+  }
+
   @Autowired protected MockMvc mockMvc;
   @Autowired protected ObjectMapper objectMapper;
   @Autowired protected JdbcTemplate jdbcTemplate;
@@ -139,12 +154,26 @@ public abstract class BaseIntegrationTest {
 
   /**
    * Truncates database tables to guarantee isolation between tests without relying on
-   * {@code @Transactional} rollbacks.
+   * {@code @Transactional} rollbacks. Includes retry logic to handle transient locks gracefully.
    */
   protected void truncateDatabase() {
-    jdbcTemplate.execute(
-        "TRUNCATE TABLE user_lesson_progress, user_subject_progress, user_course_progress, "
-            + "lessons, assessment_attempt_details, assessment_attempts, answer_keys, "
-            + "assessments, subjects, courses, users CASCADE");
+    for (int attempt = 0; attempt < 3; attempt++) {
+      try {
+        jdbcTemplate.execute(
+            "TRUNCATE TABLE user_lesson_progress, user_subject_progress, user_course_progress, "
+                + "lessons, assessment_attempt_details, assessment_attempts, answer_keys, "
+                + "assessments, subjects, courses, users CASCADE");
+        return;
+      } catch (Exception e) {
+        if (attempt == 2) {
+          throw e;
+        }
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException ignored) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
   }
 }
