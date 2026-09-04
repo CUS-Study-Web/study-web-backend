@@ -7,5 +7,5 @@ public final class LokiConstants {
   }
 
   public static final String ACTIVITY_LOG_ACTION_QUERY =
-      "{app=\"studyweb\",log_type=\"activity\",action=\"%s\"}";
+      "{app=\"studyweb\",log_type=\"activity\",action=~\"%s\"}";
 }

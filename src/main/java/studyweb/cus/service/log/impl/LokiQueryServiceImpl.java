@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 import studyweb.cus.config.LokiProperties;
 import studyweb.cus.constant.LokiConstants;
-import studyweb.cus.dto.response.admin.LokiIndexStatsResponse;
+import studyweb.cus.dto.response.admin.LokiQueryRangeResponse;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.service.log.LokiQueryService;
@@ -25,30 +25,40 @@ public class LokiQueryServiceImpl implements LokiQueryService {
   private final LokiProperties lokiProperties;
 
   @Override
-  public int countEntries(String action, long startNano, long endNano) {
-    if (lokiUrl.isBlank()) {
+  public LokiQueryRangeResponse queryRange(
+      String query, long startNano, long endNano, String step) {
+    if (!lokiProperties.hasUrl()) {
       throw new SystemException(SystemErrorCode.INTERNAL_ERROR, "Missing config for Loki URL.");
     }
 
     try {
-      String querySelector = String.format(LokiConstants.ACTIVITY_LOG_ACTION_QUERY, action);
-
-      URI uri =
-          UriComponentsBuilder.fromUriString(lokiUrl)
-              .path("/loki/api/v1/index/stats")
-              .queryParam("query", querySelector)
+      UriComponentsBuilder builder =
+          UriComponentsBuilder.fromUriString(lokiProperties.cleanUrl())
+              .path("/loki/api/v1/query_range")
+              .queryParam("query", query)
               .queryParam("start", startNano)
-              .queryParam("end", endNano)
-              .build()
-              .toUri();
+              .queryParam("end", endNano);
 
-      LokiIndexStatsResponse response =
-          restClient.get().uri(uri).retrieve().body(LokiIndexStatsResponse.class);
+      if (step != null && !step.isBlank()) {
+        builder.queryParam("step", step);
+      }
 
-      return response != null ? response.getEntriesCount() : 0;
+      URI uri = builder.build().toUri();
+
+      return lokiRestClient.get().uri(uri).retrieve().body(LokiQueryRangeResponse.class);
+    } catch (SystemException e) {
+      throw e;
     } catch (Exception e) {
-      log.warn("Failed to query Loki index stats for action '{}': {}", action, e.getMessage());
-      return 0;
+      log.warn("Failed to query Loki query_range for query '{}': {}", query, e.getMessage());
+      return null;
     }
+  }
+
+  @Override
+  public LokiQueryRangeResponse queryActivityMetricRange(
+      String actionPattern, long startNano, long endNano, String step) {
+    String baseSelector = String.format(LokiConstants.ACTIVITY_LOG_ACTION_QUERY, actionPattern);
+    String query = String.format("sum by (action) (count_over_time(%s[1d]))", baseSelector);
+    return queryRange(query, startNano, endNano, step);
   }
 }
