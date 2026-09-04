@@ -1,11 +1,13 @@
 package studyweb.cus.service.log.impl;
 
 import java.net.URI;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
+import studyweb.cus.config.LokiProperties;
 import studyweb.cus.constant.LokiConstants;
 import studyweb.cus.dto.response.admin.LokiIndexStatsResponse;
 import studyweb.cus.exception.system.SystemErrorCode;
@@ -13,17 +15,14 @@ import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.service.log.LokiQueryService;
 
 @Service
+@RequiredArgsConstructor
 @Slf4j
 public class LokiQueryServiceImpl implements LokiQueryService {
 
-  private final RestClient restClient;
-  private final String lokiUrl;
+  @Qualifier("lokiRestClient")
+  private final RestClient lokiRestClient;
 
-  public LokiQueryServiceImpl(
-      RestClient.Builder restClientBuilder, @Value("${logging.loki.url:}") String lokiUrl) {
-    this.restClient = restClientBuilder.build();
-    this.lokiUrl = lokiUrl != null ? lokiUrl.replaceAll("/+$", "") : "";
-  }
+  private final LokiProperties lokiProperties;
 
   @Override
   public int countEntries(String action, long startNano, long endNano) {
