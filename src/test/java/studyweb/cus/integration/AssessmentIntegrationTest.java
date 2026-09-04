@@ -7,29 +7,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.web.servlet.MockMvc;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import studyweb.cus.dto.request.assessment.AssessmentSubmitRequest;
 import studyweb.cus.dto.request.assessment.StudentAnswerItem;
 import studyweb.cus.entity.course.AnswerKey;
@@ -54,7 +40,6 @@ import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.repository.user.UserRepository;
-import studyweb.cus.security.JwtUtils;
 
 /**
  * Integration test for the homework and exam assessment flow (starting, submitting, grading, and
@@ -63,50 +48,7 @@ import studyweb.cus.security.JwtUtils;
  * <p>Uses Testcontainers with PostgreSQL and tmpfs in-memory mapping to simulate real database
  * operations without relying on {@code @Transactional} rollbacks.
  */
-@Testcontainers
-@SpringBootTest
-@AutoConfigureMockMvc
-@TestPropertySource(
-    properties = {
-      "spring.jpa.hibernate.ddl-auto=create-drop",
-      "spring.jpa.show-sql=false",
-      "spring.flyway.enabled=false",
-      "s3.region=ap-southeast-1",
-      "s3.access-key=dummy-access-key",
-      "s3.secret-key=dummy-secret-key",
-      "s3.bucket=dummy-bucket",
-      "app.jwt.secret=change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789",
-      "app.jwt.access-token-expiration=900000",
-      "app.jwt.refresh-token-expiration=604800000",
-      "app.otp.length=6",
-      "app.otp.expiration-seconds=300",
-      "app.otp.max-attempts=5",
-      "app.otp.cooldown-seconds=60",
-      "spring.mail.host=localhost",
-      "spring.mail.port=25",
-      "spring.mail.username=test",
-      "spring.mail.password=test",
-      "spring.mail.from=test@studyweb.edu",
-      "cors.allowed-origins=http://localhost:3000"
-    })
-class AssessmentIntegrationTest {
-
-  @Container @ServiceConnection
-  static PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>("postgres:17-alpine")
-          .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
-
-  @DynamicPropertySource
-  static void configureProperties(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", postgres::getJdbcUrl);
-    registry.add("spring.datasource.username", postgres::getUsername);
-    registry.add("spring.datasource.password", postgres::getPassword);
-    registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-  }
-
-  @Autowired private MockMvc mockMvc;
-  @Autowired private ObjectMapper objectMapper;
-  @Autowired private JdbcTemplate jdbcTemplate;
+class AssessmentIntegrationTest extends BaseIntegrationTest {
 
   @Autowired private UserRepository userRepository;
   @Autowired private CourseRepository courseRepository;
@@ -114,7 +56,6 @@ class AssessmentIntegrationTest {
   @Autowired private AssessmentRepository assessmentRepository;
   @Autowired private AnswerKeyRepository answerKeyRepository;
   @Autowired private AssessmentAttemptRepository attemptRepository;
-  @Autowired private JwtUtils jwtUtils;
 
   private User learner;
   private User vipLearner;
@@ -292,16 +233,6 @@ class AssessmentIntegrationTest {
             .questionType(QuestionType.SINGLE_CHOICE)
             .correctAnswer(AnswerChoice.A)
             .build());
-  }
-
-  @AfterEach
-  void cleanDatabase() {
-    truncateDatabase();
-  }
-
-  private void truncateDatabase() {
-    jdbcTemplate.execute(
-        "TRUNCATE TABLE assessment_attempt_details, assessment_attempts, answer_keys, assessments, subjects, courses, users CASCADE");
   }
 
   @Test
