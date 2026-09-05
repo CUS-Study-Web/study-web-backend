@@ -117,6 +117,8 @@ class SystemManagementServiceTest {
   @MockitoBean private SystemManagementMapper systemManagementMapper;
   @MockitoBean private PasswordEncoder passwordEncoder;
   @MockitoBean private JwtUtils jwtUtils;
+  @MockitoBean private studyweb.cus.service.log.LokiQueryService lokiQueryService;
+  @MockitoBean private studyweb.cus.config.LokiProperties lokiProperties;
 
   private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 

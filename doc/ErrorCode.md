@@ -95,3 +95,24 @@
 | BADGE_NOT_FOUND | BADGE_001 | Badge not found |
 | BADGE_NAME_EXISTS | BADGE_002 | A badge with this name already exists |
 
+## Loki (`LokiErrorCode`)
+
+| Enum Name | Code | Message |
+|---|---|---|
+| LOKI_NOT_CONFIGURED | LOKI_001 | Missing config for Loki URL |
+| LOKI_QUERY_FAILED | LOKI_002 | Failed to query Loki |
+| LOKI_SERVICE_UNAVAILABLE | LOKI_003 | Loki service is unavailable |
+
+## Admin (`AdminErrorCode`)
+
+| Enum Name | Code | Message |
+|---|---|---|
+| USER_BANNED | ADMIN_001 | User is permanently banned |
+| USER_LOCKED | ADMIN_002 | User is locked. Please unlock first |
+| USER_NOT_FOUND | ADMIN_003 | User not found |
+| ROLE_NOT_ALLOWED | ADMIN_004 | Actions not allowed for this role |
+| USER_EXISTED | ADMIN_005 | User already existed |
+| VIP_REQUEST_NOT_FOUND | ADMIN_006 | Vip request not found |
+| STATUS_TRANSITION_INVALID | ADMIN_007 | Status can only be changed when it is one of the following: ACTIVE, INACTIVE (for users); WAITING (for vip requests) |
+
+
