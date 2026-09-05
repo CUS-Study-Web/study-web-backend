@@ -1,6 +1,7 @@
 package studyweb.cus.service.admin;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +15,7 @@ import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -44,7 +46,7 @@ public interface SystemManagementService {
 
   void disapproveVipRequest(UUID id);
 
-  DailyStatsResponse getDailyStats(LocalDate endDate, Integer days);
+  DailyStatsResponse getDailyStats(LocalDate endDate, Integer days, List<ActionType> actions);
 
-  MonthlyStatsResponse getMonthlyStats(Integer year);
+  MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions);
 }

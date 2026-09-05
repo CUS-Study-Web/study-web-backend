@@ -3,10 +3,11 @@ package studyweb.cus.service.admin.impl;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import studyweb.cus.config.LokiProperties;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
@@ -43,6 +45,7 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -78,6 +81,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
   private final LokiQueryService lokiQueryService;
+  private final LokiProperties lokiProperties;
 
   @Override
   @Transactional(readOnly = true)
@@ -498,17 +502,22 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   }
 
   @Override
-  public DailyStatsResponse getDailyStats(LocalDate endDate, Integer days) {
+  public DailyStatsResponse getDailyStats(
+      LocalDate endDate, Integer days, List<ActionType> actions) {
     LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
     if (effectiveEndDate.getYear() < 1970 || effectiveEndDate.getYear() > 2100) {
       throw new SystemException(
           SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
     }
-    if (days != null && (days < 1 || days > 366)) {
-      throw new SystemException(
-          SystemErrorCode.INVALID_PARAMETER, "Days must be between 1 and 366");
-    }
+
+    int maxDays = lokiProperties.getMaxQueryLengthDays();
     int windowDays = days != null ? days : 7;
+    if (windowDays < 1 || windowDays > maxDays) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Days must be between 1 and " + maxDays);
+    }
+
+    List<ActionType> effectiveActions = resolveActions(actions);
     LocalDate startDate = effectiveEndDate.minusDays(windowDays - 1);
 
     long startNano =
@@ -516,7 +525,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     long endNano =
         effectiveEndDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
 
-    String actionPattern = "LOGIN|REGISTER|REQUEST_VIP";
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
+
     LokiQueryRangeResponse response =
         lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
 
@@ -551,75 +562,76 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     for (int i = 0; i < windowDays; i++) {
       LocalDate d = startDate.plusDays(i);
       Map<String, Integer> dayCounts = dailyCounts.get(d);
-      int logins = dayCounts != null ? dayCounts.getOrDefault("LOGIN", 0) : 0;
-      int registrations = dayCounts != null ? dayCounts.getOrDefault("REGISTER", 0) : 0;
-      int vipActivations = dayCounts != null ? dayCounts.getOrDefault("REQUEST_VIP", 0) : 0;
-      items.add(new DailyStatItemResponse(d, logins, registrations, vipActivations));
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), dayCounts != null ? dayCounts.getOrDefault(act.name(), 0) : 0);
+      }
+      items.add(new DailyStatItemResponse(d, actionCounts));
     }
 
     return new DailyStatsResponse(startDate, effectiveEndDate, windowDays, items);
   }
 
   @Override
-  public MonthlyStatsResponse getMonthlyStats(Integer year) {
+  public MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions) {
     if (year != null && (year < 1970 || year > 2100)) {
       throw new SystemException(
           SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
     }
     int targetYear = year != null ? year : LocalDate.now().getYear();
 
-    long startNano =
-        LocalDate.of(targetYear, 1, 1).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
-            * 1_000_000L;
-    long endNano =
-        LocalDate.of(targetYear, 12, 31).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
-            * 1_000_000L;
+    List<ActionType> effectiveActions = resolveActions(actions);
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
 
-    String actionPattern = "LOGIN|REGISTER|REQUEST_VIP";
-    LokiQueryRangeResponse response =
-        lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
+    List<MonthlyStatItemResponse> items = new ArrayList<>(12);
+    for (int month = 1; month <= 12; month++) {
+      YearMonth ym = YearMonth.of(targetYear, month);
+      long startNano =
+          ym.atDay(1).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+      long endNano =
+          ym.atEndOfMonth().atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
+              * 1_000_000L;
 
-    Map<Integer, Map<String, Integer>> monthlyCounts = new HashMap<>();
-    for (int m = 1; m <= 12; m++) {
-      monthlyCounts.put(m, new HashMap<>());
-    }
+      LokiQueryRangeResponse response =
+          lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
 
-    if (response != null && response.data() != null && response.data().result() != null) {
-      for (LokiResultItem item : response.data().result()) {
-        Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
-        String action = labels != null ? labels.get("action") : null;
-        if (action == null || item.values() == null) {
-          continue;
-        }
+      Map<String, Integer> monthCounts = new HashMap<>();
+      if (response != null && response.data() != null && response.data().result() != null) {
+        for (LokiResultItem item : response.data().result()) {
+          Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
+          String action = labels != null ? labels.get("action") : null;
+          if (action == null || item.values() == null) {
+            continue;
+          }
 
-        for (List<Object> pair : item.values()) {
-          if (pair != null && pair.size() >= 2) {
-            long epochSec = parseEpochSeconds(pair.get(0));
-            int count = parseCount(pair.get(1));
-            ZonedDateTime zdt = Instant.ofEpochSecond(epochSec).atZone(ZoneOffset.UTC);
-            if (zdt.getYear() == targetYear) {
-              int month = zdt.getMonthValue();
-              Map<String, Integer> counts = monthlyCounts.get(month);
-              if (counts != null) {
-                counts.merge(action, count, Integer::sum);
-              }
+          for (List<Object> pair : item.values()) {
+            if (pair != null && pair.size() >= 2) {
+              int count = parseCount(pair.get(1));
+              monthCounts.merge(action, count, Integer::sum);
             }
           }
         }
       }
-    }
 
-    List<MonthlyStatItemResponse> items = new ArrayList<>(12);
-    for (int month = 1; month <= 12; month++) {
-      Map<String, Integer> monthCounts = monthlyCounts.get(month);
-      int logins = monthCounts != null ? monthCounts.getOrDefault("LOGIN", 0) : 0;
-      int registrations = monthCounts != null ? monthCounts.getOrDefault("REGISTER", 0) : 0;
-      int vipActivations = monthCounts != null ? monthCounts.getOrDefault("REQUEST_VIP", 0) : 0;
-      items.add(
-          new MonthlyStatItemResponse(month, targetYear, logins, registrations, vipActivations));
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), monthCounts.getOrDefault(act.name(), 0));
+      }
+      items.add(new MonthlyStatItemResponse(month, targetYear, actionCounts));
     }
 
     return new MonthlyStatsResponse(targetYear, items);
+  }
+
+  private List<ActionType> resolveActions(List<ActionType> actions) {
+    if (actions == null || actions.isEmpty()) {
+      throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Actions cannot be empty.");
+    }
+    List<ActionType> filtered = actions.stream().filter(Objects::nonNull).distinct().toList();
+    return filtered.isEmpty()
+        ? List.of(ActionType.LOGIN, ActionType.REGISTER, ActionType.REQUEST_VIP)
+        : filtered;
   }
 
   private long parseEpochSeconds(Object timestampObj) {

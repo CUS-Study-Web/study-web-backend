@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 import studyweb.cus.config.LokiProperties;
 import studyweb.cus.constant.LokiConstants;
@@ -48,9 +49,15 @@ public class LokiQueryServiceImpl implements LokiQueryService {
       return lokiRestClient.get().uri(uri).retrieve().body(LokiQueryRangeResponse.class);
     } catch (SystemException e) {
       throw e;
+    } catch (RestClientResponseException e) {
+      log.error(
+          "Loki query failed with status {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+      throw new SystemException(
+          SystemErrorCode.INTERNAL_ERROR, "Loki error: " + e.getResponseBodyAsString());
     } catch (Exception e) {
-      log.warn("Failed to query Loki query_range for query '{}': {}", query, e.getMessage());
-      return null;
+      log.error("Failed to query Loki query_range for query '{}': {}", query, e.getMessage());
+      throw new SystemException(
+          SystemErrorCode.INTERNAL_ERROR, "Failed to query Loki: " + e.getMessage());
     }
   }
 

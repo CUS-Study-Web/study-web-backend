@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -296,38 +298,53 @@ public class SystemManagementController extends AbstractBaseController {
   @Operation(
       summary = "Get Daily System Statistics",
       description =
-          "Retrieve daily statistics (logins access, registrations, VIP activations) for a date window ending on the specified date. Default window is 7 days.")
+          "Retrieve daily statistics for arbitrary actions for a date window ending on the specified date. Default window is 7 days.")
   public ResponseEntity<SingleResponse<DailyStatsResponse>> getDailyStats(
       @Parameter(
               description =
                   "End date of the query window (ISO format YYYY-MM-DD). Defaults to current date if omitted.",
               example = "2026-07-23")
-          @RequestParam(required = false)
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
           LocalDate date,
       @Parameter(
               description = "Number of days in the window ending on the given date. Defaults to 7.",
               example = "7")
           @RequestParam(required = false, defaultValue = "7")
-          Integer days) {
-    log.info("[GET /api/system-management/stats/daily] date='{}', days={}", date, days);
+          Integer days,
+      @Parameter(
+              description = "List of activity action names to aggregate.",
+              example = "LOGIN,REGISTER")
+          @RequestParam(required = false)
+          List<ActionType> actions) {
+    log.info(
+        "[GET /api/system-management/stats/daily] date='{}', days={}, actions={}",
+        date,
+        days,
+        actions);
     return successSingle(
-        systemManagementService.getDailyStats(date, days), "Daily stats fetched successfully!");
+        systemManagementService.getDailyStats(date, days, actions),
+        "Daily stats fetched successfully!");
   }
 
   @GetMapping("/stats/monthly")
   @Operation(
       summary = "Get Monthly System Statistics",
       description =
-          "Retrieve monthly breakdown statistics (logins/web access, registrations, VIP activations) across all 12 months (T1 to T12) for a given year.")
+          "Retrieve monthly breakdown statistics for arbitrary actions across all 12 months (T1 to T12) for a given year.")
   public ResponseEntity<SingleResponse<MonthlyStatsResponse>> getMonthlyStats(
       @Parameter(
               description = "Target year. Defaults to current year if omitted.",
               example = "2026")
           @RequestParam(required = false)
-          Integer year) {
-    log.info("[GET /api/system-management/stats/monthly] year='{}'", year);
+          Integer year,
+      @Parameter(
+              description = "List of activity action names to aggregate.",
+              example = "LOGIN,REGISTER")
+          @RequestParam(required = false)
+          List<ActionType> actions) {
+    log.info("[GET /api/system-management/stats/monthly] year='{}', actions={}", year, actions);
     return successSingle(
-        systemManagementService.getMonthlyStats(year), "Monthly stats fetched successfully!");
+        systemManagementService.getMonthlyStats(year, actions),
+        "Monthly stats fetched successfully!");
   }
 }
