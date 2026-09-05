@@ -398,14 +398,23 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     User user = vipRequest.getUser();
     LocalDate now = LocalDate.now();
     user.setTier(UserTier.VIP);
-    user.setVipStartDate(now);
+    if (user.getVipStartDate() == null) {
+      user.setVipStartDate(now);
+    }
 
     String billingPeriod =
         pricingPageContentRepository
             .findFirstByOrderByCreatedAtDesc()
             .map(PricingPageContent::getVipPkgBillingPeriod)
             .orElse(null);
-    user.setVipEndDate(calculateVipEndDate(now, billingPeriod));
+
+    // if user has active VIP (including on end date), extend from current vipEndDate;
+    // otherwise from today
+    LocalDate baseDate =
+        (user.getVipEndDate() != null && !user.getVipEndDate().isBefore(now))
+            ? user.getVipEndDate()
+            : now;
+    user.setVipEndDate(calculateVipEndDate(baseDate, billingPeriod));
   }
 
   @Override
