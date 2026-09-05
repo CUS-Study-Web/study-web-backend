@@ -52,6 +52,7 @@ import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.DocumentFileType;
+import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.document.DocumentService;
 
@@ -62,6 +63,7 @@ import studyweb.cus.service.document.DocumentService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import({ResponseFactory.class, WebMvcConfig.class, StringToUuidConverter.class})
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class DocumentControllerTest {
 
   private static final UUID DOCUMENT_ID = UUID.randomUUID();

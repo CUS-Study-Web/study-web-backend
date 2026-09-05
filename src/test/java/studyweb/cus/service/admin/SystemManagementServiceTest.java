@@ -93,7 +93,11 @@ import studyweb.cus.service.admin.impl.SystemManagementServiceImpl;
   SystemManagementServiceImpl.class,
   SystemManagementServiceTest.TestConfig.class
 })
-@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
+@TestPropertySource(
+    properties = {
+      "cors.allowed-origins=http://localhost:3000",
+      "logging.loki.url=http://localhost:3100"
+    })
 @WithMockUser(roles = "ADMIN")
 class SystemManagementServiceTest {
 

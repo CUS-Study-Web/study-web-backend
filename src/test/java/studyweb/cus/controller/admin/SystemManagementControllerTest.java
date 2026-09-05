@@ -53,10 +53,13 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -84,7 +87,11 @@ import studyweb.cus.service.admin.SystemManagementService;
   ResponseFactory.class,
   SystemManagementControllerTest.TestConfig.class
 })
-@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
+@TestPropertySource(
+    properties = {
+      "cors.allowed-origins=http://localhost:3000",
+      "logging.loki.url=http://localhost:3100"
+    })
 class SystemManagementControllerTest {
 
   @TestConfiguration
@@ -1509,6 +1516,141 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data.count").value(2));
 
       verify(systemManagementService).getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE);
+    }
+  }
+
+  // =========================================================================
+  // 14. STATS ENDPOINTS - SYSTEM MANAGEMENT CONTROLLER TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("14. Stats Endpoints - Controller Tests")
+  class StatsEndpointsTests {
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("GET /stats/daily -> unauthenticated returns 401 Unauthorized")
+    void getDailyStats_unauthenticated_returns401() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "LEARNER")
+    @DisplayName("GET /stats/daily -> non-admin role returns 403 Forbidden")
+    void getDailyStats_learnerRole_returns403() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/daily -> admin with params returns 200 OK and DailyStatsResponse")
+    void getDailyStats_adminWithParams_returns200() throws Exception {
+      LocalDate endDate = LocalDate.of(2026, 7, 23);
+      LocalDate startDate = endDate.minusDays(6);
+      DailyStatsResponse response =
+          new DailyStatsResponse(startDate, endDate, 7, List.of());
+
+      when(systemManagementService.getDailyStats(
+              eq(endDate), eq(7), eq(List.of(ActionType.LOGIN, ActionType.REGISTER))))
+          .thenReturn(response);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/stats/daily")
+                  .param("date", "2026-07-23")
+                  .param("days", "7")
+                  .param("actions", "LOGIN,REGISTER")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Daily stats fetched successfully!"))
+          .andExpect(jsonPath("$.data.totalDays").value(7))
+          .andExpect(jsonPath("$.data.startDate").value("2026-07-17"))
+          .andExpect(jsonPath("$.data.endDate").value("2026-07-23"));
+
+      verify(systemManagementService)
+          .getDailyStats(eq(endDate), eq(7), eq(List.of(ActionType.LOGIN, ActionType.REGISTER)));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/daily -> admin default params returns 200 OK")
+    void getDailyStats_adminDefaultParams_returns200() throws Exception {
+      DailyStatsResponse response =
+          new DailyStatsResponse(LocalDate.now().minusDays(6), LocalDate.now(), 7, List.of());
+
+      when(systemManagementService.getDailyStats(isNull(), eq(7), isNull())).thenReturn(response);
+
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Daily stats fetched successfully!"));
+
+      verify(systemManagementService).getDailyStats(isNull(), eq(7), isNull());
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("GET /stats/monthly -> unauthenticated returns 401 Unauthorized")
+    void getMonthlyStats_unauthenticated_returns401() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "LEARNER")
+    @DisplayName("GET /stats/monthly -> non-admin role returns 403 Forbidden")
+    void getMonthlyStats_learnerRole_returns403() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/monthly -> admin with params returns 200 OK and MonthlyStatsResponse")
+    void getMonthlyStats_adminWithParams_returns200() throws Exception {
+      MonthlyStatsResponse response = new MonthlyStatsResponse(2026, List.of());
+
+      when(systemManagementService.getMonthlyStats(
+              eq(2026), eq(List.of(ActionType.LOGIN, ActionType.REGISTER))))
+          .thenReturn(response);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/stats/monthly")
+                  .param("year", "2026")
+                  .param("actions", "LOGIN,REGISTER")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Monthly stats fetched successfully!"))
+          .andExpect(jsonPath("$.data.year").value(2026));
+
+      verify(systemManagementService)
+          .getMonthlyStats(eq(2026), eq(List.of(ActionType.LOGIN, ActionType.REGISTER)));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/monthly -> admin default params returns 200 OK")
+    void getMonthlyStats_adminDefaultParams_returns200() throws Exception {
+      MonthlyStatsResponse response = new MonthlyStatsResponse(2026, List.of());
+
+      when(systemManagementService.getMonthlyStats(isNull(), isNull())).thenReturn(response);
+
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Monthly stats fetched successfully!"));
+
+      verify(systemManagementService).getMonthlyStats(isNull(), isNull());
     }
   }
 }
