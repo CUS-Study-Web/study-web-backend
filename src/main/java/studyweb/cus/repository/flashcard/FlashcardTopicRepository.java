@@ -31,5 +31,8 @@ public interface FlashcardTopicRepository
   @Query("SELECT COALESCE(SUM(t.numWords), 0) FROM FlashcardTopic t WHERE t.deletedAt IS NULL")
   long countTotalWords();
 
+  @Query("SELECT COALESCE(SUM(t.numWords), 0) FROM FlashcardTopic t WHERE t.deletedAt IS NULL AND t.status = studyweb.cus.enums.CourseCreateStatus.PUBLISH")
+  long countPublishedTotalWords();
+
   long countByDeletedAtIsNullAndStatus(CourseCreateStatus status);
 }
