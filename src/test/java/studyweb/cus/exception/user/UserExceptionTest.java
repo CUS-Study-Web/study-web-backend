@@ -18,6 +18,18 @@ class UserExceptionTest {
         .isEqualTo("User is not authenticated");
     assertThat(UserErrorCode.USER_NOT_AUTHENTICATED.httpStatus())
         .isEqualTo(HttpStatus.UNAUTHORIZED);
+
+    assertThat(UserErrorCode.ROLE_NOT_ALLOWED.code()).isEqualTo("USER_006");
+    assertThat(UserErrorCode.ROLE_NOT_ALLOWED.message())
+        .isEqualTo("Only learners can subscribe for VIP status");
+    assertThat(UserErrorCode.ROLE_NOT_ALLOWED.httpStatus())
+        .isEqualTo(HttpStatus.FORBIDDEN);
+
+    assertThat(UserErrorCode.NOT_VIP.code()).isEqualTo("USER_009");
+    assertThat(UserErrorCode.NOT_VIP.message())
+        .isEqualTo("Only VIP members can renew subscription");
+    assertThat(UserErrorCode.NOT_VIP.httpStatus())
+        .isEqualTo(HttpStatus.BAD_REQUEST);
   }
 
   @Test
