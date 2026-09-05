@@ -11,8 +11,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import studyweb.cus.config.LokiProperties;
 import studyweb.cus.constant.LokiConstants;
 import studyweb.cus.dto.response.admin.LokiQueryRangeResponse;
-import studyweb.cus.exception.system.SystemErrorCode;
-import studyweb.cus.exception.system.SystemException;
+import studyweb.cus.exception.loki.LokiErrorCode;
+import studyweb.cus.exception.loki.LokiException;
 import studyweb.cus.service.log.LokiQueryService;
 
 @Service
@@ -29,7 +29,7 @@ public class LokiQueryServiceImpl implements LokiQueryService {
   public LokiQueryRangeResponse queryRange(
       String query, long startNano, long endNano, String step) {
     if (!lokiProperties.hasUrl()) {
-      throw new SystemException(SystemErrorCode.INTERNAL_ERROR, "Missing config for Loki URL.");
+      throw new LokiException(LokiErrorCode.LOKI_NOT_CONFIGURED, "Missing config for Loki URL.");
     }
 
     try {
@@ -47,17 +47,17 @@ public class LokiQueryServiceImpl implements LokiQueryService {
       URI uri = builder.build().toUri();
 
       return lokiRestClient.get().uri(uri).retrieve().body(LokiQueryRangeResponse.class);
-    } catch (SystemException e) {
+    } catch (LokiException e) {
       throw e;
     } catch (RestClientResponseException e) {
       log.error(
           "Loki query failed with status {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-      throw new SystemException(
-          SystemErrorCode.INTERNAL_ERROR, "Loki error: " + e.getResponseBodyAsString());
+      throw new LokiException(
+          LokiErrorCode.LOKI_QUERY_FAILED, "Loki error: " + e.getResponseBodyAsString());
     } catch (Exception e) {
       log.error("Failed to query Loki query_range for query '{}': {}", query, e.getMessage());
-      throw new SystemException(
-          SystemErrorCode.INTERNAL_ERROR, "Failed to query Loki: " + e.getMessage());
+      throw new LokiException(
+          LokiErrorCode.LOKI_SERVICE_UNAVAILABLE, "Failed to query Loki: " + e.getMessage());
     }
   }
 
