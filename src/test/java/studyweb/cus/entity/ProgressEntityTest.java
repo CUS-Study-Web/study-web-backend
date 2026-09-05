@@ -60,11 +60,11 @@ class ProgressEntityTest {
     topic.setId(UUID.randomUUID());
 
     UserTopicProgress progress =
-        UserTopicProgress.builder().user(user).topic(topic).progressPercent(50).build();
+        UserTopicProgress.builder().user(user).topic(topic).learnedWords(50).build();
 
     assertThat(progress.getUser()).isEqualTo(user);
     assertThat(progress.getTopic()).isEqualTo(topic);
-    assertThat(progress.getProgressPercent()).isEqualTo(50);
+    assertThat(progress.getLearnedWords()).isEqualTo(50);
   }
 
   @Test
