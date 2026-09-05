@@ -39,6 +39,7 @@ import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 
@@ -49,6 +50,7 @@ import studyweb.cus.service.course.CourseService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class CourseControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();

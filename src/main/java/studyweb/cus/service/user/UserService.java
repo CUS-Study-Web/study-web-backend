@@ -2,6 +2,7 @@ package studyweb.cus.service.user;
 
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.entity.user.User;
 
@@ -12,4 +13,6 @@ public interface UserService {
   UserResponse getCurrentUser(String email);
 
   void changePassword(String email, ChangePasswordRequest request);
+
+  void createVipRequest(String email, VipSubscriptionRequest request, boolean isRenewal);
 }
