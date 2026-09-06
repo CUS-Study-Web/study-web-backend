@@ -30,7 +30,7 @@ public interface UserFlashcardProgressRepository
 
   @Query(
       "SELECT COUNT(DISTINCT ufp.flashcard.id) FROM UserFlashcardProgress ufp "
-          + "WHERE ufp.user.id = :userId AND ufp.status = studyweb.cus.enums.FlashcardProgressStatus.REMEMBER "
+          + "WHERE ufp.user.id = :userId AND ufp.status = studyweb.cus.enums.FlashcardProgressStatus.REMEMBERED "
           + "AND ufp.flashcard.topic.deletedAt IS NULL AND ufp.flashcard.topic.status = studyweb.cus.enums.CourseCreateStatus.PUBLISH")
   long countRememberedWordsByUserId(@Param("userId") UUID userId);
 }

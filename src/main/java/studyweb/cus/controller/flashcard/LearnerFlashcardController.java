@@ -116,18 +116,16 @@ public class LearnerFlashcardController extends AbstractBaseController {
   @PreAuthorize("hasRole('LEARNER')")
   @Operation(
       summary = "Get Flashcard Study Deck",
-      description = "Get study cards for Phase 1 (LEARN) or Phase 2 (REVIEW)")
+      description = "Get all flashcards in a topic with learner's current progress status")
   public ResponseEntity<SingleResponse<List<LearnerFlashcardItemResponse>>> getStudyCards(
       @PathVariable UUID topicId,
-      @RequestParam(required = false) String phase,
       @AuthenticationPrincipal String email) {
     log.info(
-        "[GET /api/learner/flashcards/topics/{}/study] User '{}', phase='{}'",
+        "[GET /api/learner/flashcards/topics/{}/study] User '{}'",
         topicId,
-        email,
-        phase);
+        email);
     return successSingle(
-        learnerFlashcardService.getStudyCards(topicId, email, phase),
+        learnerFlashcardService.getStudyCards(topicId, email),
         "Study cards fetched successfully!");
   }
 
@@ -135,7 +133,7 @@ public class LearnerFlashcardController extends AbstractBaseController {
   @PreAuthorize("hasRole('LEARNER')")
   @Operation(
       summary = "Update Flashcard Learning Progress",
-      description = "Mark flashcard as REMEMBER or STUDY and recalculate topic progress")
+      description = "Mark flashcard as REMEMBERED or NOT_REMEMBERED and recalculate topic progress")
   public ResponseEntity<SingleResponse<LearnerCardProgressResponse>> updateCardProgress(
       @PathVariable UUID topicId,
       @PathVariable UUID cardId,

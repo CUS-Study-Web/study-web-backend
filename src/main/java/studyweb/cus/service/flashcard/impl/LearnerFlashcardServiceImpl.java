@@ -132,7 +132,7 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
     int totalWords = topic.getNumWords() != null ? topic.getNumWords() : 0;
     long rememberedCount =
         userFlashcardProgressRepository.countByUserIdAndTopicIdAndStatus(
-            user.getId(), topicId, FlashcardProgressStatus.REMEMBER);
+            user.getId(), topicId, FlashcardProgressStatus.REMEMBERED);
     int rememberedWords = (int) rememberedCount;
     int studyWords = Math.max(0, totalWords - rememberedWords);
     int progressPercent =
@@ -200,10 +200,10 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
                   c.getPronunciation(),
                   c.getPartOfSpeech(),
                   c.getMeaning(),
-                  progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.STUDY)));
+                  progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.NOT_STUDIED)));
     }
 
-    // When filtering by REMEMBER or STUDY, filter all matching cards
+    // When filtering by specific status, filter all matching cards
     List<Flashcard> allMatchingCards =
         flashcardRepository.findAll(spec, Sort.by("createdAt").ascending());
 
@@ -218,13 +218,15 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
                         c.getPronunciation(),
                         c.getPartOfSpeech(),
                         c.getMeaning(),
-                        progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.STUDY)))
+                        progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.NOT_STUDIED)))
             .filter(
                 item -> {
-                  if ("REMEMBER".equals(normalizedFilter)) {
-                    return item.status() == FlashcardProgressStatus.REMEMBER;
-                  } else if ("STUDY".equals(normalizedFilter)) {
-                    return item.status() == FlashcardProgressStatus.STUDY;
+                  if ("REMEMBERED".equals(normalizedFilter)) {
+                    return item.status() == FlashcardProgressStatus.REMEMBERED;
+                  } else if ("NOT_REMEMBERED".equals(normalizedFilter)) {
+                    return item.status() == FlashcardProgressStatus.NOT_REMEMBERED;
+                  } else if ("NOT_STUDIED".equals(normalizedFilter)) {
+                    return item.status() == FlashcardProgressStatus.NOT_STUDIED;
                   }
                   return true;
                 })
@@ -240,9 +242,8 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
 
   @Override
   @Transactional(readOnly = true)
-  public List<LearnerFlashcardItemResponse> getStudyCards(
-      UUID topicId, String email, String phase) {
-    log.info("Fetching study cards for topic ID {}, phase='{}', user='{}'", topicId, phase, email);
+  public List<LearnerFlashcardItemResponse> getStudyCards(UUID topicId, String email) {
+    log.info("Fetching study cards for topic ID {}, user='{}'", topicId, email);
     User user = requireUser(email);
     requirePublishedTopic(topicId);
 
@@ -261,8 +262,6 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
     List<Flashcard> cards =
         flashcardRepository.findAll(spec, Sort.by("createdAt").ascending());
 
-    String normalizedPhase = phase != null ? phase.trim().toUpperCase() : "LEARN";
-
     return cards.stream()
         .map(
             c ->
@@ -273,14 +272,7 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
                     c.getPronunciation(),
                     c.getPartOfSpeech(),
                     c.getMeaning(),
-                    progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.STUDY)))
-        .filter(
-            item -> {
-              if ("REVIEW".equals(normalizedPhase) || "PHASE_2".equals(normalizedPhase)) {
-                return item.status() == FlashcardProgressStatus.STUDY;
-              }
-              return true;
-            })
+                    progressMap.getOrDefault(c.getId(), FlashcardProgressStatus.NOT_STUDIED)))
         .toList();
   }
 
@@ -312,9 +304,10 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
     cardProgress.setStatus(request.status());
     userFlashcardProgressRepository.save(cardProgress);
 
-    long learnedCount =
-        userFlashcardProgressRepository.countByUserIdAndTopicIdAndStatus(
-            user.getId(), topicId, FlashcardProgressStatus.REMEMBER);
+    int learnedCount =
+        (int)
+            userFlashcardProgressRepository.countByUserIdAndTopicIdAndStatus(
+                user.getId(), topicId, FlashcardProgressStatus.REMEMBERED);
 
     UserTopicProgress topicProgress =
         userTopicProgressRepository
@@ -322,7 +315,7 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
             .orElseGet(
                 () -> UserTopicProgress.builder().user(user).topic(topic).learnedWords(0).build());
 
-    topicProgress.setLearnedWords((int) learnedCount);
+    topicProgress.setLearnedWords(learnedCount);
     userTopicProgressRepository.save(topicProgress);
 
     int topicTotalWords = topic.getNumWords() != null ? topic.getNumWords() : 0;
@@ -340,7 +333,7 @@ public class LearnerFlashcardServiceImpl implements LearnerFlashcardService {
         cardId,
         topicId,
         request.status(),
-        (int) learnedCount,
+        learnedCount,
         topicTotalWords,
         topicProgressPercent);
   }

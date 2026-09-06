@@ -79,11 +79,11 @@ class ProgressEntityTest {
         UserFlashcardProgress.builder()
             .user(user)
             .flashcard(flashcard)
-            .status(FlashcardProgressStatus.REMEMBER)
+            .status(FlashcardProgressStatus.REMEMBERED)
             .build();
 
     assertThat(progress.getUser()).isEqualTo(user);
     assertThat(progress.getFlashcard()).isEqualTo(flashcard);
-    assertThat(progress.getStatus()).isEqualTo(FlashcardProgressStatus.REMEMBER);
+    assertThat(progress.getStatus()).isEqualTo(FlashcardProgressStatus.REMEMBERED);
   }
 }

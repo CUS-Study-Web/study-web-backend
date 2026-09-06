@@ -157,7 +157,7 @@ class LearnerFlashcardControllerTest {
             "/ˌpɜː.sɪˈvɪə.rəns/",
             "Noun",
             "Sự kiên trì, bền bỉ",
-            FlashcardProgressStatus.REMEMBER);
+            FlashcardProgressStatus.REMEMBERED);
 
     when(learnerFlashcardService.listTopicWords(
             eq(TOPIC_ID), eq("learner@studyweb.edu"), any(), any(), any(Pageable.class)))
@@ -170,7 +170,7 @@ class LearnerFlashcardControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.data[0].word").value("Perseverance"))
-        .andExpect(jsonPath("$.data[0].status").value("REMEMBER"));
+        .andExpect(jsonPath("$.data[0].status").value("REMEMBERED"));
   }
 
   @Test
@@ -184,14 +184,14 @@ class LearnerFlashcardControllerTest {
             "/ˌpɜː.sɪˈvɪə.rəns/",
             "Noun",
             "Sự kiên trì, bền bỉ",
-            FlashcardProgressStatus.REMEMBER);
+            FlashcardProgressStatus.REMEMBERED);
 
-    when(learnerFlashcardService.getStudyCards(TOPIC_ID, "learner@studyweb.edu", "LEARN"))
+    when(learnerFlashcardService.getStudyCards(TOPIC_ID, "learner@studyweb.edu"))
         .thenReturn(List.of(item));
 
     mockMvc
         .perform(
-            get("/api/learner/flashcards/topics/" + TOPIC_ID + "/study?phase=LEARN")
+            get("/api/learner/flashcards/topics/" + TOPIC_ID + "/study")
                 .with(authenticatedLearner()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
@@ -202,10 +202,10 @@ class LearnerFlashcardControllerTest {
   @DisplayName("POST /api/learner/flashcards/topics/{topicId}/cards/{cardId}/progress - Update progress")
   void updateCardProgress_success() throws Exception {
     UpdateLearnerProgressRequest request =
-        new UpdateLearnerProgressRequest(FlashcardProgressStatus.REMEMBER);
+        new UpdateLearnerProgressRequest(FlashcardProgressStatus.REMEMBERED);
     LearnerCardProgressResponse response =
         new LearnerCardProgressResponse(
-            CARD_ID, TOPIC_ID, FlashcardProgressStatus.REMEMBER, 33, 50, 66);
+            CARD_ID, TOPIC_ID, FlashcardProgressStatus.REMEMBERED, 33, 50, 66);
 
     when(learnerFlashcardService.updateCardProgress(
             eq(TOPIC_ID), eq(CARD_ID), eq("learner@studyweb.edu"), any()))
@@ -219,7 +219,7 @@ class LearnerFlashcardControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
-        .andExpect(jsonPath("$.data.status").value("REMEMBER"))
+        .andExpect(jsonPath("$.data.status").value("REMEMBERED"))
         .andExpect(jsonPath("$.data.topicLearnedWords").value(33))
         .andExpect(jsonPath("$.data.topicProgressPercent").value(66));
   }

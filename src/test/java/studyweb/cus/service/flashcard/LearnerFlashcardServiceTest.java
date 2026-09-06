@@ -186,7 +186,7 @@ class LearnerFlashcardServiceTest {
       when(flashcardTopicRepository.findByIdAndDeletedAtIsNull(topicId))
           .thenReturn(Optional.of(publishedTopic));
       when(userFlashcardProgressRepository.countByUserIdAndTopicIdAndStatus(
-              learnerUser.getId(), topicId, FlashcardProgressStatus.REMEMBER))
+              learnerUser.getId(), topicId, FlashcardProgressStatus.REMEMBERED))
           .thenReturn(32L);
 
       LearnerTopicDetailResponse response =
@@ -214,7 +214,7 @@ class LearnerFlashcardServiceTest {
           UserFlashcardProgress.builder()
               .user(learnerUser)
               .flashcard(card1)
-              .status(FlashcardProgressStatus.REMEMBER)
+              .status(FlashcardProgressStatus.REMEMBERED)
               .build();
 
       when(userRepository.findByGmail("learner@studyweb.edu"))
@@ -232,39 +232,19 @@ class LearnerFlashcardServiceTest {
               topicId, "learner@studyweb.edu", "ALL", null, pageable);
 
       assertThat(result.getContent()).hasSize(2);
-      assertThat(result.getContent().get(0).status()).isEqualTo(FlashcardProgressStatus.REMEMBER);
-      assertThat(result.getContent().get(1).status()).isEqualTo(FlashcardProgressStatus.STUDY);
+      assertThat(result.getContent().get(0).status()).isEqualTo(FlashcardProgressStatus.REMEMBERED);
+      assertThat(result.getContent().get(1).status()).isEqualTo(FlashcardProgressStatus.NOT_STUDIED);
     }
 
     @Test
-    @DisplayName("Should get study cards for LEARN phase")
-    void testGetStudyCards_LearnPhase() {
-      UUID topicId = publishedTopic.getId();
-      when(userRepository.findByGmail("learner@studyweb.edu"))
-          .thenReturn(Optional.of(learnerUser));
-      when(flashcardTopicRepository.findByIdAndDeletedAtIsNull(topicId))
-          .thenReturn(Optional.of(publishedTopic));
-      when(flashcardRepository.findAll(any(Specification.class), any(Sort.class)))
-          .thenReturn(List.of(card1, card2));
-      when(userFlashcardProgressRepository.findByUserIdAndFlashcardTopicId(
-              learnerUser.getId(), topicId))
-          .thenReturn(List.of());
-
-      List<LearnerFlashcardItemResponse> studyCards =
-          learnerFlashcardService.getStudyCards(topicId, "learner@studyweb.edu", "LEARN");
-
-      assertThat(studyCards).hasSize(2);
-    }
-
-    @Test
-    @DisplayName("Should get study cards for REVIEW phase (only STUDY status)")
-    void testGetStudyCards_ReviewPhase() {
+    @DisplayName("Should get all study cards for a topic")
+    void testGetStudyCards() {
       UUID topicId = publishedTopic.getId();
       UserFlashcardProgress progress1 =
           UserFlashcardProgress.builder()
               .user(learnerUser)
               .flashcard(card1)
-              .status(FlashcardProgressStatus.REMEMBER)
+              .status(FlashcardProgressStatus.REMEMBERED)
               .build();
 
       when(userRepository.findByGmail("learner@studyweb.edu"))
@@ -278,11 +258,11 @@ class LearnerFlashcardServiceTest {
           .thenReturn(List.of(progress1));
 
       List<LearnerFlashcardItemResponse> studyCards =
-          learnerFlashcardService.getStudyCards(topicId, "learner@studyweb.edu", "REVIEW");
+          learnerFlashcardService.getStudyCards(topicId, "learner@studyweb.edu");
 
-      // card1 is REMEMBER, so only card2 (STUDY) is returned in REVIEW phase
-      assertThat(studyCards).hasSize(1);
-      assertThat(studyCards.get(0).id()).isEqualTo(card2.getId());
+      assertThat(studyCards).hasSize(2);
+      assertThat(studyCards.get(0).status()).isEqualTo(FlashcardProgressStatus.REMEMBERED);
+      assertThat(studyCards.get(1).status()).isEqualTo(FlashcardProgressStatus.NOT_STUDIED);
     }
   }
 
@@ -296,7 +276,7 @@ class LearnerFlashcardServiceTest {
       UUID topicId = publishedTopic.getId();
       UUID cardId = card1.getId();
       UpdateLearnerProgressRequest request =
-          new UpdateLearnerProgressRequest(FlashcardProgressStatus.REMEMBER);
+          new UpdateLearnerProgressRequest(FlashcardProgressStatus.REMEMBERED);
 
       when(userRepository.findByGmail("learner@studyweb.edu"))
           .thenReturn(Optional.of(learnerUser));
@@ -307,7 +287,7 @@ class LearnerFlashcardServiceTest {
       when(userFlashcardProgressRepository.findByUserIdAndFlashcardId(learnerUser.getId(), cardId))
           .thenReturn(Optional.empty());
       when(userFlashcardProgressRepository.countByUserIdAndTopicIdAndStatus(
-              learnerUser.getId(), topicId, FlashcardProgressStatus.REMEMBER))
+              learnerUser.getId(), topicId, FlashcardProgressStatus.REMEMBERED))
           .thenReturn(1L);
       when(userTopicProgressRepository.findByUserIdAndTopicId(learnerUser.getId(), topicId))
           .thenReturn(Optional.empty());
@@ -317,7 +297,7 @@ class LearnerFlashcardServiceTest {
               topicId, cardId, "learner@studyweb.edu", request);
 
       assertThat(response.cardId()).isEqualTo(cardId);
-      assertThat(response.status()).isEqualTo(FlashcardProgressStatus.REMEMBER);
+      assertThat(response.status()).isEqualTo(FlashcardProgressStatus.REMEMBERED);
       assertThat(response.topicLearnedWords()).isEqualTo(1);
       assertThat(response.topicTotalWords()).isEqualTo(50);
       assertThat(response.topicProgressPercent()).isEqualTo(2);

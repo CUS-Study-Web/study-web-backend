@@ -24,7 +24,7 @@ public interface LearnerFlashcardService {
       UUID topicId, String email, String filterStatus, String search, Pageable pageable);
 
   List<LearnerFlashcardItemResponse> getStudyCards(
-      UUID topicId, String email, String phase);
+      UUID topicId, String email);
 
   LearnerCardProgressResponse updateCardProgress(
       UUID topicId, UUID cardId, String email, UpdateLearnerProgressRequest request);
