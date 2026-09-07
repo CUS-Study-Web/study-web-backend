@@ -1472,8 +1472,7 @@ class SystemManagementControllerTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/learners/counts/vip")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/learners/counts/vip").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("VIP learners count fetched successfully!"))
@@ -1490,8 +1489,7 @@ class SystemManagementControllerTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/assistants/counts")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/assistants/counts").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Assistants count fetched successfully!"))
@@ -1550,8 +1548,7 @@ class SystemManagementControllerTest {
     void getDailyStats_adminWithParams_returns200() throws Exception {
       LocalDate endDate = LocalDate.of(2026, 7, 23);
       LocalDate startDate = endDate.minusDays(6);
-      DailyStatsResponse response =
-          new DailyStatsResponse(startDate, endDate, 7, List.of());
+      DailyStatsResponse response = new DailyStatsResponse(startDate, endDate, 7, List.of());
 
       when(systemManagementService.getDailyStats(
               eq(endDate), eq(7), eq(List.of(ActionType.LOGIN, ActionType.REGISTER))))

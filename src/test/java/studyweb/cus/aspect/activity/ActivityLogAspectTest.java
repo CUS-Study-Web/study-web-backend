@@ -130,7 +130,8 @@ class ActivityLogAspectTest {
   }
 
   @Test
-  @DisplayName("handleActivityLog defaults userId to ANONYMOUS when unauthenticated and no auth request in args")
+  @DisplayName(
+      "handleActivityLog defaults userId to ANONYMOUS when unauthenticated and no auth request in args")
   void handleActivityLog_unauthenticated_anonymous() {
     when(joinPoint.getArgs()).thenReturn(new Object[] {"non-auth-arg"});
     when(logActivity.action()).thenReturn(ActionType.REQUEST_VIP);
@@ -144,7 +145,8 @@ class ActivityLogAspectTest {
   }
 
   @Test
-  @DisplayName("handleActivityLog defaults description to 'Executed <methodName>' when description is empty")
+  @DisplayName(
+      "handleActivityLog defaults description to 'Executed <methodName>' when description is empty")
   void handleActivityLog_emptyDescription() {
     when(joinPoint.getArgs()).thenReturn(new Object[] {});
     when(joinPoint.getSignature()).thenReturn(methodSignature);

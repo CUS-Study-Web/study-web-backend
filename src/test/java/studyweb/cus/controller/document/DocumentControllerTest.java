@@ -36,6 +36,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -52,7 +53,6 @@ import studyweb.cus.dto.response.document.DocumentResponse;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.DocumentFileType;
-import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.document.DocumentService;
 

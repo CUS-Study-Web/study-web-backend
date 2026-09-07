@@ -37,13 +37,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.badge.BadgeRequest;
 import studyweb.cus.dto.response.badge.BadgeResponse;
-import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.badge.BadgeService;
 

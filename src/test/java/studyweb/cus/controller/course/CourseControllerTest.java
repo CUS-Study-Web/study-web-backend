@@ -33,13 +33,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.course.CourseRequest;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
-import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.course.CourseService;
 

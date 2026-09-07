@@ -4,7 +4,7 @@
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
     <springProperty scope="context" name="appName" source="spring.application.name"/>
-    <springProperty scope="context" name="lokiUrl" source="logging.loki.url"/>
+    <springProperty scope="context" name="lokiUrl" source="logging.loki.url" defaultValue="http://localhost:3100"/>
 
    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>

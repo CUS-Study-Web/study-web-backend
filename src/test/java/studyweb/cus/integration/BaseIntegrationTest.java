@@ -57,7 +57,8 @@ import studyweb.cus.security.JwtUtils;
       "spring.mail.username=test",
       "spring.mail.password=test",
       "spring.mail.from=test@studyweb.edu",
-      "cors.allowed-origins=http://localhost:3000"
+      "cors.allowed-origins=http://localhost:3000",
+      "logging.loki.url=http://localhost:3100"
     })
 public abstract class BaseIntegrationTest {
 
