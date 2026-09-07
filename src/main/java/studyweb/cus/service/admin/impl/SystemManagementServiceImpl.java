@@ -1,7 +1,13 @@
 package studyweb.cus.service.admin.impl;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,11 +22,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import studyweb.cus.config.LokiProperties;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatItemResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.LokiQueryRangeResponse;
+import studyweb.cus.dto.response.admin.LokiQueryRangeResponse.LokiResultItem;
+import studyweb.cus.dto.response.admin.MonthlyStatItemResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
@@ -32,6 +45,7 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -50,6 +64,7 @@ import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.service.admin.SystemManagementService;
+import studyweb.cus.service.log.LokiQueryService;
 
 @Service
 @RequiredArgsConstructor
@@ -65,6 +80,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final PricingPageContentRepository pricingPageContentRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
+  private final LokiQueryService lokiQueryService;
+  private final LokiProperties lokiProperties;
 
   @Override
   @Transactional(readOnly = true)
@@ -398,14 +415,23 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     User user = vipRequest.getUser();
     LocalDate now = LocalDate.now();
     user.setTier(UserTier.VIP);
-    user.setVipStartDate(now);
+    if (user.getVipStartDate() == null) {
+      user.setVipStartDate(now);
+    }
 
     String billingPeriod =
         pricingPageContentRepository
             .findFirstByOrderByCreatedAtDesc()
             .map(PricingPageContent::getVipPkgBillingPeriod)
             .orElse(null);
-    user.setVipEndDate(calculateVipEndDate(now, billingPeriod));
+
+    // if user has active VIP (including on end date), extend from current vipEndDate;
+    // otherwise from today
+    LocalDate baseDate =
+        (user.getVipEndDate() != null && !user.getVipEndDate().isBefore(now))
+            ? user.getVipEndDate()
+            : now;
+    user.setVipEndDate(calculateVipEndDate(baseDate, billingPeriod));
   }
 
   @Override
@@ -473,5 +499,179 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       return startDate.plusDays(1);
     }
     return startDate.plusMonths(1);
+  }
+
+  @Override
+  public DailyStatsResponse getDailyStats(
+      LocalDate endDate, Integer days, List<ActionType> actions) {
+    LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
+    if (effectiveEndDate.getYear() < 1970 || effectiveEndDate.getYear() > 2100) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
+    }
+
+    int maxDays = lokiProperties.getMaxQueryLengthDays();
+    int windowDays = days != null ? days : 7;
+    if (windowDays < 1 || windowDays > maxDays) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Days must be between 1 and " + maxDays);
+    }
+
+    List<ActionType> effectiveActions = resolveActions(actions);
+    LocalDate startDate = effectiveEndDate.minusDays(windowDays - 1);
+
+    long startNano =
+        startDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+    long endNano =
+        effectiveEndDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
+
+    LokiQueryRangeResponse response =
+        lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
+
+    Map<LocalDate, Map<String, Integer>> dailyCounts = new HashMap<>();
+    for (int i = 0; i < windowDays; i++) {
+      dailyCounts.put(startDate.plusDays(i), new HashMap<>());
+    }
+
+    if (response != null && response.data() != null && response.data().result() != null) {
+      for (LokiResultItem item : response.data().result()) {
+        Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
+        String action = labels != null ? labels.get("action") : null;
+        if (action == null || item.values() == null) {
+          continue;
+        }
+
+        for (List<Object> pair : item.values()) {
+          if (pair != null && pair.size() >= 2) {
+            long epochSec = parseEpochSeconds(pair.get(0));
+            int count = parseCount(pair.get(1));
+            LocalDate date = Instant.ofEpochSecond(epochSec).atZone(ZoneOffset.UTC).toLocalDate();
+            Map<String, Integer> counts = dailyCounts.get(date);
+            if (counts != null) {
+              counts.merge(action, count, Integer::sum);
+            }
+          }
+        }
+      }
+    }
+
+    List<DailyStatItemResponse> items = new ArrayList<>(windowDays);
+    for (int i = 0; i < windowDays; i++) {
+      LocalDate d = startDate.plusDays(i);
+      Map<String, Integer> dayCounts = dailyCounts.get(d);
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), dayCounts != null ? dayCounts.getOrDefault(act.name(), 0) : 0);
+      }
+      items.add(new DailyStatItemResponse(d, actionCounts));
+    }
+
+    return new DailyStatsResponse(startDate, effectiveEndDate, windowDays, items);
+  }
+
+  @Override
+  public MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions) {
+    if (year != null && (year < 1970 || year > 2100)) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
+    }
+    int targetYear = year != null ? year : LocalDate.now().getYear();
+
+    List<ActionType> effectiveActions = resolveActions(actions);
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
+
+    List<MonthlyStatItemResponse> items = new ArrayList<>(12);
+    for (int month = 1; month <= 12; month++) {
+      YearMonth ym = YearMonth.of(targetYear, month);
+      long startNano =
+          ym.atDay(1).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+      long endNano =
+          ym.atEndOfMonth().atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
+              * 1_000_000L;
+
+      LokiQueryRangeResponse response =
+          lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
+
+      Map<String, Integer> monthCounts = new HashMap<>();
+      if (response != null && response.data() != null && response.data().result() != null) {
+        for (LokiResultItem item : response.data().result()) {
+          Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
+          String action = labels != null ? labels.get("action") : null;
+          if (action == null || item.values() == null) {
+            continue;
+          }
+
+          for (List<Object> pair : item.values()) {
+            if (pair != null && pair.size() >= 2) {
+              int count = parseCount(pair.get(1));
+              monthCounts.merge(action, count, Integer::sum);
+            }
+          }
+        }
+      }
+
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), monthCounts.getOrDefault(act.name(), 0));
+      }
+      items.add(new MonthlyStatItemResponse(month, targetYear, actionCounts));
+    }
+
+    return new MonthlyStatsResponse(targetYear, items);
+  }
+
+  private List<ActionType> resolveActions(List<ActionType> actions) {
+    if (actions == null || actions.isEmpty()) {
+      throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Actions cannot be empty.");
+    }
+    List<ActionType> filtered = actions.stream().filter(Objects::nonNull).distinct().toList();
+    return filtered.isEmpty()
+        ? List.of(ActionType.LOGIN, ActionType.REGISTER, ActionType.REQUEST_VIP)
+        : filtered;
+  }
+
+  private long parseEpochSeconds(Object timestampObj) {
+    if (timestampObj instanceof Number number) {
+      long val = number.longValue();
+      if (val > 100_000_000_000_000L) {
+        return val / 1_000_000_000L;
+      }
+      if (val > 100_000_000_000L) {
+        return val / 1_000L;
+      }
+      return val;
+    }
+    if (timestampObj instanceof String str) {
+      try {
+        double d = Double.parseDouble(str);
+        long val = (long) d;
+        if (val > 100_000_000_000_000L) {
+          return val / 1_000_000_000L;
+        }
+        if (val > 100_000_000_000L) {
+          return val / 1_000L;
+        }
+        return val;
+      } catch (NumberFormatException e) {
+        return 0L;
+      }
+    }
+    return 0L;
+  }
+
+  private int parseCount(Object valueObj) {
+    if (valueObj == null) {
+      return 0;
+    }
+    try {
+      double d = Double.parseDouble(valueObj.toString());
+      return (int) Math.round(d);
+    } catch (NumberFormatException e) {
+      return 0;
+    }
   }
 }

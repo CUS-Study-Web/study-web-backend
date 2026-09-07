@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
@@ -19,6 +20,7 @@ import studyweb.cus.dto.request.auth.LoginRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
 import studyweb.cus.dto.request.auth.ResetPasswordRequest;
 import studyweb.cus.dto.response.auth.AuthResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.service.auth.AuthService;
@@ -32,6 +34,7 @@ public class AuthController extends AbstractBaseController {
 
   private final AuthService authService;
 
+  @LogActivity(action = ActionType.REGISTER, description = "Người dùng đăng ký tài khoản")
   @PostMapping("/register")
   @Operation(
       summary = "Register",
@@ -47,6 +50,7 @@ public class AuthController extends AbstractBaseController {
     return successSingle(response, "Sign up successful!");
   }
 
+  @LogActivity(action = ActionType.LOGIN, description = "Người dùng đăng nhập")
   @PostMapping("/login")
   @Operation(
       summary = "Login",
@@ -76,6 +80,7 @@ public class AuthController extends AbstractBaseController {
     return successSingle(response, "Token refreshed successfully!");
   }
 
+  @LogActivity(action = ActionType.LOGOUT, description = "Người dùng đăng xuất")
   @PostMapping("/signout")
   @Operation(summary = "Sign Out", description = "Logout the user and invalidate the refresh token")
   public ResponseEntity<SuccessResponse> signOut(

@@ -43,6 +43,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.badge.BadgeRequest;
 import studyweb.cus.dto.response.badge.BadgeResponse;
+import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.badge.BadgeService;
 
@@ -53,6 +54,7 @@ import studyweb.cus.service.badge.BadgeService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class BadgeControllerTest {
 
   private static final UUID BADGE_ID = UUID.randomUUID();

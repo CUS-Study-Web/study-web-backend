@@ -12,11 +12,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.service.user.UserService;
@@ -54,5 +57,31 @@ public class UserController extends AbstractBaseController {
     log.info("[POST /api/user/change-password] Changing password for email: {}", email);
     userService.changePassword(email, request);
     return success("Password changed successfully!");
+  }
+
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "Người dùng gửi yêu cầu VIP")
+  @PostMapping("/vip-subscription")
+  @Operation(
+      summary = "Subscribe to VIP",
+      description = "Submit a VIP status subscription request for the authenticated learner")
+  public ResponseEntity<SuccessResponse> subscribeVip(
+      @AuthenticationPrincipal String email,
+      @RequestBody(required = false) VipSubscriptionRequest request) {
+    log.info("[POST /api/user/vip-subscription] Submitting VIP subscription for email: {}", email);
+    userService.createVipRequest(email, request, false);
+    return success("VIP subscription request submitted successfully!");
+  }
+
+  @LogActivity(action = ActionType.REQUEST_VIP, description = "Người dùng gửi yêu cầu gia hạn VIP")
+  @PostMapping("/vip-renewal")
+  @Operation(
+      summary = "Renew VIP Subscription",
+      description = "Submit a VIP status renewal request for the authenticated learner")
+  public ResponseEntity<SuccessResponse> renewVip(
+      @AuthenticationPrincipal String email,
+      @RequestBody(required = false) VipSubscriptionRequest request) {
+    log.info("[POST /api/user/vip-renewal] Submitting VIP renewal for email: {}", email);
+    userService.createVipRequest(email, request, true);
+    return success("VIP renewal request submitted successfully!");
   }
 }

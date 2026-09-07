@@ -2,6 +2,7 @@ package studyweb.cus.controller.user;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -34,7 +35,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.enums.Gender;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.user.UserService;
@@ -46,6 +49,7 @@ import studyweb.cus.service.user.UserService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class UserControllerTest {
 
   private static final String GMAIL = "learner@studyweb.edu";
@@ -145,5 +149,77 @@ class UserControllerTest {
         .perform(get("/api/user/change-password").with(authenticated()))
         .andExpect(status().isMethodNotAllowed())
         .andExpect(jsonPath("$.statusCode").value(405));
+  }
+
+  @Test
+  void subscribeVip_unauthenticatedReturns401() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/vip-subscription")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"note\":\"Need VIP\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void subscribeVip_authenticatedWithBodyReturns200() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/vip-subscription")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"note\":\"Need VIP\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP subscription request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(false));
+  }
+
+  @Test
+  void subscribeVip_authenticatedWithoutBodyReturns200() throws Exception {
+    mockMvc
+        .perform(post("/api/user/vip-subscription").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP subscription request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), isNull(), eq(false));
+  }
+
+  @Test
+  void renewVip_unauthenticatedReturns401() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/vip-renewal")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"note\":\"Renew VIP\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void renewVip_authenticatedWithBodyReturns200() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/user/vip-renewal")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"note\":\"Renew VIP\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(true));
+  }
+
+  @Test
+  void renewVip_authenticatedWithoutBodyReturns200() throws Exception {
+    mockMvc
+        .perform(post("/api/user/vip-renewal").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), isNull(), eq(true));
   }
 }

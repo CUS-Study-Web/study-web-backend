@@ -55,6 +55,7 @@ import studyweb.cus.enums.AssessmentFileType;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.security.JwtAuthenticationFilter;
+import org.springframework.test.context.TestPropertySource;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.assessment.LearnerAssessmentService;
 
@@ -65,6 +66,7 @@ import studyweb.cus.service.assessment.LearnerAssessmentService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class AssessmentControllerTest {
 
   private static final UUID COURSE_ID = UUID.randomUUID();

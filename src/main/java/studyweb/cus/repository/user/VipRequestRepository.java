@@ -7,11 +7,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.VipRequestStatus;
 
 public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
+
+  boolean existsByUserAndStatus(User user, VipRequestStatus status);
 
   @Query(
       value =
