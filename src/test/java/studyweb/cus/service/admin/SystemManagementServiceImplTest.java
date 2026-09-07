@@ -2,7 +2,6 @@ package studyweb.cus.service.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -116,7 +115,8 @@ class SystemManagementServiceImplTest {
   void getDailyStats_emptyOrNullActions_throwsSystemException() {
     when(lokiProperties.getMaxQueryLengthDays()).thenReturn(30);
 
-    assertThatThrownBy(() -> systemManagementService.getDailyStats(LocalDate.of(2026, 7, 20), 7, null))
+    assertThatThrownBy(
+            () -> systemManagementService.getDailyStats(LocalDate.of(2026, 7, 20), 7, null))
         .isInstanceOf(SystemException.class)
         .satisfies(
             ex ->
@@ -135,7 +135,8 @@ class SystemManagementServiceImplTest {
   }
 
   @Test
-  @DisplayName("getDailyStats deduplicates and filters actions; falls back to defaults when all null")
+  @DisplayName(
+      "getDailyStats deduplicates and filters actions; falls back to defaults when all null")
   void getDailyStats_filtersActions() {
     when(lokiProperties.getMaxQueryLengthDays()).thenReturn(30);
     when(lokiQueryService.queryActivityMetricRange(anyString(), anyLong(), anyLong(), anyString()))
@@ -144,11 +145,9 @@ class SystemManagementServiceImplTest {
     List<ActionType> actionsWithDuplicates =
         Arrays.asList(ActionType.LOGIN, ActionType.LOGIN, null);
     DailyStatsResponse resp1 =
-        systemManagementService.getDailyStats(
-            LocalDate.of(2026, 7, 20), 7, actionsWithDuplicates);
+        systemManagementService.getDailyStats(LocalDate.of(2026, 7, 20), 7, actionsWithDuplicates);
     assertThat(resp1.items().get(0).actionCounts()).containsKey("LOGIN");
-    verify(lokiQueryService)
-        .queryActivityMetricRange(eq("LOGIN"), anyLong(), anyLong(), eq("1d"));
+    verify(lokiQueryService).queryActivityMetricRange(eq("LOGIN"), anyLong(), anyLong(), eq("1d"));
 
     List<ActionType> allNullActions = Collections.singletonList(null);
     DailyStatsResponse resp2 =
@@ -188,9 +187,7 @@ class SystemManagementServiceImplTest {
             null,
             Map.of("action", "REGISTER"),
             List.of(
-                List.of(d1Nano, 2),
-                List.of("invalid-epoch", 99),
-                Arrays.asList(d2Milli, null)));
+                List.of(d1Nano, 2), List.of("invalid-epoch", 99), Arrays.asList(d2Milli, null)));
 
     LokiResultItem itemNullAction = new LokiResultItem(Map.of(), null, List.of());
     LokiResultItem itemNullValues = new LokiResultItem(Map.of("action", "LOGIN"), null, null);
@@ -199,9 +196,7 @@ class SystemManagementServiceImplTest {
         new LokiQueryRangeResponse(
             "success",
             new LokiData(
-                "matrix",
-                List.of(itemMetric, itemStream, itemNullAction, itemNullValues),
-                null));
+                "matrix", List.of(itemMetric, itemStream, itemNullAction, itemNullValues), null));
 
     when(lokiQueryService.queryActivityMetricRange(anyString(), anyLong(), anyLong(), anyString()))
         .thenReturn(lokiResponse);
@@ -281,8 +276,7 @@ class SystemManagementServiceImplTest {
             List.of(List.of(123456789L, "15"), List.of(123456790L, 5)));
 
     LokiQueryRangeResponse lokiResponse =
-        new LokiQueryRangeResponse(
-            "success", new LokiData("matrix", List.of(resultItem), null));
+        new LokiQueryRangeResponse("success", new LokiData("matrix", List.of(resultItem), null));
 
     when(lokiQueryService.queryActivityMetricRange(eq("LOGIN"), anyLong(), anyLong(), eq("1d")))
         .thenReturn(lokiResponse);

@@ -49,7 +49,6 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
-import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.content.PricingPageContent;
 import studyweb.cus.entity.course.AnswerKey;
@@ -1456,7 +1455,8 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("Approving request for active VIP user extends from existing vipEndDate and preserves vipStartDate")
+    @DisplayName(
+        "Approving request for active VIP user extends from existing vipEndDate and preserves vipStartDate")
     void approveVipRequest_activeVip_extendsFromExistingEndDate() throws Exception {
       UUID requestId = UUID.randomUUID();
       LocalDate initialStart = LocalDate.now().minusDays(20);
@@ -1494,7 +1494,8 @@ class SystemManagementServiceTest {
     }
 
     @Test
-    @DisplayName("Approving request for expired VIP user extends from today and preserves vipStartDate")
+    @DisplayName(
+        "Approving request for expired VIP user extends from today and preserves vipStartDate")
     void approveVipRequest_expiredVip_extendsFromToday() throws Exception {
       UUID requestId = UUID.randomUUID();
       LocalDate initialStart = LocalDate.now().minusMonths(2);
@@ -1516,7 +1517,8 @@ class SystemManagementServiceTest {
       when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
       when(vipRequestRepository.approveVip(requestId)).thenReturn(1);
       when(pricingPageContentRepository.findFirstByOrderByCreatedAtDesc())
-          .thenReturn(Optional.of(PricingPageContent.builder().vipPkgBillingPeriod("YEARLY").build()));
+          .thenReturn(
+              Optional.of(PricingPageContent.builder().vipPkgBillingPeriod("YEARLY").build()));
 
       mockMvc
           .perform(
@@ -1693,8 +1695,7 @@ class SystemManagementServiceTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/learners/counts/vip")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/learners/counts/vip").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.count").value(8));
@@ -1709,8 +1710,7 @@ class SystemManagementServiceTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/assistants/counts")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/assistants/counts").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.count").value(4));

@@ -503,7 +503,8 @@ class DocumentServiceTest {
       Pageable pageable = PageRequest.of(0, 10);
       Page<Document> page = new PageImpl<>(List.of(vipDocument), pageable, 1);
       when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
-      when(userRepository.findByGmail("assistant@gmail.com")).thenReturn(Optional.of(assistantUser));
+      when(userRepository.findByGmail("assistant@gmail.com"))
+          .thenReturn(Optional.of(assistantUser));
 
       Page<DocumentResponse> result =
           documentService.listDocuments(null, null, null, null, pageable, "assistant@gmail.com");

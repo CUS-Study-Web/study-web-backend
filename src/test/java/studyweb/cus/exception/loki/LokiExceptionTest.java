@@ -10,7 +10,8 @@ class LokiExceptionTest {
   @Test
   void errorCode_exposesCodeMessageHttpStatus() {
     assertThat(LokiErrorCode.LOKI_NOT_CONFIGURED.code()).isEqualTo("LOKI_001");
-    assertThat(LokiErrorCode.LOKI_NOT_CONFIGURED.message()).isEqualTo("Missing config for Loki URL");
+    assertThat(LokiErrorCode.LOKI_NOT_CONFIGURED.message())
+        .isEqualTo("Missing config for Loki URL");
     assertThat(LokiErrorCode.LOKI_NOT_CONFIGURED.httpStatus())
         .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
 

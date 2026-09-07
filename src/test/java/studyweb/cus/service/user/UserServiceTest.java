@@ -17,23 +17,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
-import studyweb.cus.security.JwtUtils;
-import studyweb.cus.dto.request.user.VipSubscriptionRequest;
-import studyweb.cus.entity.user.VipRequest;
-import studyweb.cus.enums.UserRole;
-import studyweb.cus.enums.UserStatus;
-import studyweb.cus.enums.UserTier;
-import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.repository.user.VipRequestRepository;
+import studyweb.cus.security.JwtUtils;
 import studyweb.cus.service.user.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -265,8 +265,7 @@ class UserServiceTest {
         .isInstanceOf(UserException.class)
         .satisfies(
             ex ->
-                assertThat(((UserException) ex).getCode())
-                    .isEqualTo(UserErrorCode.NOT_VIP.code()));
+                assertThat(((UserException) ex).getCode()).isEqualTo(UserErrorCode.NOT_VIP.code()));
 
     verify(vipRequestRepository, never()).save(any());
   }
