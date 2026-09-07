@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SingleResponse;
@@ -34,6 +35,7 @@ import studyweb.cus.dto.response.assessment.AssessmentDetailResponse;
 import studyweb.cus.dto.response.assessment.AssessmentStartResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSubmitResponse;
 import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.assessment.LearnerAssessmentService;
 
@@ -47,6 +49,10 @@ public class AssessmentController extends AbstractBaseController {
   private final AssessmentService assessmentService;
   private final LearnerAssessmentService learnerAssessmentService;
 
+  @LogActivity(
+      action = ActionType.CREATE_ASSESSMENT,
+      description =
+          "#{'EXAM'.equals(#request.assessmentType()?.name()) ? ('Trợ giảng tạo bài kiểm tra \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng tạo bài tập \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@subjectRepository.findById(#request.subjectId()).orElse(null)?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
@@ -103,6 +109,10 @@ public class AssessmentController extends AbstractBaseController {
         "Homework fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.UPDATE_ASSESSMENT,
+      description =
+          "#{'EXAM'.equals(#result?.body?.data?.assessmentType()?.name()) ? ('Trợ giảng cập nhật bài kiểm tra \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng cập nhật bài tập \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
   @PatchMapping(value = "/{assessmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Update Assessment", description = "Update an existing homework or exam")
@@ -116,6 +126,10 @@ public class AssessmentController extends AbstractBaseController {
         "Assessment updated successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.DELETE_ASSESSMENT,
+      description =
+          "#{'EXAM'.equals(@assessmentRepository.findById(#assessmentId).orElse(null)?.assessmentType?.name()) ? ('Trợ giảng xóa bài kiểm tra \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng xóa bài tập \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
   @DeleteMapping("/{assessmentId}")
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Delete Assessment", description = "Soft-delete an assessment")
@@ -144,6 +158,7 @@ public class AssessmentController extends AbstractBaseController {
         "Assessment ready!");
   }
 
+  @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "Người dùng nộp bài làm")
   @PostMapping("/{assessmentId}/submit")
   @PreAuthorize("hasRole('LEARNER')")
   @Operation(

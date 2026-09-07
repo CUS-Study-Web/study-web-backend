@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.PagedResponse;
@@ -34,6 +35,7 @@ import studyweb.cus.dto.response.course.CourseDetailResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.service.course.CourseService;
@@ -189,6 +191,10 @@ public class CourseController extends AbstractBaseController {
         "Lessons fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.CREATE_LESSON,
+      description =
+          "Trợ giảng tạo bài học \"#{#request.title() ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -207,6 +213,10 @@ public class CourseController extends AbstractBaseController {
         courseService.createLesson(id, subjectId, request), "Lesson created successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.UPDATE_LESSON,
+      description =
+          "Trợ giảng cập nhật bài học \"#{#request.title() ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -224,6 +234,10 @@ public class CourseController extends AbstractBaseController {
         "Lesson updated successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.DELETE_LESSON,
+      description =
+          "Trợ giảng xóa bài học \"#{@lessonRepository.findById(#lessonId).orElse(null)?.title ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(

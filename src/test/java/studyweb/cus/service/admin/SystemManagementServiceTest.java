@@ -49,8 +49,8 @@ import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
-import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.entity.content.PricingPageContent;
 import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.AssessmentAttempt;
@@ -93,7 +93,11 @@ import studyweb.cus.service.admin.impl.SystemManagementServiceImpl;
   SystemManagementServiceImpl.class,
   SystemManagementServiceTest.TestConfig.class
 })
-@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
+@TestPropertySource(
+    properties = {
+      "cors.allowed-origins=http://localhost:3000",
+      "logging.loki.url=http://localhost:3100"
+    })
 @WithMockUser(roles = "ADMIN")
 class SystemManagementServiceTest {
 
@@ -117,6 +121,8 @@ class SystemManagementServiceTest {
   @MockitoBean private SystemManagementMapper systemManagementMapper;
   @MockitoBean private PasswordEncoder passwordEncoder;
   @MockitoBean private JwtUtils jwtUtils;
+  @MockitoBean private studyweb.cus.service.log.LokiQueryService lokiQueryService;
+  @MockitoBean private studyweb.cus.config.LokiProperties lokiProperties;
 
   private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -1449,6 +1455,85 @@ class SystemManagementServiceTest {
     }
 
     @Test
+    @DisplayName(
+        "Approving request for active VIP user extends from existing vipEndDate and preserves vipStartDate")
+    void approveVipRequest_activeVip_extendsFromExistingEndDate() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      LocalDate initialStart = LocalDate.now().minusDays(20);
+      LocalDate currentEnd = LocalDate.now().plusDays(10);
+      User user =
+          User.builder()
+              .status(UserStatus.ACTIVE)
+              .tier(UserTier.VIP)
+              .role(UserRole.LEARNER)
+              .vipStartDate(initialStart)
+              .vipEndDate(currentEnd)
+              .build();
+      user.setId(USER_ID_1);
+
+      VipRequest vipRequest =
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+      when(vipRequestRepository.approveVip(requestId)).thenReturn(1);
+      when(pricingPageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.empty());
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200));
+
+      verify(vipRequestRepository).approveVip(requestId);
+      assertThat(user.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(user.getVipStartDate()).isEqualTo(initialStart);
+      assertThat(user.getVipEndDate()).isEqualTo(currentEnd.plusMonths(1));
+    }
+
+    @Test
+    @DisplayName(
+        "Approving request for expired VIP user extends from today and preserves vipStartDate")
+    void approveVipRequest_expiredVip_extendsFromToday() throws Exception {
+      UUID requestId = UUID.randomUUID();
+      LocalDate initialStart = LocalDate.now().minusMonths(2);
+      LocalDate pastEnd = LocalDate.now().minusDays(5);
+      User user =
+          User.builder()
+              .status(UserStatus.ACTIVE)
+              .tier(UserTier.VIP)
+              .role(UserRole.LEARNER)
+              .vipStartDate(initialStart)
+              .vipEndDate(pastEnd)
+              .build();
+      user.setId(USER_ID_1);
+
+      VipRequest vipRequest =
+          VipRequest.builder().user(user).status(VipRequestStatus.WAITING).build();
+      vipRequest.setId(requestId);
+
+      when(vipRequestRepository.findById(requestId)).thenReturn(Optional.of(vipRequest));
+      when(vipRequestRepository.approveVip(requestId)).thenReturn(1);
+      when(pricingPageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(
+              Optional.of(PricingPageContent.builder().vipPkgBillingPeriod("YEARLY").build()));
+
+      mockMvc
+          .perform(
+              patch("/api/system-management/vip-requests/{id}/approve", requestId)
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200));
+
+      verify(vipRequestRepository).approveVip(requestId);
+      assertThat(user.getTier()).isEqualTo(UserTier.VIP);
+      assertThat(user.getVipStartDate()).isEqualTo(initialStart);
+      assertThat(user.getVipEndDate()).isEqualTo(LocalDate.now().plusYears(1));
+    }
+
+    @Test
     @DisplayName("Approving non-existent request throws 404 VIP_REQUEST_NOT_FOUND")
     void approveVipRequest_notFound_returns404() throws Exception {
       UUID requestId = UUID.randomUUID();
@@ -1610,8 +1695,7 @@ class SystemManagementServiceTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/learners/counts/vip")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/learners/counts/vip").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.count").value(8));
@@ -1626,8 +1710,7 @@ class SystemManagementServiceTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/assistants/counts")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/assistants/counts").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.data.count").value(4));

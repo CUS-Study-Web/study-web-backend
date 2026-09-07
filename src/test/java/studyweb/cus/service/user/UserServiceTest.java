@@ -17,15 +17,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.security.JwtUtils;
 import studyweb.cus.service.user.impl.UserServiceImpl;
 
@@ -35,6 +42,8 @@ class UserServiceTest {
   private static final String GMAIL = "learner@studyweb.edu";
 
   @Mock private UserRepository userRepository;
+
+  @Mock private VipRequestRepository vipRequestRepository;
 
   @Mock private PasswordEncoder passwordEncoder;
 
@@ -179,5 +188,163 @@ class UserServiceTest {
     verify(userRepository).save(captor.capture());
     assertThat(captor.getValue().getPassword()).isEqualTo("new-hash");
     verify(jwtUtils).revokeAllSessions(GMAIL);
+  }
+
+  @Test
+  void createVipRequest_userNotFound_throwsUserNotFound() {
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_userInactive_throwsUserLocked() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_userBanned_throwsUserBanned() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_nonLearnerRole_throwsRoleNotAllowed() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.ASSISTANT);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ROLE_NOT_ALLOWED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_renewal_notVip_throwsNotVip() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, true))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode()).isEqualTo(UserErrorCode.NOT_VIP.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_subscription_alreadyVip_throwsAlreadyVip() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.VIP);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ALREADY_VIP.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_waitingRequestExists_throwsVipRequestPending() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(true);
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.VIP_REQUEST_PENDING.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_subscription_successSavesRequest() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    VipSubscriptionRequest request = new VipSubscriptionRequest("Bank transfer completed");
+    userService.createVipRequest(GMAIL, request, false);
+
+    ArgumentCaptor<VipRequest> captor = ArgumentCaptor.forClass(VipRequest.class);
+    verify(vipRequestRepository).save(captor.capture());
+    VipRequest saved = captor.getValue();
+    assertThat(saved.getUser()).isEqualTo(u);
+    assertThat(saved.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+    assertThat(saved.getNote()).isEqualTo("Bank transfer completed");
+    assertThat(saved.getRequestDate()).isEqualTo(LocalDate.now());
+  }
+
+  @Test
+  void createVipRequest_renewal_successSavesRequestWithNullRequest() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.VIP);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    userService.createVipRequest(GMAIL, null, true);
+
+    ArgumentCaptor<VipRequest> captor = ArgumentCaptor.forClass(VipRequest.class);
+    verify(vipRequestRepository).save(captor.capture());
+    VipRequest saved = captor.getValue();
+    assertThat(saved.getUser()).isEqualTo(u);
+    assertThat(saved.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+    assertThat(saved.getNote()).isNull();
+    assertThat(saved.getRequestDate()).isEqualTo(LocalDate.now());
   }
 }
