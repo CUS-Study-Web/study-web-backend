@@ -1,4 +1,4 @@
-package studyweb.cus.dto.response.website;
+package studyweb.cus.dto.response.admin;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

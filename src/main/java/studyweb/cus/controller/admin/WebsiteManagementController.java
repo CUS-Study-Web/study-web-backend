@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
-import studyweb.cus.dto.request.website.UpdateFooterRequest;
-import studyweb.cus.dto.request.website.UpdateHomepageRequest;
-import studyweb.cus.dto.response.website.FooterResponse;
-import studyweb.cus.dto.response.website.HomepageResponse;
+import studyweb.cus.dto.request.admin.UpdateFooterRequest;
+import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
+import studyweb.cus.dto.response.admin.FooterResponse;
+import studyweb.cus.dto.response.admin.HomepageResponse;
 import studyweb.cus.service.admin.WebsiteManagementService;
 
 @RestController

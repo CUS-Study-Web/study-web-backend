@@ -1,4 +1,4 @@
-package studyweb.cus.dto.response.website;
+package studyweb.cus.dto.response.admin;
 
 import java.util.UUID;
 import studyweb.cus.enums.FooterCategory;

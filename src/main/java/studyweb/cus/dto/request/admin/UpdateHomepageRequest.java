@@ -1,4 +1,4 @@
-package studyweb.cus.dto.request.website;
+package studyweb.cus.dto.request.admin;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;

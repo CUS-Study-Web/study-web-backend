@@ -1,9 +1,9 @@
 package studyweb.cus.service.admin;
 
-import studyweb.cus.dto.request.website.UpdateFooterRequest;
-import studyweb.cus.dto.request.website.UpdateHomepageRequest;
-import studyweb.cus.dto.response.website.FooterResponse;
-import studyweb.cus.dto.response.website.HomepageResponse;
+import studyweb.cus.dto.request.admin.UpdateFooterRequest;
+import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
+import studyweb.cus.dto.response.admin.FooterResponse;
+import studyweb.cus.dto.response.admin.HomepageResponse;
 
 public interface WebsiteManagementService {
 

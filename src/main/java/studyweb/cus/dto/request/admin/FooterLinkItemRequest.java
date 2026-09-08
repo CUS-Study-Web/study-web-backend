@@ -1,4 +1,4 @@
-package studyweb.cus.dto.request.website;
+package studyweb.cus.dto.request.admin;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
