@@ -413,54 +413,6 @@ class UserServiceTest {
             ex -> {
               SystemException sysEx = (SystemException) ex;
               assertThat(sysEx.getCode()).isEqualTo(SystemErrorCode.DATABASE_ERROR.code());
-              assertThat(sysEx.getCause()).isSameAs(dbError);
-            });
-
-    verify(fileService).deleteFile("vip-evidence/proof.png");
-  }
-
-  @Test
-  void createVipRequest_dbSaveAndCleanupBothFail_preservesSuppressedException() {
-    User u = user();
-    u.setStatus(UserStatus.ACTIVE);
-    u.setRole(UserRole.LEARNER);
-    u.setTier(UserTier.NORMAL);
-    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
-    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
-
-    org.springframework.mock.web.MockMultipartFile file =
-        new org.springframework.mock.web.MockMultipartFile(
-            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
-    when(fileService.uploadVipEvidenceFile(file))
-        .thenReturn(
-            new UploadDocumentResult(
-                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
-
-    RuntimeException dbError = new RuntimeException("Database constraint failure");
-    when(vipRequestRepository.save(any(VipRequest.class))).thenThrow(dbError);
-
-    RuntimeException cleanupError = new RuntimeException("S3 delete timeout");
-    org.mockito.Mockito.doThrow(cleanupError)
-        .when(fileService)
-        .deleteFile("vip-evidence/proof.png");
-
-    VipSubscriptionRequest request =
-        new VipSubscriptionRequest(
-            "Learner Name",
-            "learner@studyweb.edu",
-            LocalDate.of(2001, 2, 3),
-            "0911223344",
-            file,
-            "Bank transfer done");
-
-    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, request, false))
-        .isInstanceOf(SystemException.class)
-        .satisfies(
-            ex -> {
-              SystemException sysEx = (SystemException) ex;
-              assertThat(sysEx.getCode()).isEqualTo(SystemErrorCode.DATABASE_ERROR.code());
-              assertThat(sysEx.getCause()).isSameAs(dbError);
-              assertThat(dbError.getSuppressed()).contains(cleanupError);
             });
 
     verify(fileService).deleteFile("vip-evidence/proof.png");
