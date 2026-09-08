@@ -13,4 +13,5 @@ public record CourseSummaryResponse(
     CourseCreateStatus status,
     Integer learningProgress,
     long subjectCount,
-    long examCount) {}
+    long examCount,
+    Integer maxScores) {}
