@@ -24,5 +24,4 @@ public record HomepageResponse(
     String student3Avatar,
     String studentStatsDesc,
     String updatedByEmail,
-    LocalDateTime updatedAt
-) {}
+    LocalDateTime updatedAt) {}

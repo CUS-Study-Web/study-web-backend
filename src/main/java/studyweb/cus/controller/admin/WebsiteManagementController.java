@@ -60,7 +60,8 @@ public class WebsiteManagementController extends AbstractBaseController {
   @GetMapping("/footer")
   @Operation(
       summary = "Get Footer Content",
-      description = "Retrieve current footer content and navigation links for website management (admin only)")
+      description =
+          "Retrieve current footer content and navigation links for website management (admin only)")
   public ResponseEntity<SingleResponse<FooterResponse>> getFooterContent() {
     log.info("[GET /api/website-management/footer] Fetching footer content");
     return successSingle(

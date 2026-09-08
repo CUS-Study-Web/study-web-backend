@@ -4,9 +4,4 @@ import java.util.UUID;
 import studyweb.cus.enums.FooterCategory;
 
 public record FooterLinkResponse(
-    UUID id,
-    String label,
-    String url,
-    Integer sortOrder,
-    FooterCategory category
-) {}
+    UUID id, String label, String url, Integer sortOrder, FooterCategory category) {}

@@ -21,5 +21,4 @@ public record FooterResponse(
     String termsUrl,
     List<FooterLinkResponse> links,
     String updatedByEmail,
-    LocalDateTime updatedAt
-) {}
+    LocalDateTime updatedAt) {}

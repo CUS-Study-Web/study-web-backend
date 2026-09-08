@@ -160,18 +160,14 @@ class WebsiteManagementControllerTest {
     @WithAnonymousUser
     @DisplayName("Should return 401 when caller is unauthenticated")
     void getHomepage_asAnonymous_returns401() throws Exception {
-      mockMvc
-          .perform(get("/api/website-management/homepage"))
-          .andExpect(status().isUnauthorized());
+      mockMvc.perform(get("/api/website-management/homepage")).andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(roles = "LEARNER", username = "learner@studyweb.edu")
     @DisplayName("Should return 403 when caller has non-ADMIN role")
     void getHomepage_asLearner_returns403() throws Exception {
-      mockMvc
-          .perform(get("/api/website-management/homepage"))
-          .andExpect(status().isForbidden());
+      mockMvc.perform(get("/api/website-management/homepage")).andExpect(status().isForbidden());
     }
   }
 
@@ -183,7 +179,8 @@ class WebsiteManagementControllerTest {
     @WithMockUser(roles = "ADMIN", username = ADMIN_EMAIL)
     @DisplayName("Should return 200 with updated content when caller is ADMIN")
     void patchHomepage_asAdmin_returns200() throws Exception {
-      when(websiteManagementService.updateHomepageContent(any(UpdateHomepageRequest.class), eq(ADMIN_EMAIL)))
+      when(websiteManagementService.updateHomepageContent(
+              any(UpdateHomepageRequest.class), eq(ADMIN_EMAIL)))
           .thenReturn(sampleHomepageResponse());
 
       MockMultipartFile file =
@@ -266,18 +263,14 @@ class WebsiteManagementControllerTest {
     @WithAnonymousUser
     @DisplayName("Should return 401 when caller is unauthenticated")
     void getFooter_asAnonymous_returns401() throws Exception {
-      mockMvc
-          .perform(get("/api/website-management/footer"))
-          .andExpect(status().isUnauthorized());
+      mockMvc.perform(get("/api/website-management/footer")).andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(roles = "LEARNER", username = "learner@studyweb.edu")
     @DisplayName("Should return 403 when caller is not ADMIN")
     void getFooter_asLearner_returns403() throws Exception {
-      mockMvc
-          .perform(get("/api/website-management/footer"))
-          .andExpect(status().isForbidden());
+      mockMvc.perform(get("/api/website-management/footer")).andExpect(status().isForbidden());
     }
   }
 
@@ -308,7 +301,8 @@ class WebsiteManagementControllerTest {
                   new FooterLinkItemRequest(
                       null, "Program 1", "/prog-1", 0, FooterCategory.PROGRAM)));
 
-      when(websiteManagementService.updateFooterContent(any(UpdateFooterRequest.class), eq(ADMIN_EMAIL)))
+      when(websiteManagementService.updateFooterContent(
+              any(UpdateFooterRequest.class), eq(ADMIN_EMAIL)))
           .thenReturn(sampleFooterResponse());
 
       mockMvc
@@ -327,7 +321,19 @@ class WebsiteManagementControllerTest {
     void patchFooter_asAnonymous_returns401() throws Exception {
       UpdateFooterRequest request =
           new UpdateFooterRequest(
-              "Updated Co.", null, null, null, null, null, null, null, null, null, null, null, null,
+              "Updated Co.",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
               null);
 
       mockMvc
@@ -344,7 +350,19 @@ class WebsiteManagementControllerTest {
     void patchFooter_asLearner_returns403() throws Exception {
       UpdateFooterRequest request =
           new UpdateFooterRequest(
-              "Updated Co.", null, null, null, null, null, null, null, null, null, null, null, null,
+              "Updated Co.",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
               null);
 
       mockMvc
@@ -374,7 +392,8 @@ class WebsiteManagementControllerTest {
               null,
               null,
               null,
-              List.of(new FooterLinkItemRequest(null, "Label", "/url", -1, FooterCategory.PROGRAM)));
+              List.of(
+                  new FooterLinkItemRequest(null, "Label", "/url", -1, FooterCategory.PROGRAM)));
 
       mockMvc
           .perform(

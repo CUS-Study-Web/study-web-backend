@@ -10,7 +10,6 @@ import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.admin.FooterLinkItemRequest;
 import studyweb.cus.dto.request.admin.UpdateFooterRequest;
 import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
-import studyweb.cus.dto.response.admin.FooterLinkResponse;
 import studyweb.cus.dto.response.admin.FooterResponse;
 import studyweb.cus.dto.response.admin.HomepageResponse;
 import studyweb.cus.entity.content.FooterContent;

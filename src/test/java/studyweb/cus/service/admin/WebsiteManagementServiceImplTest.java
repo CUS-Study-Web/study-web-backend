@@ -3,8 +3,6 @@ package studyweb.cus.service.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.admin.FooterLinkItemRequest;
 import studyweb.cus.dto.request.admin.UpdateFooterRequest;
 import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
@@ -119,7 +116,8 @@ class WebsiteManagementServiceImplTest {
     @Test
     @DisplayName("Should return null when no HomepageContent exists")
     void whenContentAbsent_returnsNull() {
-      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.empty());
+      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.empty());
       when(websiteManagementMapper.toHomepageResponse(null)).thenReturn(null);
 
       HomepageResponse result = websiteManagementService.getHomepageContent();
@@ -209,7 +207,8 @@ class WebsiteManagementServiceImplTest {
     void updateHomepageContent_createsNewEntityWhenNoneExists() {
       User admin = createAdminUser();
       when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
-      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.empty());
+      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.empty());
       when(homepageContentRepository.save(any(HomepageContent.class)))
           .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -263,8 +262,8 @@ class WebsiteManagementServiceImplTest {
 
       UpdateHomepageRequest emptyRequest =
           new UpdateHomepageRequest(
-              null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-              null, null);
+              null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+              null, null, null);
 
       websiteManagementService.updateHomepageContent(emptyRequest, ADMIN_EMAIL);
 
@@ -370,7 +369,10 @@ class WebsiteManagementServiceImplTest {
 
       assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL))
           .isInstanceOf(FileException.class)
-          .satisfies(e -> assertThat(((FileException) e).getCode()).isEqualTo(FileErrorCode.FILE_EMPTY.code()));
+          .satisfies(
+              e ->
+                  assertThat(((FileException) e).getCode())
+                      .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
     }
 
     @Test
@@ -393,7 +395,10 @@ class WebsiteManagementServiceImplTest {
 
       assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL))
           .isInstanceOf(FileException.class)
-          .satisfies(e -> assertThat(((FileException) e).getCode()).isEqualTo(FileErrorCode.UPLOAD_FAILED.code()));
+          .satisfies(
+              e ->
+                  assertThat(((FileException) e).getCode())
+                      .isEqualTo(FileErrorCode.UPLOAD_FAILED.code()));
     }
 
     @Test
@@ -406,7 +411,10 @@ class WebsiteManagementServiceImplTest {
 
       assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, null))
           .isInstanceOf(UserException.class)
-          .satisfies(e -> assertThat(((UserException) e).getCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+          .satisfies(
+              e ->
+                  assertThat(((UserException) e).getCode())
+                      .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
     }
 
     @Test
@@ -420,9 +428,14 @@ class WebsiteManagementServiceImplTest {
               null, null, null);
 
       assertThatThrownBy(
-              () -> websiteManagementService.updateHomepageContent(request, "nonexistent@studyweb.edu"))
+              () ->
+                  websiteManagementService.updateHomepageContent(
+                      request, "nonexistent@studyweb.edu"))
           .isInstanceOf(UserException.class)
-          .satisfies(e -> assertThat(((UserException) e).getCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+          .satisfies(
+              e ->
+                  assertThat(((UserException) e).getCode())
+                      .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
     }
   }
 
@@ -442,7 +455,12 @@ class WebsiteManagementServiceImplTest {
       footer.setId(footerId);
 
       FooterLink link1 =
-          FooterLink.builder().footer(footer).category(FooterCategory.PROGRAM).label("V-ACT").sortOrder(0).build();
+          FooterLink.builder()
+              .footer(footer)
+              .category(FooterCategory.PROGRAM)
+              .label("V-ACT")
+              .sortOrder(0)
+              .build();
       List<FooterLink> links = List.of(link1);
 
       FooterResponse response =
@@ -461,11 +479,14 @@ class WebsiteManagementServiceImplTest {
               "Copyright",
               "/privacy",
               "/terms",
-              List.of(new FooterLinkResponse(UUID.randomUUID(), "V-ACT", "/v-act", 0, FooterCategory.PROGRAM)),
+              List.of(
+                  new FooterLinkResponse(
+                      UUID.randomUUID(), "V-ACT", "/v-act", 0, FooterCategory.PROGRAM)),
               ADMIN_EMAIL,
               LocalDateTime.now());
 
-      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(footer));
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(footer));
       when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId)).thenReturn(links);
       when(websiteManagementMapper.toFooterResponse(footer, links)).thenReturn(response);
 
@@ -510,7 +531,8 @@ class WebsiteManagementServiceImplTest {
               .build();
       existing.setId(footerId);
 
-      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(existing));
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(existing));
       when(footerContentRepository.save(any(FooterContent.class)))
           .thenAnswer(invocation -> invocation.getArgument(0));
       when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId)).thenReturn(List.of());
@@ -569,7 +591,19 @@ class WebsiteManagementServiceImplTest {
 
       UpdateFooterRequest request =
           new UpdateFooterRequest(
-              "Fresh Co", null, null, null, null, null, null, null, null, null, null, null, null,
+              "Fresh Co",
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
               null);
 
       websiteManagementService.updateFooterContent(request, ADMIN_EMAIL);
@@ -586,7 +620,8 @@ class WebsiteManagementServiceImplTest {
       UUID footerId = UUID.randomUUID();
       FooterContent footer = FooterContent.builder().companyName("CUS").build();
       footer.setId(footerId);
-      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(footer));
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(footer));
       when(footerContentRepository.save(any(FooterContent.class))).thenReturn(footer);
 
       UUID linkId = UUID.randomUUID();
@@ -601,7 +636,8 @@ class WebsiteManagementServiceImplTest {
       existingLink.setId(linkId);
 
       when(footerLinkRepository.findById(linkId)).thenReturn(Optional.of(existingLink));
-      when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId)).thenReturn(List.of(existingLink));
+      when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId))
+          .thenReturn(List.of(existingLink));
 
       UpdateFooterRequest request =
           new UpdateFooterRequest(
@@ -618,7 +654,9 @@ class WebsiteManagementServiceImplTest {
               null,
               null,
               null,
-              List.of(new FooterLinkItemRequest(linkId, "Updated Link", "/updated", 5, FooterCategory.ABOUT)));
+              List.of(
+                  new FooterLinkItemRequest(
+                      linkId, "Updated Link", "/updated", 5, FooterCategory.ABOUT)));
 
       websiteManagementService.updateFooterContent(request, ADMIN_EMAIL);
 
@@ -638,7 +676,8 @@ class WebsiteManagementServiceImplTest {
       UUID footerId = UUID.randomUUID();
       FooterContent footer = FooterContent.builder().companyName("CUS").build();
       footer.setId(footerId);
-      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(footer));
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(footer));
       when(footerContentRepository.save(any(FooterContent.class))).thenReturn(footer);
       when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId)).thenReturn(List.of());
 
@@ -657,7 +696,9 @@ class WebsiteManagementServiceImplTest {
               null,
               null,
               null,
-              List.of(new FooterLinkItemRequest(null, "New Item", "/new-item", 1, FooterCategory.PROGRAM)));
+              List.of(
+                  new FooterLinkItemRequest(
+                      null, "New Item", "/new-item", 1, FooterCategory.PROGRAM)));
 
       websiteManagementService.updateFooterContent(request, ADMIN_EMAIL);
 
@@ -684,7 +725,8 @@ class WebsiteManagementServiceImplTest {
       UUID footerId = UUID.randomUUID();
       FooterContent footer = FooterContent.builder().companyName("CUS").build();
       footer.setId(footerId);
-      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(footer));
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(footer));
       when(footerContentRepository.save(any(FooterContent.class))).thenReturn(footer);
       when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId)).thenReturn(List.of());
 
@@ -727,7 +769,10 @@ class WebsiteManagementServiceImplTest {
 
       assertThatThrownBy(() -> websiteManagementService.updateFooterContent(request, null))
           .isInstanceOf(UserException.class)
-          .satisfies(e -> assertThat(((UserException) e).getCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+          .satisfies(
+              e ->
+                  assertThat(((UserException) e).getCode())
+                      .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
     }
   }
 }
