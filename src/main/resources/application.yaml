@@ -1,8 +1,14 @@
 spring:
   application:
     name: cus
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   config:
     import: optional:file:.env[.properties]
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   servlet:
     multipart:
       max-file-size: 100MB
@@ -41,4 +47,3 @@ thread:
 logging:
   loki:
     max-query-length: ${LOKI_MAX_QUERY_LENGTH:31d1h}
-
