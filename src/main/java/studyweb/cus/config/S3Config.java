@@ -18,13 +18,25 @@ public class S3Config {
 
   @Bean
   public S3Client s3Client(S3Properties properties) {
+    String region =
+        properties.getRegion() != null && !properties.getRegion().isBlank()
+            ? properties.getRegion()
+            : "ap-southeast-1";
+    String accessKey =
+        properties.getAccessKey() != null && !properties.getAccessKey().isBlank()
+            ? properties.getAccessKey()
+            : "default";
+    String secretKey =
+        properties.getSecretKey() != null && !properties.getSecretKey().isBlank()
+            ? properties.getSecretKey()
+            : "default";
+
     S3ClientBuilder builder =
         S3Client.builder()
-            .region(Region.of(properties.getRegion()))
+            .region(Region.of(region))
             .credentialsProvider(
                 StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(
-                        properties.getAccessKey(), properties.getSecretKey())));
+                    AwsBasicCredentials.create(accessKey, secretKey)));
     builder.forcePathStyle(true);
     if (properties.hasEndpoint()) {
       // custom S3-compatible endpoints are path-style, not virtual-hosted
@@ -35,13 +47,25 @@ public class S3Config {
 
   @Bean
   public S3Presigner s3Presigner(S3Properties properties) {
+    String region =
+        properties.getRegion() != null && !properties.getRegion().isBlank()
+            ? properties.getRegion()
+            : "ap-southeast-1";
+    String accessKey =
+        properties.getAccessKey() != null && !properties.getAccessKey().isBlank()
+            ? properties.getAccessKey()
+            : "default";
+    String secretKey =
+        properties.getSecretKey() != null && !properties.getSecretKey().isBlank()
+            ? properties.getSecretKey()
+            : "default";
+
     Builder builder =
         S3Presigner.builder()
-            .region(Region.of(properties.getRegion()))
+            .region(Region.of(region))
             .credentialsProvider(
                 StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create(
-                        properties.getAccessKey(), properties.getSecretKey())));
+                    AwsBasicCredentials.create(accessKey, secretKey)));
     builder.serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build());
     if (properties.hasEndpoint()) {
       // custom S3-compatible endpoints are path-style, not virtual-hosted
