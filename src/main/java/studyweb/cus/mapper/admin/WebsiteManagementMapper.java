@@ -10,6 +10,7 @@ import studyweb.cus.dto.response.website.HomepageResponse;
 import studyweb.cus.entity.content.FooterContent;
 import studyweb.cus.entity.content.FooterLink;
 import studyweb.cus.entity.content.HomepageContent;
+import studyweb.cus.enums.CtaTarget;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface WebsiteManagementMapper {

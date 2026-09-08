@@ -85,14 +85,14 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     if (request.ctaBtn1Name() != null) {
       content.setCtaBtn1Name(request.ctaBtn1Name());
     }
-    if (request.ctaBtn1Url() != null) {
-      content.setCtaBtn1Url(request.ctaBtn1Url());
+    if (request.ctaBtn1Target() != null) {
+      content.setCtaBtn1Target(request.ctaBtn1Target());
     }
     if (request.ctaBtn2Name() != null) {
       content.setCtaBtn2Name(request.ctaBtn2Name());
     }
-    if (request.ctaBtn2Url() != null) {
-      content.setCtaBtn2Url(request.ctaBtn2Url());
+    if (request.ctaBtn2Target() != null) {
+      content.setCtaBtn2Target(request.ctaBtn2Target());
     }
     if (request.stat1Number() != null) {
       content.setStat1Number(request.stat1Number());

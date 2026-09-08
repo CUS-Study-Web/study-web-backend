@@ -3,6 +3,7 @@ package studyweb.cus.dto.request.website;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
+import studyweb.cus.enums.CtaTarget;
 
 public record UpdateHomepageRequest(
     @Size(max = 255, message = "Badge title must not exceed 255 characters")
@@ -20,14 +21,12 @@ public record UpdateHomepageRequest(
     @Size(max = 100, message = "CTA button 1 name must not exceed 100 characters")
     String ctaBtn1Name,
 
-    @Size(max = 500, message = "CTA button 1 URL must not exceed 500 characters")
-    String ctaBtn1Url,
+    CtaTarget ctaBtn1Target,
 
     @Size(max = 100, message = "CTA button 2 name must not exceed 100 characters")
     String ctaBtn2Name,
 
-    @Size(max = 500, message = "CTA button 2 URL must not exceed 500 characters")
-    String ctaBtn2Url,
+    CtaTarget ctaBtn2Target,
 
     @Size(max = 50, message = "Stat 1 number must not exceed 50 characters")
     String stat1Number,

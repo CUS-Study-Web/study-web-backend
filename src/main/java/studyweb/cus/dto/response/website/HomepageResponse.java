@@ -2,6 +2,7 @@ package studyweb.cus.dto.response.website;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import studyweb.cus.enums.CtaTarget;
 
 public record HomepageResponse(
     UUID id,
@@ -10,9 +11,9 @@ public record HomepageResponse(
     String headline2,
     String description,
     String ctaBtn1Name,
-    String ctaBtn1Url,
+    CtaTarget ctaBtn1Target,
     String ctaBtn2Name,
-    String ctaBtn2Url,
+    CtaTarget ctaBtn2Target,
     String mainImageUrl,
     String stat1Number,
     String stat1Desc,

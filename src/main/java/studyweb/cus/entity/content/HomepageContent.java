@@ -2,10 +2,13 @@ package studyweb.cus.entity.content;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import studyweb.cus.enums.CtaTarget;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,14 +41,16 @@ public class HomepageContent extends AbstractBaseEntity {
   @Column(name = "cta_btn1_name", length = 100)
   private String ctaBtn1Name;
 
-  @Column(name = "cta_btn1_url", length = 500)
-  private String ctaBtn1Url;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cta_btn1_target", length = 50)
+  private CtaTarget ctaBtn1Target;
 
   @Column(name = "cta_btn2_name", length = 100)
   private String ctaBtn2Name;
 
-  @Column(name = "cta_btn2_url", length = 500)
-  private String ctaBtn2Url;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cta_btn2_target", length = 50)
+  private CtaTarget ctaBtn2Target;
 
   @Column(name = "main_image_url", length = 500)
   private String mainImageUrl;

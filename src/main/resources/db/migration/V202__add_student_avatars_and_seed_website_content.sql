@@ -1,7 +1,17 @@
--- Add student2_avatar and student3_avatar to homepage_content
+-- Add student2_avatar, student3_avatar and update CTA fields to enum targets in homepage_content
 ALTER TABLE homepage_content
     ADD COLUMN student2_avatar VARCHAR(500),
     ADD COLUMN student3_avatar VARCHAR(500);
+
+ALTER TABLE homepage_content
+    RENAME COLUMN cta_btn1_url TO cta_btn1_target;
+
+ALTER TABLE homepage_content
+    RENAME COLUMN cta_btn2_url TO cta_btn2_target;
+
+ALTER TABLE homepage_content
+    ALTER COLUMN cta_btn1_target TYPE VARCHAR(50),
+    ALTER COLUMN cta_btn2_target TYPE VARCHAR(50);
 
 -- Seed initial homepage content
 INSERT INTO homepage_content (
@@ -11,9 +21,9 @@ INSERT INTO homepage_content (
     headline_2,
     description,
     cta_btn1_name,
-    cta_btn1_url,
+    cta_btn1_target,
     cta_btn2_name,
-    cta_btn2_url,
+    cta_btn2_target,
     main_image_url,
     stat1_number,
     stat1_desc,
@@ -33,9 +43,9 @@ INSERT INTO homepage_content (
     'Tương lai do bạn chọn!',
     'Đội ngũ giảng viên chuyên gia, lộ trình cá nhân hóa và hơn 3.400 học viên đã đỗ vào các trường đại học hàng đầu Việt Nam.',
     'Bắt đầu ngay',
-    '/register',
+    'REGISTER',
     'Xem khóa học',
-    '/courses',
+    'COURSES',
     NULL,
     '29 / 30',
     'Điểm thi cao nhất 2024',
