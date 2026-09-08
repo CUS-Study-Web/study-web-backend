@@ -65,6 +65,12 @@ public class HomepageContent extends AbstractBaseEntity {
   @Column(name = "student1_avatar", length = 500)
   private String student1Avatar;
 
+  @Column(name = "student2_avatar", length = 500)
+  private String student2Avatar;
+
+  @Column(name = "student3_avatar", length = 500)
+  private String student3Avatar;
+
   @Column(name = "student_stats_desc", columnDefinition = "TEXT")
   private String studentStatsDesc;
 
