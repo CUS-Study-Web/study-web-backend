@@ -2,6 +2,7 @@ package studyweb.cus.service.user.impl;
 
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.UserRole;
@@ -17,16 +19,22 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.file.FileService;
 import studyweb.cus.service.user.UserService;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
   private static final int MIN_PASSWORD_LENGTH = 8;
@@ -36,6 +44,7 @@ public class UserServiceImpl implements UserService {
   private final PasswordEncoder passwordEncoder;
   private final JwtUtils jwtUtils;
   private final UserMapper userMapper;
+  private final FileService fileService;
 
   @Override
   @Transactional
@@ -88,7 +97,6 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
-  @Transactional
   public void createVipRequest(String email, VipSubscriptionRequest request, boolean isRenewal) {
     User user =
         userRepository
@@ -113,16 +121,35 @@ public class UserServiceImpl implements UserService {
     if (vipRequestRepository.existsByUserAndStatus(user, VipRequestStatus.WAITING)) {
       throw new UserException(UserErrorCode.VIP_REQUEST_PENDING);
     }
+    if (request == null || request.evidence() == null || request.evidence().isEmpty()) {
+      throw new FileException(FileErrorCode.FILE_EMPTY);
+    }
 
-    String note = request != null ? request.note() : null;
+    UploadDocumentResult uploadResult = fileService.uploadVipEvidenceFile(request.evidence());
+
     VipRequest vipRequest =
         VipRequest.builder()
             .user(user)
             .status(VipRequestStatus.WAITING)
-            .note(note)
+            .name(request.name())
+            .email(request.email())
+            .phone(request.phone())
+            .birth(request.birth())
+            .evidenceUrl(uploadResult.fileUrl())
+            .note(request.note())
             .requestDate(LocalDate.now())
             .build();
 
-    vipRequestRepository.save(vipRequest);
+    try {
+      vipRequestRepository.save(vipRequest);
+    } catch (Exception e) {
+      log.error(
+          "Failed to save VIP request for user {}. Cleaning up uploaded evidence file {}",
+          email,
+          uploadResult.fileKey());
+      fileService.deleteFile(uploadResult.fileKey());
+      throw new SystemException(
+          SystemErrorCode.DATABASE_ERROR, "Failed to submit VIP request");
+    }
   }
 }
