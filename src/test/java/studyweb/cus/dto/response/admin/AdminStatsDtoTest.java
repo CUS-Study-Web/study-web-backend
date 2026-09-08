@@ -14,9 +14,25 @@ import studyweb.cus.enums.ActionType;
 class AdminStatsDtoTest {
 
   @Test
-  @DisplayName("VipSubscriptionRequest holds note correctly")
-  void vipSubscriptionRequest_holdsNote() {
-    VipSubscriptionRequest request = new VipSubscriptionRequest("Renewal request");
+  @DisplayName("VipSubscriptionRequest holds all fields correctly")
+  void vipSubscriptionRequest_holdsAllFields() {
+    LocalDate birth = LocalDate.of(2000, 1, 1);
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Nguyễn Văn A",
+            "a@gmail.com",
+            birth,
+            "0912345678",
+            file,
+            "Renewal request");
+    assertThat(request.name()).isEqualTo("Nguyễn Văn A");
+    assertThat(request.email()).isEqualTo("a@gmail.com");
+    assertThat(request.birth()).isEqualTo(birth);
+    assertThat(request.phone()).isEqualTo("0912345678");
+    assertThat(request.evidence()).isEqualTo(file);
     assertThat(request.note()).isEqualTo("Renewal request");
   }
 

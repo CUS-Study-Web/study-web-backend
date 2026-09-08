@@ -28,12 +28,16 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.repository.user.VipRequestRepository;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.file.FileService;
 import studyweb.cus.service.user.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +54,8 @@ class UserServiceTest {
   @Mock private JwtUtils jwtUtils;
 
   @Mock private UserMapper userMapper;
+
+  @Mock private FileService fileService;
 
   @InjectMocks private UserServiceImpl userService;
 
@@ -308,7 +314,7 @@ class UserServiceTest {
   }
 
   @Test
-  void createVipRequest_subscription_successSavesRequest() {
+  void createVipRequest_nullOrEmptyEvidence_throwsFileEmpty() {
     User u = user();
     u.setStatus(UserStatus.ACTIVE);
     u.setRole(UserRole.LEARNER);
@@ -316,7 +322,45 @@ class UserServiceTest {
     when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
     when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
 
-    VipSubscriptionRequest request = new VipSubscriptionRequest("Bank transfer completed");
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(studyweb.cus.exception.file.FileException.class);
+
+    org.springframework.mock.web.MockMultipartFile emptyFile =
+        new org.springframework.mock.web.MockMultipartFile("evidence", new byte[0]);
+    VipSubscriptionRequest req =
+        new VipSubscriptionRequest(
+            "User", "u@mail.com", LocalDate.of(2000, 1, 1), "0901234567", emptyFile, null);
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, req, false))
+        .isInstanceOf(studyweb.cus.exception.file.FileException.class);
+  }
+
+  @Test
+  void createVipRequest_subscription_successUploadsToS3AndSavesRequest() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    when(fileService.uploadVipEvidenceFile(file))
+        .thenReturn(
+            new UploadDocumentResult(
+                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
+
+    LocalDate birth = LocalDate.of(2001, 2, 3);
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Learner Name",
+            "learner@studyweb.edu",
+            birth,
+            "0911223344",
+            file,
+            "Bank transfer done");
+
     userService.createVipRequest(GMAIL, request, false);
 
     ArgumentCaptor<VipRequest> captor = ArgumentCaptor.forClass(VipRequest.class);
@@ -324,27 +368,101 @@ class UserServiceTest {
     VipRequest saved = captor.getValue();
     assertThat(saved.getUser()).isEqualTo(u);
     assertThat(saved.getStatus()).isEqualTo(VipRequestStatus.WAITING);
-    assertThat(saved.getNote()).isEqualTo("Bank transfer completed");
+    assertThat(saved.getName()).isEqualTo("Learner Name");
+    assertThat(saved.getEmail()).isEqualTo("learner@studyweb.edu");
+    assertThat(saved.getPhone()).isEqualTo("0911223344");
+    assertThat(saved.getBirth()).isEqualTo(birth);
+    assertThat(saved.getEvidenceUrl())
+        .isEqualTo("https://s3.example.com/vip-evidence/proof.png");
+    assertThat(saved.getNote()).isEqualTo("Bank transfer done");
     assertThat(saved.getRequestDate()).isEqualTo(LocalDate.now());
   }
 
   @Test
-  void createVipRequest_renewal_successSavesRequestWithNullRequest() {
+  void createVipRequest_dbSaveFails_cleansUpS3FileAndThrowsSystemException() {
     User u = user();
     u.setStatus(UserStatus.ACTIVE);
     u.setRole(UserRole.LEARNER);
-    u.setTier(UserTier.VIP);
+    u.setTier(UserTier.NORMAL);
     when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
     when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
 
-    userService.createVipRequest(GMAIL, null, true);
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    when(fileService.uploadVipEvidenceFile(file))
+        .thenReturn(
+            new UploadDocumentResult(
+                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
 
-    ArgumentCaptor<VipRequest> captor = ArgumentCaptor.forClass(VipRequest.class);
-    verify(vipRequestRepository).save(captor.capture());
-    VipRequest saved = captor.getValue();
-    assertThat(saved.getUser()).isEqualTo(u);
-    assertThat(saved.getStatus()).isEqualTo(VipRequestStatus.WAITING);
-    assertThat(saved.getNote()).isNull();
-    assertThat(saved.getRequestDate()).isEqualTo(LocalDate.now());
+    RuntimeException dbError = new RuntimeException("Database error");
+    when(vipRequestRepository.save(any(VipRequest.class))).thenThrow(dbError);
+
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Learner Name",
+            "learner@studyweb.edu",
+            LocalDate.of(2001, 2, 3),
+            "0911223344",
+            file,
+            "Bank transfer done");
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, request, false))
+        .isInstanceOf(SystemException.class)
+        .satisfies(
+            ex -> {
+              SystemException sysEx = (SystemException) ex;
+              assertThat(sysEx.getCode()).isEqualTo(SystemErrorCode.DATABASE_ERROR.code());
+              assertThat(sysEx.getCause()).isSameAs(dbError);
+            });
+
+    verify(fileService).deleteFile("vip-evidence/proof.png");
+  }
+
+  @Test
+  void createVipRequest_dbSaveAndCleanupBothFail_preservesSuppressedException() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    when(fileService.uploadVipEvidenceFile(file))
+        .thenReturn(
+            new UploadDocumentResult(
+                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
+
+    RuntimeException dbError = new RuntimeException("Database constraint failure");
+    when(vipRequestRepository.save(any(VipRequest.class))).thenThrow(dbError);
+
+    RuntimeException cleanupError = new RuntimeException("S3 delete timeout");
+    org.mockito.Mockito.doThrow(cleanupError)
+        .when(fileService)
+        .deleteFile("vip-evidence/proof.png");
+
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Learner Name",
+            "learner@studyweb.edu",
+            LocalDate.of(2001, 2, 3),
+            "0911223344",
+            file,
+            "Bank transfer done");
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, request, false))
+        .isInstanceOf(SystemException.class)
+        .satisfies(
+            ex -> {
+              SystemException sysEx = (SystemException) ex;
+              assertThat(sysEx.getCode()).isEqualTo(SystemErrorCode.DATABASE_ERROR.code());
+              assertThat(sysEx.getCause()).isSameAs(dbError);
+              assertThat(dbError.getSuppressed()).contains(cleanupError);
+            });
+
+    verify(fileService).deleteFile("vip-evidence/proof.png");
   }
 }
