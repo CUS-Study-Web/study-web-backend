@@ -38,6 +38,21 @@ public class VipRequest extends AbstractBaseEntity {
   @Builder.Default
   private VipRequestStatus status = VipRequestStatus.WAITING;
 
+  @Column(name = "name", length = 150)
+  private String name;
+
+  @Column(name = "email", length = 150)
+  private String email;
+
+  @Column(name = "phone", length = 20)
+  private String phone;
+
+  @Column(name = "birth")
+  private LocalDate birth;
+
+  @Column(name = "evidence_url", length = 500)
+  private String evidenceUrl;
+
   @Column(name = "note", columnDefinition = "TEXT")
   private String note;
 
