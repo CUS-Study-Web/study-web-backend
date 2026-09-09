@@ -153,7 +153,6 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
       fileService.deleteFile(oldStudent3Avatar);
     }
 
-    content = homepageContentRepository.save(content);
     return websiteManagementMapper.toHomepageResponse(content);
   }
 
@@ -222,11 +221,35 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     content = footerContentRepository.save(content);
 
     if (request.links() != null) {
+      List<FooterLink> existingDbLinks =
+          content.getId() != null
+              ? footerLinkRepository.findByFooterIdOrderBySortOrderAsc(content.getId())
+              : List.of();
+
+      Set<UUID> incomingIds =
+          request.links().stream()
+              .map(FooterLinkItemRequest::id)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+
+      List<FooterLink> linksToDelete =
+          existingDbLinks.stream()
+              .filter(link -> !incomingIds.contains(link.getId()))
+              .toList();
+
+      if (!linksToDelete.isEmpty()) {
+        footerLinkRepository.deleteAll(linksToDelete);
+      }
+
       List<FooterLink> linksToSave = new ArrayList<>();
       for (int i = 0; i < request.links().size(); i++) {
         FooterLinkItemRequest item = request.links().get(i);
         if (item.id() != null) {
-          FooterLink existingLink = footerLinkRepository.findById(item.id()).orElse(null);
+          FooterLink existingLink =
+              existingDbLinks.stream()
+                  .filter(l -> l.getId().equals(item.id()))
+                  .findFirst()
+                  .orElse(null);
           if (existingLink != null) {
             if (item.label() != null) {
               existingLink.setLabel(item.label());
@@ -263,15 +286,14 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     return websiteManagementMapper.toFooterResponse(content, currentLinks);
   }
 
-  private String uploadFileSafely(MultipartFile file) {
-    try {
-      return fileService.uploadAvatarFile(file).fileUrl();
-    } catch (FileException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Failed to upload image file: {}", file.getOriginalFilename(), e);
-      throw new FileException(FileErrorCode.UPLOAD_FAILED);
+  private void cleanupUploadedFiles(List<String> fileKeys) {
+    if (fileKeys == null || fileKeys.isEmpty()) {
+      return;
     }
+    log.warn(
+        "Operation failed for updateHomepageContent. Cleaning up uploaded files from S3: {}",
+        fileKeys);
+    fileKeys.forEach(fileService::deleteFile);
   }
 
   private boolean hasFile(MultipartFile file) {
