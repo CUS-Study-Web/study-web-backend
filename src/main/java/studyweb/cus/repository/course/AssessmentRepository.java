@@ -1,6 +1,7 @@
 package studyweb.cus.repository.course;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import studyweb.cus.entity.course.Assessment;
+import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AssessmentStatus;
 import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.exception.assessment.AssessmentErrorCode;
@@ -23,7 +25,7 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
   long countByCourseIdAndAssessmentTypeAndDeletedAtIsNullAndAccessIn(
       UUID courseId,
       AssessmentType assessmentType,
-      java.util.Collection<studyweb.cus.enums.AccessTier> accessTiers);
+      Collection<AccessTier> accessTiers);
 
   long countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
       UUID courseId, AssessmentType assessmentType);
@@ -31,7 +33,7 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
   long countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
       UUID subjectId,
       AssessmentType assessmentType,
-      java.util.Collection<studyweb.cus.enums.AccessTier> accessTiers);
+      Collection<AccessTier> accessTiers);
 
   Page<Assessment> findBySubjectIdAndAssessmentTypeAndDeletedAtIsNull(
       UUID subjectId, AssessmentType assessmentType, Pageable pageable);

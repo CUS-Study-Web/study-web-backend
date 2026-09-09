@@ -122,7 +122,7 @@ class CourseServiceTest {
         "badge",
         "desc",
         thumbnail,
-        studyweb.cus.enums.CourseCreateStatus.DRAFT);
+        studyweb.cus.enums.CourseCreateStatus.DRAFT, 0);
   }
 
   // ---- Course ----
@@ -141,7 +141,8 @@ class CourseServiceTest {
             studyweb.cus.enums.CourseCreateStatus.DRAFT,
             null,
             0L,
-            0L);
+            0L,
+            0);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
     when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
@@ -174,7 +175,8 @@ class CourseServiceTest {
             CourseCreateStatus.PUBLISH,
             null,
             0L,
-            0L);
+            0L,
+            0);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
     when(courseRepository.findByDeletedAtIsNullAndStatus(
@@ -208,7 +210,8 @@ class CourseServiceTest {
             CourseCreateStatus.DRAFT,
             null,
             0L,
-            0L);
+            0L,
+            0);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
     when(courseRepository.findByDeletedAtIsNull(any(Pageable.class))).thenReturn(page);
@@ -238,7 +241,8 @@ class CourseServiceTest {
             CourseCreateStatus.DEVELOPING,
             null,
             0L,
-            0L);
+            0L,
+            0);
     Page<Course> page = new PageImpl<>(List.of(course), PageRequest.of(0, 10), 1);
 
     when(courseRepository.findByDeletedAtIsNullAndStatusIn(
@@ -275,7 +279,8 @@ class CourseServiceTest {
             studyweb.cus.enums.CourseCreateStatus.DRAFT,
             null,
             0L,
-            0L);
+            0L,
+            0);
 
     when(courseRepository.save(any(Course.class))).thenReturn(course);
     when(courseMapper.toCourseSummary(
@@ -317,7 +322,8 @@ class CourseServiceTest {
                 studyweb.cus.enums.CourseCreateStatus.DRAFT,
                 null,
                 0L,
-                0L));
+                0L,
+                0));
 
     MockMultipartFile thumbnail =
         new MockMultipartFile("thumbnail", "thumb.png", "image/png", new byte[] {1});
@@ -387,7 +393,7 @@ class CourseServiceTest {
     Course course = course();
     Subject subject = subject(4);
     SubjectSummaryResponse summary =
-        new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.TEN, 4, 2, 0);
+        new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.TEN, 4, 2, 0, 0);
 
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
     when(userRepository.findByGmail("learner@studyweb.edu"))
@@ -428,8 +434,8 @@ class CourseServiceTest {
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course()));
     Subject subject = subject(0);
     when(subjectRepository.save(any(Subject.class))).thenReturn(subject);
-    when(courseMapper.toSubjectSummary(subject))
-        .thenReturn(new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.ZERO, 0, null, 0));
+    when(courseMapper.toSubjectSummary(any(Subject.class)))
+        .thenReturn(new SubjectSummaryResponse(subjectId, "Basics", BigDecimal.ZERO, 0, null, 0, 0));
 
     SubjectSummaryResponse result =
         courseService.createSubject(courseId, new SubjectRequest("Basics", null, null));
