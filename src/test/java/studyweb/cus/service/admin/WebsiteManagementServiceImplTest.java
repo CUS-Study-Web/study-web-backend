@@ -325,6 +325,104 @@ class WebsiteManagementServiceImplTest {
     }
 
     @Test
+    @DisplayName("Should delete old files when replacing existing images")
+    void updateHomepageContent_deletesOldFilesWhenReplacingExisting() {
+      User admin = createAdminUser();
+      when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
+
+      HomepageContent existing =
+          HomepageContent.builder()
+              .mainImageUrl("https://cdn.example.com/old-main.png")
+              .student1Avatar("https://cdn.example.com/old-av1.png")
+              .build();
+      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(existing));
+      when(homepageContentRepository.save(any(HomepageContent.class)))
+          .thenAnswer(invocation -> invocation.getArgument(0));
+
+      MockMultipartFile mainImg =
+          new MockMultipartFile("mainImage", "new-main.png", "image/png", new byte[] {1, 2});
+      MockMultipartFile av1 =
+          new MockMultipartFile("student1Avatar", "new-av1.png", "image/png", new byte[] {3, 4});
+
+      when(fileService.uploadAvatarFile(mainImg))
+          .thenReturn(new UploadDocumentResult(2, "key-new-main", "https://cdn.example.com/new-main.png"));
+      when(fileService.uploadAvatarFile(av1))
+          .thenReturn(new UploadDocumentResult(2, "key-new-av1", "https://cdn.example.com/new-av1.png"));
+
+      UpdateHomepageRequest request =
+          new UpdateHomepageRequest(
+              null, null, null, null, null, null, null, null, null, null, null, null, null, mainImg,
+              av1, null, null);
+
+      websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL);
+
+      verify(fileService).deleteFile("https://cdn.example.com/old-main.png");
+      verify(fileService).deleteFile("https://cdn.example.com/old-av1.png");
+    }
+
+    @Test
+    @DisplayName("Should clean up uploaded files when repository save fails")
+    void updateHomepageContent_cleansUpUploadedFilesWhenSaveFails() {
+      User admin = createAdminUser();
+      when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
+
+      HomepageContent existing = new HomepageContent();
+      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(existing));
+
+      MockMultipartFile mainImg =
+          new MockMultipartFile("mainImage", "main.png", "image/png", new byte[] {1, 2});
+      when(fileService.uploadAvatarFile(mainImg))
+          .thenReturn(new UploadDocumentResult(2, "key-main", "https://cdn.example.com/main.png"));
+
+      when(homepageContentRepository.save(any(HomepageContent.class)))
+          .thenThrow(new RuntimeException("Database error during save"));
+
+      UpdateHomepageRequest request =
+          new UpdateHomepageRequest(
+              null, null, null, null, null, null, null, null, null, null, null, null, null, mainImg,
+              null, null, null);
+
+      assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL))
+          .isInstanceOf(RuntimeException.class)
+          .hasMessage("Database error during save");
+
+      verify(fileService).deleteFile("key-main");
+    }
+
+    @Test
+    @DisplayName("Should clean up already uploaded files when subsequent upload fails")
+    void updateHomepageContent_cleansUpFilesWhenSubsequentUploadFails() {
+      User admin = createAdminUser();
+      when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
+
+      HomepageContent existing = new HomepageContent();
+      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
+          .thenReturn(Optional.of(existing));
+
+      MockMultipartFile mainImg =
+          new MockMultipartFile("mainImage", "main.png", "image/png", new byte[] {1, 2});
+      MockMultipartFile av1 =
+          new MockMultipartFile("student1Avatar", "av1.png", "image/png", new byte[] {3, 4});
+
+      when(fileService.uploadAvatarFile(mainImg))
+          .thenReturn(new UploadDocumentResult(2, "key-main", "https://cdn.example.com/main.png"));
+      when(fileService.uploadAvatarFile(av1))
+          .thenThrow(new FileException(FileErrorCode.UPLOAD_FAILED));
+
+      UpdateHomepageRequest request =
+          new UpdateHomepageRequest(
+              null, null, null, null, null, null, null, null, null, null, null, null, null, mainImg,
+              av1, null, null);
+
+      assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL))
+          .isInstanceOf(FileException.class);
+
+      verify(fileService).deleteFile("key-main");
+    }
+
+    @Test
     @DisplayName("Should not upload when multipart files are empty")
     void updateHomepageContent_doesNotUploadEmptyFiles() {
       User admin = createAdminUser();
@@ -373,32 +471,6 @@ class WebsiteManagementServiceImplTest {
               e ->
                   assertThat(((FileException) e).getCode())
                       .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
-    }
-
-    @Test
-    @DisplayName("Should wrap generic Exception in FileException(UPLOAD_FAILED)")
-    void updateHomepageContent_wrapsGenericExceptionInFileException() {
-      User admin = createAdminUser();
-      when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
-      when(homepageContentRepository.findFirstByOrderByCreatedAtDesc())
-          .thenReturn(Optional.of(new HomepageContent()));
-
-      MockMultipartFile file =
-          new MockMultipartFile("mainImage", "cover.png", "image/png", new byte[] {1, 2});
-      when(fileService.uploadAvatarFile(file))
-          .thenThrow(new RuntimeException("S3 connection timeout"));
-
-      UpdateHomepageRequest request =
-          new UpdateHomepageRequest(
-              null, null, null, null, null, null, null, null, null, null, null, null, null, file,
-              null, null, null);
-
-      assertThatThrownBy(() -> websiteManagementService.updateHomepageContent(request, ADMIN_EMAIL))
-          .isInstanceOf(FileException.class)
-          .satisfies(
-              e ->
-                  assertThat(((FileException) e).getCode())
-                      .isEqualTo(FileErrorCode.UPLOAD_FAILED.code()));
     }
 
     @Test
@@ -635,7 +707,6 @@ class WebsiteManagementServiceImplTest {
               .build();
       existingLink.setId(linkId);
 
-      when(footerLinkRepository.findById(linkId)).thenReturn(Optional.of(existingLink));
       when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId))
           .thenReturn(List.of(existingLink));
 
@@ -665,6 +736,47 @@ class WebsiteManagementServiceImplTest {
       assertThat(existingLink.getSortOrder()).isEqualTo(5);
       assertThat(existingLink.getCategory()).isEqualTo(FooterCategory.ABOUT);
       verify(footerLinkRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("Should delete existing links that are omitted from request")
+    void updateFooterContent_deletesRemovedLinks() {
+      User admin = createAdminUser();
+      when(userRepository.findByGmail(ADMIN_EMAIL)).thenReturn(Optional.of(admin));
+
+      UUID footerId = UUID.randomUUID();
+      FooterContent footer = FooterContent.builder().companyName("CUS").build();
+      footer.setId(footerId);
+      when(footerContentRepository.findFirstByOrderByCreatedAtDesc()).thenReturn(Optional.of(footer));
+      when(footerContentRepository.save(any(FooterContent.class))).thenReturn(footer);
+
+      UUID linkIdA = UUID.randomUUID();
+      FooterLink linkA =
+          FooterLink.builder().footer(footer).category(FooterCategory.PROGRAM).label("Link A").url("/a").sortOrder(0).build();
+      linkA.setId(linkIdA);
+
+      UUID linkIdB = UUID.randomUUID();
+      FooterLink linkB =
+          FooterLink.builder().footer(footer).category(FooterCategory.PROGRAM).label("Link B").url("/b").sortOrder(1).build();
+      linkB.setId(linkIdB);
+
+      when(footerLinkRepository.findByFooterIdOrderBySortOrderAsc(footerId))
+          .thenReturn(List.of(linkA, linkB))
+          .thenReturn(List.of(linkA));
+
+      UpdateFooterRequest request =
+          new UpdateFooterRequest(
+              null, null, null, null, null, null, null, null, null, null, null, null, null,
+              List.of(new FooterLinkItemRequest(linkIdA, "Link A", "/a", 0, FooterCategory.PROGRAM)));
+
+      websiteManagementService.updateFooterContent(request, ADMIN_EMAIL);
+
+      @SuppressWarnings("unchecked")
+      ArgumentCaptor<List<FooterLink>> deleteCaptor = ArgumentCaptor.forClass(List.class);
+      verify(footerLinkRepository).deleteAll(deleteCaptor.capture());
+      List<FooterLink> deleted = deleteCaptor.getValue();
+      assertThat(deleted).hasSize(1);
+      assertThat(deleted.get(0).getId()).isEqualTo(linkIdB);
     }
 
     @Test
