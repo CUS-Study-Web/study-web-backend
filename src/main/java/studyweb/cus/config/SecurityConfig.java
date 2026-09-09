@@ -41,33 +41,30 @@ public class SecurityConfig {
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .exceptionHandling(
-            exception ->
-                exception
-                    .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                    .accessDeniedHandler(restAccessDeniedHandler))
+            exception -> exception
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                .accessDeniedHandler(restAccessDeniedHandler))
         .authorizeHttpRequests(
-            auth ->
-                auth.requestMatchers("/api/auth/**")
-                    .permitAll()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/courses",
-                        "/api/courses/*",
-                        "/api/courses/*/assessments/exams",
-                        "/api/documents/guest",
-                        "/api/*/guest",
-                        "/api/*/guest/**")
-                    .permitAll()
-                    .requestMatchers(
-                        "/api-docs/**",
-                        "/v3/api-docs",
-                        "/v3/api-docs/**",
-                        "/docs",
-                        "/scalar/**",
-                        "/scalar.html")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
+            auth -> auth.requestMatchers("/api/auth/**")
+                .permitAll()
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/courses",
+                    "/api/courses/*",
+                    "/api/courses/*/assessments/exams",
+                    "/api/*/guest",
+                    "/api/*/guest/**")
+                .permitAll()
+                .requestMatchers(
+                    "/api-docs/**",
+                    "/v3/api-docs",
+                    "/v3/api-docs/**",
+                    "/docs",
+                    "/scalar/**",
+                    "/scalar.html")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
