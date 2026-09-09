@@ -47,3 +47,4 @@ thread:
 logging:
   loki:
     max-query-length: ${LOKI_MAX_QUERY_LENGTH:31d1h}
+    url: ${LOKI_URL_STAGING}
