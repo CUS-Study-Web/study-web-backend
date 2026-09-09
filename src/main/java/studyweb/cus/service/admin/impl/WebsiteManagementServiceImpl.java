@@ -2,6 +2,10 @@ package studyweb.cus.service.admin.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,6 +16,7 @@ import studyweb.cus.dto.request.admin.UpdateFooterRequest;
 import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
 import studyweb.cus.dto.response.admin.FooterResponse;
 import studyweb.cus.dto.response.admin.HomepageResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.entity.content.FooterContent;
 import studyweb.cus.entity.content.FooterLink;
 import studyweb.cus.entity.content.HomepageContent;
@@ -57,60 +62,95 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     HomepageContent content =
         homepageContentRepository.findFirstByOrderByCreatedAtDesc().orElseGet(HomepageContent::new);
 
-    if (hasFile(request.mainImage())) {
-      content.setMainImageUrl(uploadFileSafely(request.mainImage()));
-    }
-    if (hasFile(request.student1Avatar())) {
-      content.setStudent1Avatar(uploadFileSafely(request.student1Avatar()));
-    }
-    if (hasFile(request.student2Avatar())) {
-      content.setStudent2Avatar(uploadFileSafely(request.student2Avatar()));
-    }
-    if (hasFile(request.student3Avatar())) {
-      content.setStudent3Avatar(uploadFileSafely(request.student3Avatar()));
+    String oldMainImageUrl = content.getMainImageUrl();
+    String oldStudent1Avatar = content.getStudent1Avatar();
+    String oldStudent2Avatar = content.getStudent2Avatar();
+    String oldStudent3Avatar = content.getStudent3Avatar();
+
+    List<String> newUploadedFileKeys = new ArrayList<>();
+
+    try {
+      if (hasFile(request.mainImage())) {
+        UploadDocumentResult result = fileService.uploadAvatarFile(request.mainImage());
+        newUploadedFileKeys.add(result.fileKey());
+        content.setMainImageUrl(result.fileUrl());
+      }
+      if (hasFile(request.student1Avatar())) {
+        UploadDocumentResult result = fileService.uploadAvatarFile(request.student1Avatar());
+        newUploadedFileKeys.add(result.fileKey());
+        content.setStudent1Avatar(result.fileUrl());
+      }
+      if (hasFile(request.student2Avatar())) {
+        UploadDocumentResult result = fileService.uploadAvatarFile(request.student2Avatar());
+        newUploadedFileKeys.add(result.fileKey());
+        content.setStudent2Avatar(result.fileUrl());
+      }
+      if (hasFile(request.student3Avatar())) {
+        UploadDocumentResult result = fileService.uploadAvatarFile(request.student3Avatar());
+        newUploadedFileKeys.add(result.fileKey());
+        content.setStudent3Avatar(result.fileUrl());
+      }
+
+      if (request.badgeTitle() != null) {
+        content.setBadgeTitle(request.badgeTitle());
+      }
+      if (request.headline1() != null) {
+        content.setHeadline1(request.headline1());
+      }
+      if (request.headline2() != null) {
+        content.setHeadline2(request.headline2());
+      }
+      if (request.description() != null) {
+        content.setDescription(request.description());
+      }
+      if (request.ctaBtn1Name() != null) {
+        content.setCtaBtn1Name(request.ctaBtn1Name());
+      }
+      if (request.ctaBtn1Target() != null) {
+        content.setCtaBtn1Target(request.ctaBtn1Target());
+      }
+      if (request.ctaBtn2Name() != null) {
+        content.setCtaBtn2Name(request.ctaBtn2Name());
+      }
+      if (request.ctaBtn2Target() != null) {
+        content.setCtaBtn2Target(request.ctaBtn2Target());
+      }
+      if (request.stat1Number() != null) {
+        content.setStat1Number(request.stat1Number());
+      }
+      if (request.stat1Desc() != null) {
+        content.setStat1Desc(request.stat1Desc());
+      }
+      if (request.stat2Number() != null) {
+        content.setStat2Number(request.stat2Number());
+      }
+      if (request.stat2Desc() != null) {
+        content.setStat2Desc(request.stat2Desc());
+      }
+      if (request.studentStatsDesc() != null) {
+        content.setStudentStatsDesc(request.studentStatsDesc());
+      }
+      if (updater != null) {
+        content.setUpdatedBy(updater);
+      }
+
+      content = homepageContentRepository.save(content);
+    } catch (Exception ex) {
+      cleanupUploadedFiles(newUploadedFileKeys);
+      throw ex;
     }
 
-    if (request.badgeTitle() != null) {
-      content.setBadgeTitle(request.badgeTitle());
+    if (hasFile(request.mainImage()) && oldMainImageUrl != null && !oldMainImageUrl.isBlank()) {
+      fileService.deleteFile(oldMainImageUrl);
     }
-    if (request.headline1() != null) {
-      content.setHeadline1(request.headline1());
+    if (hasFile(request.student1Avatar()) && oldStudent1Avatar != null && !oldStudent1Avatar.isBlank()) {
+      fileService.deleteFile(oldStudent1Avatar);
     }
-    if (request.headline2() != null) {
-      content.setHeadline2(request.headline2());
+    if (hasFile(request.student2Avatar()) && oldStudent2Avatar != null && !oldStudent2Avatar.isBlank()) {
+      fileService.deleteFile(oldStudent2Avatar);
     }
-    if (request.description() != null) {
-      content.setDescription(request.description());
-    }
-    if (request.ctaBtn1Name() != null) {
-      content.setCtaBtn1Name(request.ctaBtn1Name());
-    }
-    if (request.ctaBtn1Target() != null) {
-      content.setCtaBtn1Target(request.ctaBtn1Target());
-    }
-    if (request.ctaBtn2Name() != null) {
-      content.setCtaBtn2Name(request.ctaBtn2Name());
-    }
-    if (request.ctaBtn2Target() != null) {
-      content.setCtaBtn2Target(request.ctaBtn2Target());
-    }
-    if (request.stat1Number() != null) {
-      content.setStat1Number(request.stat1Number());
-    }
-    if (request.stat1Desc() != null) {
-      content.setStat1Desc(request.stat1Desc());
-    }
-    if (request.stat2Number() != null) {
-      content.setStat2Number(request.stat2Number());
-    }
-    if (request.stat2Desc() != null) {
-      content.setStat2Desc(request.stat2Desc());
-    }
-    if (request.studentStatsDesc() != null) {
-      content.setStudentStatsDesc(request.studentStatsDesc());
-    }
-    if (updater != null) {
-      content.setUpdatedBy(updater);
+    if (hasFile(request.student3Avatar()) && oldStudent3Avatar != null && !oldStudent3Avatar.isBlank()) {
+      fileService.deleteFile(oldStudent3Avatar);
     }
 
     content = homepageContentRepository.save(content);
