@@ -10,6 +10,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,5 +48,5 @@ public class Leaderboard extends AbstractBaseEntity {
   private String university;
 
   @OneToMany(mappedBy = "achievement", cascade = CascadeType.ALL, orphanRemoval = true)
-  private java.util.List<AchievementScore> scores;
+  private List<AchievementScore> scores;
 }

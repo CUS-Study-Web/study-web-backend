@@ -1,9 +1,12 @@
 package studyweb.cus.service.course.impl;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
@@ -127,7 +130,7 @@ public class CourseServiceImpl implements CourseService {
 
     Page<Subject> page = subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId(), pageable);
 
-    Map<UUID, Integer> progressMap = java.util.Collections.emptyMap();
+    Map<UUID, Integer> progressMap = Collections.emptyMap();
     if (email != null) {
       User user = userRepository.findByGmail(email).orElse(null);
       if (user != null) {
@@ -136,7 +139,7 @@ public class CourseServiceImpl implements CourseService {
             .findByUserIdAndSubjectIdIn(user.getId(), subjectIds)
             .stream()
             .collect(
-                java.util.stream.Collectors.toMap(
+                Collectors.toMap(
                     p -> p.getSubject().getId(),
                     p -> defaultOr(p.getProgressPercent(), 0),
                     (a, b) -> a));
@@ -270,7 +273,7 @@ public class CourseServiceImpl implements CourseService {
 
     Page<Lesson> page = lessonRepository.findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable);
 
-    java.util.Set<UUID> clickedLessonIds = java.util.Collections.emptySet();
+    Set<UUID> clickedLessonIds = Collections.emptySet();
     if (email != null) {
       User user = userRepository.findByGmail(email).orElse(null);
       if (user != null) {
@@ -278,11 +281,11 @@ public class CourseServiceImpl implements CourseService {
         clickedLessonIds = userLessonProgressRepository.findByUserIdAndLessonIdIn(user.getId(), lessonIds).stream()
             .filter(p -> Boolean.TRUE.equals(p.getIsClicked()))
             .map(p -> p.getLesson().getId())
-            .collect(java.util.stream.Collectors.toSet());
+            .collect(Collectors.toSet());
       }
     }
 
-    final java.util.Set<UUID> finalClickedLessonIds = clickedLessonIds;
+    final Set<UUID> finalClickedLessonIds = clickedLessonIds;
     Page<LessonSummaryResponse.LessonCardResponse> lessons = page.map(
         lesson -> courseMapper.toLessonCardResponse(
             lesson, finalClickedLessonIds.contains(lesson.getId())));
@@ -593,7 +596,7 @@ public class CourseServiceImpl implements CourseService {
     Map<UUID, Integer> progressMap = userSubjectProgressRepository.findByUserIdAndSubjectIdIn(userId, subjectIds)
         .stream()
         .collect(
-            java.util.stream.Collectors.toMap(
+            Collectors.toMap(
                 p -> p.getSubject().getId(),
                 p -> defaultOr(p.getProgressPercent(), 0),
                 (a, b) -> a));
