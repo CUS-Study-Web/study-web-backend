@@ -41,4 +41,8 @@ public class Course extends AbstractAuditEntity {
   @Column(name = "status", nullable = false, length = 20)
   @Builder.Default
   private CourseCreateStatus status = CourseCreateStatus.DRAFT;
+
+  @Column(name = "max_scores")
+  @Builder.Default
+  private Integer maxScores = 0;
 }

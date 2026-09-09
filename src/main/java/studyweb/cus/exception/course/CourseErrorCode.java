@@ -18,7 +18,9 @@ public enum CourseErrorCode implements BaseErrorCode {
       "COURSE_005", "A subject with this title already exists", HttpStatus.CONFLICT),
   CREATED_COURSE_THUMBNAIL_CANNOT_BE_NULL(
       "COURSE_006", "Thumbnal of new course can not be empty", HttpStatus.BAD_REQUEST),
-  COURSE_TITLE_EMPTY("COURSE_007", "Course title must not be empty", HttpStatus.BAD_REQUEST);
+  COURSE_TITLE_EMPTY("COURSE_007", "Course title must not be empty", HttpStatus.BAD_REQUEST),
+  LEADERBOARD_NOT_FOUND("COURSE_008", "Leaderboard not found", HttpStatus.NOT_FOUND),
+  SCORE_NOT_FOUND("COURSE_009", "Achievement score not found", HttpStatus.NOT_FOUND);
 
   private final String code;
   private final String message;
