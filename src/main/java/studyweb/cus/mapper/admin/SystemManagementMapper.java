@@ -1,5 +1,6 @@
 package studyweb.cus.mapper.admin;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -124,7 +125,7 @@ public interface SystemManagementMapper {
         : null;
   }
 
-  default java.time.LocalDate resolveVipRequestBirth(VipRequest vipRequest) {
+  default LocalDate resolveVipRequestBirth(VipRequest vipRequest) {
     if (vipRequest != null && vipRequest.getBirth() != null) {
       return vipRequest.getBirth();
     }
