@@ -7,9 +7,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -153,22 +156,38 @@ class UserControllerTest {
 
   @Test
   void subscribeVip_unauthenticatedReturns401() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
     mockMvc
         .perform(
-            post("/api/user/vip-subscription")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"note\":\"Need VIP\"}"))
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Need VIP"))
         .andExpect(status().isUnauthorized());
   }
 
   @Test
-  void subscribeVip_authenticatedWithBodyReturns200() throws Exception {
+  void subscribeVip_authenticatedWithValidDataReturns200() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
     mockMvc
         .perform(
-            post("/api/user/vip-subscription")
-                .with(authenticated())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"note\":\"Need VIP\"}"))
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Need VIP")
+                .with(authenticated()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.message").value("VIP subscription request submitted successfully!"));
@@ -177,49 +196,61 @@ class UserControllerTest {
   }
 
   @Test
-  void subscribeVip_authenticatedWithoutBodyReturns200() throws Exception {
-    mockMvc
-        .perform(post("/api/user/vip-subscription").with(authenticated()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.statusCode").value(200))
-        .andExpect(jsonPath("$.message").value("VIP subscription request submitted successfully!"));
+  void subscribeVip_missingRequiredFieldReturns400() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
 
-    verify(userService).createVipRequest(eq(GMAIL), isNull(), eq(false));
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "")
+                .param("email", "invalid-email")
+                .param("birth", "2000-01-01")
+                .param("phone", "")
+                .with(authenticated()))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
   void renewVip_unauthenticatedReturns401() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
     mockMvc
         .perform(
-            post("/api/user/vip-renewal")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"note\":\"Renew VIP\"}"))
+            multipart("/api/user/vip-renewal")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Renew VIP"))
         .andExpect(status().isUnauthorized());
   }
 
   @Test
-  void renewVip_authenticatedWithBodyReturns200() throws Exception {
+  void renewVip_authenticatedWithValidDataReturns200() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
     mockMvc
         .perform(
-            post("/api/user/vip-renewal")
-                .with(authenticated())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"note\":\"Renew VIP\"}"))
+            multipart("/api/user/vip-renewal")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Renew VIP")
+                .with(authenticated()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
 
     verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(true));
-  }
-
-  @Test
-  void renewVip_authenticatedWithoutBodyReturns200() throws Exception {
-    mockMvc
-        .perform(post("/api/user/vip-renewal").with(authenticated()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.statusCode").value(200))
-        .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
-
-    verify(userService).createVipRequest(eq(GMAIL), isNull(), eq(true));
   }
 }

@@ -1,5 +1,6 @@
 package studyweb.cus.mapper.admin;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -49,8 +50,11 @@ public interface SystemManagementMapper {
 
   @Mapping(target = "id", source = "vipRequest.id")
   @Mapping(target = "userId", source = "vipRequest.user.id")
-  @Mapping(target = "name", source = "vipRequest.user.name")
-  @Mapping(target = "gmail", source = "vipRequest.user.gmail")
+  @Mapping(target = "name", expression = "java(resolveVipRequestName(vipRequest))")
+  @Mapping(target = "gmail", expression = "java(resolveVipRequestGmail(vipRequest))")
+  @Mapping(target = "phone", expression = "java(resolveVipRequestPhone(vipRequest))")
+  @Mapping(target = "birth", expression = "java(resolveVipRequestBirth(vipRequest))")
+  @Mapping(target = "evidenceUrl", source = "vipRequest.evidenceUrl")
   @Mapping(target = "avatarUrl", source = "vipRequest.user.avatarUrl")
   @Mapping(target = "note", source = "vipRequest.note")
   @Mapping(target = "requestDate", source = "vipRequest.requestDate")
@@ -92,5 +96,41 @@ public interface SystemManagementMapper {
       return SystemManagementConstants.textNotLogin;
     }
     return dateTime.format(DATE_FORMATTER);
+  }
+
+  default String resolveVipRequestName(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getName() != null && !vipRequest.getName().isBlank()) {
+      return vipRequest.getName();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getName()
+        : null;
+  }
+
+  default String resolveVipRequestGmail(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getEmail() != null && !vipRequest.getEmail().isBlank()) {
+      return vipRequest.getEmail();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getGmail()
+        : null;
+  }
+
+  default String resolveVipRequestPhone(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getPhone() != null && !vipRequest.getPhone().isBlank()) {
+      return vipRequest.getPhone();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getPhone()
+        : null;
+  }
+
+  default LocalDate resolveVipRequestBirth(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getBirth() != null) {
+      return vipRequest.getBirth();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getBirth()
+        : null;
   }
 }
