@@ -93,12 +93,16 @@ jobs:
         working-directory: gitops-manifests
         env:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
+          STAGING_ENV_CONTENT: ${{ secrets.STAGING_ENV_FILE }}
         run: |
           echo "Create permanent configs..."
 
           mkdir -p ~/.config/systemd/user/git-ops/nginx
           echo "Copy backend env file..."
           printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
+          
+          echo "Copy staging env file..."
+          printf "%s" "$STAGING_ENV_CONTENT" > ~/.config/systemd/user/git-ops/staging.env
 
           echo "Copy nginx config..."
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
