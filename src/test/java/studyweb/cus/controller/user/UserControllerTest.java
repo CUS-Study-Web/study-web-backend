@@ -41,7 +41,10 @@ import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.user.UserService;
 
@@ -252,5 +255,39 @@ class UserControllerTest {
         .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
 
     verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(true));
+  }
+
+  @Test
+  void getVipInfo_unauthenticatedReturns401() throws Exception {
+    mockMvc.perform(get("/api/user/vip-info")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getVipInfo_authenticatedReturnsVipInfo() throws Exception {
+    VipInfoResponse vipInfo =
+        new VipInfoResponse(
+            UserTier.VIP,
+            LocalDate.of(2026, 1, 1),
+            LocalDate.of(2026, 2, 1),
+            VipRequestStatus.APPROVED,
+            LocalDate.of(2026, 1, 1),
+            "Payment verified",
+            "https://s3.example.com/vip-evidence/proof.png");
+
+    when(userService.getVipInfo(GMAIL)).thenReturn(vipInfo);
+
+    mockMvc
+        .perform(get("/api/user/vip-info").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.tier").value("VIP"))
+        .andExpect(jsonPath("$.data.vipStartDate").value("2026-01-01"))
+        .andExpect(jsonPath("$.data.vipEndDate").value("2026-02-01"))
+        .andExpect(jsonPath("$.data.status").value("APPROVED"))
+        .andExpect(jsonPath("$.data.requestDate").value("2026-01-01"))
+        .andExpect(jsonPath("$.data.note").value("Payment verified"))
+        .andExpect(jsonPath("$.data.evidenceUrl").value("https://s3.example.com/vip-evidence/proof.png"));
+
+    verify(userService).getVipInfo(GMAIL);
   }
 }

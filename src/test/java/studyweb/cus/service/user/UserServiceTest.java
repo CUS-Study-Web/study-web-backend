@@ -19,6 +19,7 @@ import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.Gender;
@@ -416,5 +417,128 @@ class UserServiceTest {
             });
 
     verify(fileService).deleteFile("vip-evidence/proof.png");
+  }
+
+  @Test
+  void getVipInfo_userNotFound_throwsUserNotFound() {
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_userInactive_throwsUserLocked() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_userBanned_throwsUserBanned() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_nonLearnerRole_throwsRoleNotAllowed() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.ASSISTANT);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ROLE_NOT_ALLOWED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_learnerWithNoVipRequest_returnsVipInfoWithNullRequestFields() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    u.setVipStartDate(null);
+    u.setVipEndDate(null);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(u))
+        .thenReturn(java.util.Optional.empty());
+
+    VipInfoResponse response = userService.getVipInfo(GMAIL);
+
+    assertThat(response.tier()).isEqualTo(UserTier.NORMAL);
+    assertThat(response.vipStartDate()).isNull();
+    assertThat(response.vipEndDate()).isNull();
+    assertThat(response.status()).isNull();
+    assertThat(response.requestDate()).isNull();
+    assertThat(response.note()).isNull();
+    assertThat(response.evidenceUrl()).isNull();
+  }
+
+  @Test
+  void getVipInfo_learnerWithVipRequest_returnsFullVipInfo() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.VIP);
+    LocalDate startDate = LocalDate.of(2026, 1, 1);
+    LocalDate endDate = LocalDate.of(2026, 2, 1);
+    u.setVipStartDate(startDate);
+    u.setVipEndDate(endDate);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    LocalDate reqDate = LocalDate.of(2026, 1, 1);
+    VipRequest vipRequest =
+        VipRequest.builder()
+            .user(u)
+            .status(VipRequestStatus.APPROVED)
+            .requestDate(reqDate)
+            .note("Paid via MB Bank")
+            .evidenceUrl("https://s3.example.com/vip-evidence/proof.png")
+            .build();
+
+    when(vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(u))
+        .thenReturn(java.util.Optional.of(vipRequest));
+
+    VipInfoResponse response = userService.getVipInfo(GMAIL);
+
+    assertThat(response.tier()).isEqualTo(UserTier.VIP);
+    assertThat(response.vipStartDate()).isEqualTo(startDate);
+    assertThat(response.vipEndDate()).isEqualTo(endDate);
+    assertThat(response.status()).isEqualTo(VipRequestStatus.APPROVED);
+    assertThat(response.requestDate()).isEqualTo(reqDate);
+    assertThat(response.note()).isEqualTo("Paid via MB Bank");
+    assertThat(response.evidenceUrl())
+        .isEqualTo("https://s3.example.com/vip-evidence/proof.png");
   }
 }
