@@ -108,10 +108,10 @@ jobs:
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
 
           echo "Copy compose files..."
-          cp compose/docker.*.compose.yml ~/.config/systemd/user/git-ops/
+          cp compose/docker.be.*.compose.yml ~/.config/systemd/user/git-ops/
           
           echo "Copy service files..."
-          cp service/study-*.service ~/.config/systemd/user/git-ops/
+          cp service/study-*.service ~/.config/systemd/user
 
 
       - name: Check infra
