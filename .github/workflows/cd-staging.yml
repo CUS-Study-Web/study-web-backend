@@ -113,6 +113,12 @@ jobs:
           echo "Copy service files..."
           cp service/study-*.service ~/.config/systemd/user
 
+          cp compose/docker.infra.compose.yml ~/.config/systemd/user/git-ops/
+          
+          echo "Copy pgBackRest dependencies..."
+          cp Dockerfile.postgres ~/.config/systemd/user/git-ops/
+          cp pgbackrest.conf ~/.config/systemd/user/git-ops/
+
 
       - name: Check infra
         working-directory: gitops-manifests
