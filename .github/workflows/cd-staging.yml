@@ -116,8 +116,8 @@ jobs:
           cp compose/docker.infra.compose.yml ~/.config/systemd/user/git-ops/
           
           echo "Copy pgBackRest dependencies..."
-          cp Dockerfile.postgres ~/.config/systemd/user/git-ops/
-          cp pgbackrest.conf ~/.config/systemd/user/git-ops/
+          cp compose/Dockerfile.postgres ~/.config/systemd/user/git-ops/
+          cp compose/pgbackrest.conf ~/.config/systemd/user/git-ops/
 
 
       - name: Check infra
