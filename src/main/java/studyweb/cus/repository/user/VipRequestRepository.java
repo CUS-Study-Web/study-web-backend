@@ -1,5 +1,6 @@
 package studyweb.cus.repository.user;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +16,8 @@ import studyweb.cus.enums.VipRequestStatus;
 public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
 
   boolean existsByUserAndStatus(User user, VipRequestStatus status);
+
+  Optional<VipRequest> findFirstByUserOrderByCreatedAtDesc(User user);
 
   @Query(
       value =

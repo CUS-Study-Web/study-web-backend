@@ -11,6 +11,7 @@ import studyweb.cus.dto.request.auth.RegisterRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.UserRole;
@@ -151,5 +152,36 @@ public class UserServiceImpl implements UserService {
       throw new SystemException(
           SystemErrorCode.DATABASE_ERROR, "Failed to submit VIP request");
     }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public VipInfoResponse getVipInfo(String email) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+    if (user.getRole() != UserRole.LEARNER) {
+      throw new UserException(UserErrorCode.ROLE_NOT_ALLOWED);
+    }
+
+    VipRequest latestRequest =
+        vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(user).orElse(null);
+
+    return new VipInfoResponse(
+        user.getTier(),
+        user.getVipStartDate(),
+        user.getVipEndDate(),
+        latestRequest != null ? latestRequest.getStatus() : null,
+        latestRequest != null ? latestRequest.getRequestDate() : null,
+        latestRequest != null ? latestRequest.getNote() : null,
+        latestRequest != null ? latestRequest.getEvidenceUrl() : null);
   }
 }

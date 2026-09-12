@@ -21,6 +21,7 @@ import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
@@ -85,5 +86,15 @@ public class UserController extends AbstractBaseController {
     log.info("[POST /api/user/vip-renewal] Submitting VIP renewal for email: {}", email);
     userService.createVipRequest(email, request, true);
     return success("VIP renewal request submitted successfully!");
+  }
+
+  @GetMapping("/vip-info")
+  @Operation(
+      summary = "Get VIP Information",
+      description = "Return VIP subscription status and latest VIP request info for the authenticated learner")
+  public ResponseEntity<SingleResponse<VipInfoResponse>> getVipInfo(
+      @AuthenticationPrincipal String email) {
+    log.info("[GET /api/user/vip-info] Fetching VIP info for email: {}", email);
+    return successSingle(userService.getVipInfo(email), "OK");
   }
 }
