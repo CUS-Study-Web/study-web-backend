@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import studyweb.cus.constant.admin.WebsiteManagementConstants;
 import studyweb.cus.dto.request.admin.FooterLinkItemRequest;
 import studyweb.cus.dto.request.admin.UpdateFooterRequest;
 import studyweb.cus.dto.request.admin.UpdateHomepageRequest;
@@ -221,6 +222,20 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     content = footerContentRepository.save(content);
 
     if (request.links() != null) {
+      long programCount =
+          request.links().stream()
+              .filter(l -> l.category() == null || l.category() == FooterCategory.PROGRAM)
+              .count();
+      long aboutCount =
+          request.links().stream().filter(l -> l.category() == FooterCategory.ABOUT).count();
+      if (programCount > WebsiteManagementConstants.MAX_FOOTER_LINKS_PER_CATEGORY
+          || aboutCount > WebsiteManagementConstants.MAX_FOOTER_LINKS_PER_CATEGORY) {
+        throw new IllegalArgumentException(
+            "Mỗi danh mục chỉ được tối đa "
+                + WebsiteManagementConstants.MAX_FOOTER_LINKS_PER_CATEGORY
+                + " liên kết.");
+      }
+
       List<FooterLink> existingDbLinks =
           content.getId() != null
               ? footerLinkRepository.findByFooterIdOrderBySortOrderAsc(content.getId())
@@ -244,6 +259,7 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
       List<FooterLink> linksToSave = new ArrayList<>();
       for (int i = 0; i < request.links().size(); i++) {
         FooterLinkItemRequest item = request.links().get(i);
+        String normalizedUrl = normalizeUrl(item.url());
         if (item.id() != null) {
           FooterLink existingLink =
               existingDbLinks.stream()
@@ -254,8 +270,8 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
             if (item.label() != null) {
               existingLink.setLabel(item.label());
             }
-            if (item.url() != null) {
-              existingLink.setUrl(item.url());
+            if (normalizedUrl != null) {
+              existingLink.setUrl(normalizedUrl);
             }
             if (item.sortOrder() != null) {
               existingLink.setSortOrder(item.sortOrder());
@@ -272,7 +288,7 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
                 .footer(content)
                 .category(item.category() != null ? item.category() : FooterCategory.PROGRAM)
                 .label(item.label())
-                .url(item.url())
+                .url(normalizedUrl)
                 .sortOrder(item.sortOrder() != null ? item.sortOrder() : i)
                 .build());
       }
@@ -307,5 +323,24 @@ public class WebsiteManagementServiceImpl implements WebsiteManagementService {
     return userRepository
         .findByGmail(email)
         .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+  }
+
+  private String normalizeUrl(String url) {
+    if (url == null) {
+      return null;
+    }
+    String trimmed = url.trim();
+    if (trimmed.isEmpty()) {
+      return trimmed;
+    }
+    for (String prefix : WebsiteManagementConstants.EXTERNAL_URL_PREFIXES) {
+      if (trimmed.startsWith(prefix)) {
+        return trimmed;
+      }
+    }
+    if (trimmed.startsWith(WebsiteManagementConstants.PREFIX_WWW)) {
+      return WebsiteManagementConstants.PREFIX_HTTPS + trimmed;
+    }
+    return trimmed.startsWith("/") ? trimmed : "/" + trimmed;
   }
 }
