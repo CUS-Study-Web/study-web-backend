@@ -53,7 +53,9 @@ public class SecurityConfig {
                     "/api/courses/*",
                     "/api/courses/*/assessments/exams",
                     "/api/*/guest",
-                    "/api/*/guest/**")
+                    "/api/*/guest/**",
+                    "/api/homepage",
+                    "/api/homepage/**")
                 .permitAll()
                 .requestMatchers(
                     "/api-docs/**",
