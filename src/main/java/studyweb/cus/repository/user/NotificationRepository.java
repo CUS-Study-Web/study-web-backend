@@ -12,9 +12,6 @@ import studyweb.cus.entity.user.Notification;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-  Page<Notification> findByUserId(UUID userId, Pageable pageable);
-
-  Page<Notification> findByUserIdAndIsRead(UUID userId, boolean isRead, Pageable pageable);
 
   @Query(
       value =
@@ -34,13 +31,13 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
       @Param("isRead") Boolean isRead,
       Pageable pageable);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query(
       "UPDATE Notification n SET n.isRead = true, n.updatedAt = CURRENT_TIMESTAMP "
           + "WHERE n.user.id = :userId AND n.isRead = false")
   int markAllAsReadByUserId(@Param("userId") UUID userId);
 
-  @Modifying
+  @Modifying(clearAutomatically = true)
   @Query("DELETE FROM Notification n WHERE n.createdAt < :cutoff")
   int deleteByCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
 }

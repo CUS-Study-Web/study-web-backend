@@ -81,14 +81,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   List<UUID> findIdsByRole(@Param("role") UserRole role);
 
   @Query(
-      "SELECT u.id FROM User u WHERE u.role = studyweb.cus.enums.UserRole.LEARNER AND u.status = studyweb.cus.enums.UserStatus.ACTIVE")
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.status = 'ACTIVE'")
   List<UUID> findActiveLearnerIds();
 
   @Query(
-      "SELECT u.id FROM User u WHERE u.role = studyweb.cus.enums.UserRole.LEARNER AND u.tier = studyweb.cus.enums.UserTier.VIP AND u.status = studyweb.cus.enums.UserStatus.ACTIVE")
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE'")
   List<UUID> findActiveVipLearnerIds();
 
   @Query(
-      "SELECT u.id FROM User u WHERE u.role = studyweb.cus.enums.UserRole.LEARNER AND u.tier = studyweb.cus.enums.UserTier.VIP AND u.status = studyweb.cus.enums.UserStatus.ACTIVE AND u.vipEndDate = :targetDate")
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE' AND u.vipEndDate = :targetDate")
   List<UUID> findActiveVipLearnerIdsWithVipEndDate(@Param("targetDate") LocalDate targetDate);
 }
