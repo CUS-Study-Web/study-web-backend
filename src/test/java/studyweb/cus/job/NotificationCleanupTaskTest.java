@@ -27,13 +27,13 @@ class NotificationCleanupTaskTest {
   @Captor private ArgumentCaptor<LocalDateTime> cutoffCaptor;
 
   @Test
-  @DisplayName("cleanupOldNotifications - hard deletes notifications older than 30 days")
+  @DisplayName("cleanupOldNotifications - hard deletes notifications older than 7 days")
   void cleanupOldNotifications_Success() {
     when(notificationRepository.deleteByCreatedAtBefore(any(LocalDateTime.class))).thenReturn(15);
 
-    LocalDateTime beforeRun = LocalDateTime.now().minusDays(30);
+    LocalDateTime beforeRun = LocalDateTime.now().minusDays(7);
     cleanupTask.cleanupOldNotifications();
-    LocalDateTime afterRun = LocalDateTime.now().minusDays(30);
+    LocalDateTime afterRun = LocalDateTime.now().minusDays(7);
 
     verify(notificationRepository).deleteByCreatedAtBefore(cutoffCaptor.capture());
     LocalDateTime actualCutoff = cutoffCaptor.getValue();
