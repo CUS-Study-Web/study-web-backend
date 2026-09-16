@@ -17,7 +17,7 @@ import studyweb.cus.repository.user.UserRepository;
 @RequiredArgsConstructor
 public class VipSubscriptionExpiryTask {
 
-  private static final int DAYS_BEFORE_EXPIRY = 7;
+  private static final int DAYS_BEFORE_EXPIRY = 3;
 
   private final UserRepository userRepository;
   private final ApplicationEventPublisher eventPublisher;
@@ -48,7 +48,7 @@ public class VipSubscriptionExpiryTask {
 
   /**
    * Runs daily at 00:01:00 (1 minute after VIP expiry downgrade) to notify users whose VIP
-   * subscription is expiring in 7 days. Running at 00:01 ensures the downgrade job at 00:00 has
+   * subscription is expiring in 3 days. Running at 00:01 ensures the downgrade job at 00:00 has
    * committed first, so users who expired today are already downgraded and will not receive a
    * "expiring soon" notification.
    */

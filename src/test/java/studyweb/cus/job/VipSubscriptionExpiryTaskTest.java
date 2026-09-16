@@ -58,7 +58,7 @@ class VipSubscriptionExpiryTaskTest {
   @Test
   @DisplayName("notifyExpiringSoonVipUsers publishes events for expiring users")
   void notifyExpiringSoonVipUsers_publishesEventsWhenFound() {
-    LocalDate targetDate = LocalDate.now().plusDays(7);
+    LocalDate targetDate = LocalDate.now().plusDays(3);
     UUID u1 = UUID.randomUUID();
     UUID u2 = UUID.randomUUID();
     when(userRepository.findActiveVipLearnerIdsWithVipEndDate(eq(targetDate)))
@@ -70,15 +70,15 @@ class VipSubscriptionExpiryTaskTest {
     List<VipExpiringSoonEvent> capturedEvents = eventCaptor.getAllValues();
     assertThat(capturedEvents).hasSize(2);
     assertThat(capturedEvents.get(0).userId()).isEqualTo(u1);
-    assertThat(capturedEvents.get(0).message()).contains("7");
+    assertThat(capturedEvents.get(0).message()).contains("3");
     assertThat(capturedEvents.get(1).userId()).isEqualTo(u2);
-    assertThat(capturedEvents.get(1).message()).contains("7");
+    assertThat(capturedEvents.get(1).message()).contains("3");
   }
 
   @Test
   @DisplayName("notifyExpiringSoonVipUsers does not publish events when none expiring")
   void notifyExpiringSoonVipUsers_noUsersExpiring() {
-    LocalDate targetDate = LocalDate.now().plusDays(7);
+    LocalDate targetDate = LocalDate.now().plusDays(3);
     when(userRepository.findActiveVipLearnerIdsWithVipEndDate(eq(targetDate)))
         .thenReturn(List.of());
 
