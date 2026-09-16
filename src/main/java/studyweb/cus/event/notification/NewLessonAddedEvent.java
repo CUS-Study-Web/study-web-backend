@@ -15,10 +15,10 @@ public record NewLessonAddedEvent(
         courseTitle,
         NotificationType.NEW_LESSON_ADDED,
         "Bài học mới đã được thêm",
-        "Bài học mới \""
+        "Bài học mới '"
             + lessonTitle
-            + "\" vừa được cập nhật vào khóa học \""
+            + "' vừa được cập nhật vào khóa học '"
             + courseTitle
-            + "\". Hãy vào học ngay!");
+            + "'. Hãy vào học ngay!");
   }
 }

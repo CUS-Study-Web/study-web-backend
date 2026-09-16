@@ -13,8 +13,8 @@ public record NewCoursePublishedEvent(
         courseTitle,
         NotificationType.NEW_COURSE_PUBLISHED,
         "Khóa học mới vừa phát hành",
-        "Khóa học mới \""
+        "Khóa học mới '"
             + courseTitle
-            + "\" vừa chính thức mở trên hệ thống. Hãy khám phá và đăng ký học ngay!");
+            + "' vừa chính thức mở trên hệ thống. Hãy khám phá và đăng ký học ngay!");
   }
 }

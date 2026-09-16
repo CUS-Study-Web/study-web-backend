@@ -13,8 +13,8 @@ public record NewFlashcardTopicEvent(
         topicName,
         NotificationType.NEW_FLASHCARD_TOPIC,
         "Chủ đề từ vựng mới",
-        "Bộ từ vựng flashcard mới \""
+        "Bộ từ vựng flashcard mới '"
             + topicName
-            + "\" đã sẵn sàng để bạn ôn luyện và củng cố kiến thức!");
+            + "' đã sẵn sàng để bạn ôn luyện và củng cố kiến thức!");
   }
 }

@@ -15,10 +15,10 @@ public record NewAssessmentAddedEvent(
         courseTitle,
         NotificationType.NEW_ASSESSMENT_ADDED,
         "Bài kiểm tra mới đã sẵn sàng",
-        "Bài đánh giá \""
+        "Bài đánh giá '"
             + assessmentTitle
-            + "\" đã được thêm vào khóa học \""
+            + "' đã được thêm vào khóa học '"
             + courseTitle
-            + "\". Hãy thử sức ngay!");
+            + "'. Hãy thử sức ngay!");
   }
 }

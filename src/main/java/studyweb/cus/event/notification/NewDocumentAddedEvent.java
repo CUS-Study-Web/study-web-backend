@@ -13,8 +13,8 @@ public record NewDocumentAddedEvent(
         documentTitle,
         NotificationType.NEW_DOCUMENT_ADDED,
         "Tài liệu mới trong thư viện",
-        "Tài liệu mới \""
+        "Tài liệu mới '"
             + documentTitle
-            + "\" vừa được thêm vào thư viện tài liệu. Hãy truy cập để xem chi tiết!");
+            + "' vừa được thêm vào thư viện tài liệu. Hãy truy cập để xem chi tiết!");
   }
 }

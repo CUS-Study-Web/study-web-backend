@@ -164,8 +164,9 @@ public class AssessmentServiceImpl implements AssessmentService {
   @Transactional
   public AssessmentSummaryResponse updateAssessment(
       UUID courseId, UUID assessmentId, UpdateAssessmentRequest request) {
-    courseRepository.requireCourse(courseId);
+    Course course = courseRepository.requireCourse(courseId);
     Assessment assessment = assessmentRepository.requireAssessment(assessmentId);
+    AssessmentStatus oldStatus = assessment.getStatus();
 
     String oldFileKey = assessment.getFileKey();
     String newFileKey = null;
@@ -193,6 +194,10 @@ public class AssessmentServiceImpl implements AssessmentService {
       }
 
       log.info("Updated assessment {}", assessmentId);
+      if (oldStatus != AssessmentStatus.PUBLISHED && assessment.getStatus() == AssessmentStatus.PUBLISHED) {
+        eventPublisher.publishEvent(
+            NewAssessmentAddedEvent.of(assessment.getTitle(), course.getTitle()));
+      }
       return mapToSummary(assessment);
     } catch (Exception ex) {
       if (newFileKey != null) {
@@ -432,8 +437,10 @@ public class AssessmentServiceImpl implements AssessmentService {
           }
 
           Assessment finalAssessment = assessmentRepository.save(savedAssessment);
-          eventPublisher.publishEvent(
-              NewAssessmentAddedEvent.of(finalAssessment.getTitle(), courseTitle));
+          if (resolvedStatus == AssessmentStatus.PUBLISHED) {
+            eventPublisher.publishEvent(
+                NewAssessmentAddedEvent.of(finalAssessment.getTitle(), courseTitle));
+          }
           return mapToSummary(finalAssessment);
         });
   }

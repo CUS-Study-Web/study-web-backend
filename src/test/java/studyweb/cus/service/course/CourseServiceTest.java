@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +52,8 @@ import studyweb.cus.repository.course.UserSubjectProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.impl.CourseServiceImpl;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.event.notification.NewCoursePublishedEvent;
+import studyweb.cus.event.notification.NewLessonAddedEvent;
 
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
@@ -713,5 +717,96 @@ class CourseServiceTest {
 
     // 150 learners divided by batch size of 100 = 2 tasks submitted
     verify(updateProgressExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
+  }
+
+  // ---- Notification Event Tests ----
+
+  @Test
+  void createCourse_statusDraft_doesNotPublishEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.DRAFT);
+    when(fileService.uploadAvatarFile(any())).thenReturn(new UploadDocumentResult(0L, "key", "url"));
+    when(courseRepository.save(any(Course.class))).thenReturn(course);
+    when(courseMapper.toCourseSummary(eq(course), anyLong(), anyLong()))
+        .thenReturn(new CourseSummaryResponse(courseId, "Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.DRAFT, null, 0L, 0L, 0));
+
+    CourseRequest request = new CourseRequest("Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.DRAFT, 0);
+    courseService.createCourse(request);
+
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void createCourse_statusPublish_publishesNewCoursePublishedEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.PUBLISH);
+    when(fileService.uploadAvatarFile(any())).thenReturn(new UploadDocumentResult(0L, "key", "url"));
+    when(courseRepository.save(any(Course.class))).thenReturn(course);
+    when(courseMapper.toCourseSummary(eq(course), anyLong(), anyLong()))
+        .thenReturn(new CourseSummaryResponse(courseId, "Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.PUBLISH, null, 0L, 0L, 0));
+
+    CourseRequest request = new CourseRequest("Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.PUBLISH, 0);
+    courseService.createCourse(request);
+
+    verify(eventPublisher).publishEvent(any(NewCoursePublishedEvent.class));
+  }
+
+  @Test
+  void updateCourse_statusTransitionsFromDraftToPublish_publishesNewCoursePublishedEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.DRAFT);
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+
+    CourseRequest request = new CourseRequest("Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.PUBLISH, 0);
+    courseService.updateCourse(courseId, request);
+
+    assertThat(course.getStatus()).isEqualTo(CourseCreateStatus.PUBLISH);
+    verify(eventPublisher).publishEvent(any(NewCoursePublishedEvent.class));
+  }
+
+  @Test
+  void updateCourse_statusRemainsDraft_doesNotPublishEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.DRAFT);
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+
+    CourseRequest request = new CourseRequest("Title", "Sub", "Badge", "Desc", null, CourseCreateStatus.DRAFT, 0);
+    courseService.updateCourse(courseId, request);
+
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void createLesson_courseDraft_doesNotPublishEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.DRAFT);
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    Subject subject = subject(0);
+    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId)).thenReturn(Optional.of(subject));
+    when(lessonRepository.save(any(Lesson.class))).thenReturn(lesson());
+    when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(1L);
+    when(courseMapper.toLessonCardResponse(any(Lesson.class)))
+        .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, 1, "Lesson 1", 10, null, false, false));
+
+    courseService.createLesson(courseId, subjectId, new LessonRequest("Lesson 1", 1, null, 10, AccessTier.PUBLIC));
+
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void createLesson_coursePublish_publishesNewLessonAddedEvent() {
+    Course course = course();
+    course.setStatus(CourseCreateStatus.PUBLISH);
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+    Subject subject = subject(0);
+    when(subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId)).thenReturn(Optional.of(subject));
+    when(lessonRepository.save(any(Lesson.class))).thenReturn(lesson());
+    when(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)).thenReturn(1L);
+    when(courseMapper.toLessonCardResponse(any(Lesson.class)))
+        .thenReturn(new LessonSummaryResponse.LessonCardResponse(lessonId, 1, "Lesson 1", 10, null, false, false));
+
+    courseService.createLesson(courseId, subjectId, new LessonRequest("Lesson 1", 1, null, 10, AccessTier.PUBLIC));
+
+    verify(eventPublisher).publishEvent(any(NewLessonAddedEvent.class));
   }
 }

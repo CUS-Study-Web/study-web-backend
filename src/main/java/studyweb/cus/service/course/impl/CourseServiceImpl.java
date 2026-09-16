@@ -185,7 +185,9 @@ public class CourseServiceImpl implements CourseService {
         .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
-    eventPublisher.publishEvent(NewCoursePublishedEvent.of(saved.getTitle()));
+    if (saved.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewCoursePublishedEvent.of(saved.getTitle()));
+    }
     return courseMapper.toCourseSummary(saved, 0L, 0L);
   }
 
@@ -208,10 +210,14 @@ public class CourseServiceImpl implements CourseService {
     if (request.thumbnailImage() != null && !request.thumbnailImage().isEmpty()) {
       course.setThumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()));
     }
+    CourseCreateStatus oldStatus = course.getStatus();
     if (request.status() != null) {
       course.setStatus(request.status());
     }
     log.info("Updated course {}", id);
+    if (oldStatus != CourseCreateStatus.PUBLISH && course.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewCoursePublishedEvent.of(course.getTitle()));
+    }
 
     long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
     long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
@@ -326,7 +332,9 @@ public class CourseServiceImpl implements CourseService {
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     recomputeProgressForSubject(course.getId(), subject.getId());
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
-    eventPublisher.publishEvent(NewLessonAddedEvent.of(saved.getTitle(), course.getTitle()));
+    if (course.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewLessonAddedEvent.of(saved.getTitle(), course.getTitle()));
+    }
     return courseMapper.toLessonCardResponse(saved);
   }
 
