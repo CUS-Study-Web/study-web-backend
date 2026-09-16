@@ -6,9 +6,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,11 +35,15 @@ import studyweb.cus.repository.user.UserRepository;
 @ExtendWith(MockitoExtension.class)
 class NotificationEventListenerTest {
 
-  @Mock private NotificationRepository notificationRepository;
-  @Mock private UserRepository userRepository;
+  @Mock
+  private NotificationRepository notificationRepository;
+  @Mock
+  private UserRepository userRepository;
 
-  @Captor private ArgumentCaptor<Notification> notificationCaptor;
-  @Captor private ArgumentCaptor<List<Notification>> batchCaptor;
+  @Captor
+  private ArgumentCaptor<Notification> notificationCaptor;
+  @Captor
+  private ArgumentCaptor<List<Notification>> batchCaptor;
 
   private NotificationEventListener listener;
 
@@ -48,13 +52,15 @@ class NotificationEventListenerTest {
     listener = new NotificationEventListener(notificationRepository, userRepository);
   }
 
+  // ─── Single-user handlers: use findById() (fail-fast on missing user) ───────
+
   @Test
   @DisplayName("handleAccountStatusChanged - saves single notification")
   void handleAccountStatusChanged_Success() {
     UUID userId = UUID.randomUUID();
-    User mockProxy = User.builder().build();
-    mockProxy.setId(userId);
-    when(userRepository.getReferenceById(userId)).thenReturn(mockProxy);
+    User mockUser = User.builder().build();
+    mockUser.setId(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
 
     AccountStatusChangedEvent event = AccountStatusChangedEvent.locked(userId);
     listener.handleAccountStatusChanged(event);
@@ -67,12 +73,25 @@ class NotificationEventListenerTest {
   }
 
   @Test
+  @DisplayName("handleAccountStatusChanged - logs error and does not throw when user not found")
+  void handleAccountStatusChanged_UserNotFound_LogsError() {
+    UUID userId = UUID.randomUUID();
+    when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+    AccountStatusChangedEvent event = AccountStatusChangedEvent.locked(userId);
+    // Should NOT throw — error is caught and logged inside the handler
+    listener.handleAccountStatusChanged(event);
+
+    verify(notificationRepository, never()).save(any());
+  }
+
+  @Test
   @DisplayName("handleVipRequestResolved - saves single notification")
   void handleVipRequestResolved_Success() {
     UUID userId = UUID.randomUUID();
-    User mockProxy = User.builder().build();
-    mockProxy.setId(userId);
-    when(userRepository.getReferenceById(userId)).thenReturn(mockProxy);
+    User mockUser = User.builder().build();
+    mockUser.setId(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
 
     VipRequestResolvedEvent event = VipRequestResolvedEvent.approved(userId);
     listener.handleVipRequestResolved(event);
@@ -87,9 +106,9 @@ class NotificationEventListenerTest {
   @DisplayName("handleVipExpiringSoon - saves single notification")
   void handleVipExpiringSoon_Success() {
     UUID userId = UUID.randomUUID();
-    User mockProxy = User.builder().build();
-    mockProxy.setId(userId);
-    when(userRepository.getReferenceById(userId)).thenReturn(mockProxy);
+    User mockUser = User.builder().build();
+    mockUser.setId(userId);
+    when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
 
     VipExpiringSoonEvent event = VipExpiringSoonEvent.of(userId, 7);
     listener.handleVipExpiringSoon(event);
@@ -99,6 +118,8 @@ class NotificationEventListenerTest {
     assertThat(saved.getType()).isEqualTo(NotificationType.VIP_EXPIRING_SOON);
     assertThat(saved.getMessage()).contains("7 ngày");
   }
+
+  // ─── Broadcast handlers: use getReferenceById() for bulk perf ───────────────
 
   @Test
   @DisplayName("handleNewCoursePublished - broadcasts to all active learners")
@@ -198,8 +219,8 @@ class NotificationEventListenerTest {
   }
 
   @Test
-  @DisplayName("Batching chunk test - chunks 1200 users into 3 batches (500 + 500 + 200)")
-  void batchChunking_Over500Users() {
+  @DisplayName("handleNewCoursePublished - saves all learners in single bulk operation")
+  void handleNewCoursePublished_LargeUserList() {
     List<UUID> userIds = new ArrayList<>();
     for (int i = 0; i < 1200; i++) {
       userIds.add(UUID.randomUUID());
@@ -211,10 +232,8 @@ class NotificationEventListenerTest {
     NewCoursePublishedEvent event = NewCoursePublishedEvent.of("Big Batch Course");
     listener.handleNewCoursePublished(event);
 
-    verify(notificationRepository, times(3)).saveAll(batchCaptor.capture());
-    List<List<Notification>> allBatches = batchCaptor.getAllValues();
-    assertThat(allBatches.get(0)).hasSize(500);
-    assertThat(allBatches.get(1)).hasSize(500);
-    assertThat(allBatches.get(2)).hasSize(200);
+    verify(notificationRepository, times(1)).saveAll(batchCaptor.capture());
+    List<Notification> saved = batchCaptor.getValue();
+    assertThat(saved).hasSize(1200);
   }
 }
