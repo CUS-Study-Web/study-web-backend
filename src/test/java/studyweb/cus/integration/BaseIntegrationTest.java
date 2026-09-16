@@ -20,6 +20,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -32,34 +33,37 @@ import studyweb.cus.security.JwtUtils;
 /**
  * Shared base class for all integration tests.
  *
- * <p>Spins up shared PostgreSQL and MinIO Testcontainers instances once for the entire test run
- * (singleton pattern), eliminating container restart overhead between test classes. All test tables
- * are truncated before/after each test execution to guarantee complete database isolation.
+ * <p>
+ * Spins up shared PostgreSQL and MinIO Testcontainers instances once for the
+ * entire test run
+ * (singleton pattern), eliminating container restart overhead between test
+ * classes. All test tables
+ * are truncated before/after each test execution to guarantee complete database
+ * isolation.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(
-    properties = {
-      "spring.main.allow-bean-definition-overriding=true",
-      "spring.jpa.hibernate.ddl-auto=create-drop",
-      "spring.jpa.show-sql=false",
-      "spring.flyway.enabled=false",
-      "s3.region=ap-southeast-1",
-      "app.jwt.secret=change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789",
-      "app.jwt.access-token-expiration=900000",
-      "app.jwt.refresh-token-expiration=604800000",
-      "app.otp.length=6",
-      "app.otp.expiration-seconds=300",
-      "app.otp.max-attempts=5",
-      "app.otp.cooldown-seconds=60",
-      "spring.mail.host=localhost",
-      "spring.mail.port=25",
-      "spring.mail.username=test",
-      "spring.mail.password=test",
-      "spring.mail.from=test@studyweb.edu",
-      "cors.allowed-origins=http://localhost:3000",
-      "logging.loki.url=http://localhost:3100"
-    })
+@TestPropertySource(properties = {
+    "spring.main.allow-bean-definition-overriding=true",
+    "spring.jpa.hibernate.ddl-auto=create-drop",
+    "spring.jpa.show-sql=false",
+    "spring.flyway.enabled=false",
+    "s3.region=ap-southeast-1",
+    "app.jwt.secret=change-me-this-is-a-dev-secret-that-is-at-least-64-bytes-long-0123456789",
+    "app.jwt.access-token-expiration=900000",
+    "app.jwt.refresh-token-expiration=604800000",
+    "app.otp.length=6",
+    "app.otp.expiration-seconds=300",
+    "app.otp.max-attempts=5",
+    "app.otp.cooldown-seconds=60",
+    "spring.mail.host=localhost",
+    "spring.mail.port=25",
+    "spring.mail.username=test",
+    "spring.mail.password=test",
+    "spring.mail.from=test@studyweb.edu",
+    "cors.allowed-origins=http://localhost:3000",
+    "logging.loki.url=http://localhost:3100"
+})
 public abstract class BaseIntegrationTest {
 
   private static final String BUCKET_NAME = "studyweb-test-bucket";
@@ -67,21 +71,23 @@ public abstract class BaseIntegrationTest {
   /** Shared PostgreSQL container across all integration tests. */
   protected static final PostgreSQLContainer<?> POSTGRES;
 
-  /** Shared MinIO container for S3 object storage across all integration tests. */
+  /**
+   * Shared MinIO container for S3 object storage across all integration tests.
+   */
   protected static final GenericContainer<?> minio;
 
   static {
-    POSTGRES =
-        new PostgreSQLContainer<>("postgres:17-alpine")
-            .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
+    POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine")
+        .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
     POSTGRES.start();
 
     minio =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-18T22-51-28Z")
+        new GenericContainer<>("quay.io/minio/minio:RELEASE.2024-01-18T22-51-28Z")
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server /data")
             .withExposedPorts(9000)
+            .waitingFor(Wait.forHttp("/minio/health/ready").forPort(9000))
             .withTmpFs(Map.of("/data", "rw"));
     minio.start();
 
@@ -90,15 +96,14 @@ public abstract class BaseIntegrationTest {
 
   private static void initializeMinioBucket() {
     String minioEndpoint = "http://" + minio.getHost() + ":" + minio.getMappedPort(9000);
-    try (S3Client s3Client =
-        S3Client.builder()
-            .endpointOverride(URI.create(minioEndpoint))
-            .region(Region.of("ap-southeast-1"))
-            .credentialsProvider(
-                StaticCredentialsProvider.create(
-                    AwsBasicCredentials.create("minioadmin", "minioadmin")))
-            .forcePathStyle(true)
-            .build()) {
+    try (S3Client s3Client = S3Client.builder()
+        .endpointOverride(URI.create(minioEndpoint))
+        .region(Region.of("ap-southeast-1"))
+        .credentialsProvider(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("minioadmin", "minioadmin")))
+        .forcePathStyle(true)
+        .build()) {
       try {
         s3Client.createBucket(CreateBucketRequest.builder().bucket(BUCKET_NAME).build());
       } catch (BucketAlreadyOwnedByYouException | BucketAlreadyExistsException ignored) {
@@ -137,10 +142,14 @@ public abstract class BaseIntegrationTest {
     }
   }
 
-  @Autowired protected MockMvc mockMvc;
-  @Autowired protected ObjectMapper objectMapper;
-  @Autowired protected JdbcTemplate jdbcTemplate;
-  @Autowired protected JwtUtils jwtUtils;
+  @Autowired
+  protected MockMvc mockMvc;
+  @Autowired
+  protected ObjectMapper objectMapper;
+  @Autowired
+  protected JdbcTemplate jdbcTemplate;
+  @Autowired
+  protected JwtUtils jwtUtils;
 
   @BeforeEach
   void baseSetUp() {
@@ -154,8 +163,10 @@ public abstract class BaseIntegrationTest {
   }
 
   /**
-   * Truncates database tables to guarantee isolation between tests without relying on
-   * {@code @Transactional} rollbacks. Includes retry logic to handle transient locks gracefully.
+   * Truncates database tables to guarantee isolation between tests without
+   * relying on
+   * {@code @Transactional} rollbacks. Includes retry logic to handle transient
+   * locks gracefully.
    */
   protected void truncateDatabase() {
     for (int attempt = 0; attempt < 3; attempt++) {
