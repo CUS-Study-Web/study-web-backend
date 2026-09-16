@@ -1,6 +1,7 @@
 package studyweb.cus.service.auth.impl;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,6 +90,8 @@ public class AuthServiceImpl implements AuthService {
       throw new UserException(UserErrorCode.USER_BANNED);
     }
 
+    user.setLastLogin(LocalDateTime.now());
+
     String accessToken =
         jwtUtils.generateAccessToken(
             user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);
@@ -121,6 +124,8 @@ public class AuthServiceImpl implements AuthService {
       throw new UserException(UserErrorCode.USER_BANNED);
     }
 
+    user.setLastLogin(LocalDateTime.now());
+    
     String newAccessToken =
         jwtUtils.generateAccessToken(
             user.getGmail(), user.getRole(), user.getTier() == UserTier.VIP);

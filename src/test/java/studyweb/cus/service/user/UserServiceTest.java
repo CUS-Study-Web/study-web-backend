@@ -15,10 +15,14 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockMultipartFile;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.UpdateProfileRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.AvatarResponse;
+import studyweb.cus.dto.response.user.UserProfileResponse;
 import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
@@ -29,6 +33,8 @@ import studyweb.cus.enums.UserTier;
 import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
 import studyweb.cus.exception.system.SystemErrorCode;
 import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
@@ -81,6 +87,25 @@ class UserServiceTest {
         .school("StudyWeb")
         .password("encoded-hash")
         .build();
+  }
+
+  private UserProfileResponse sampleProfileResponse() {
+    return new UserProfileResponse(
+        java.util.UUID.randomUUID(),
+        GMAIL,
+        "Tien",
+        "0901234567",
+        LocalDate.of(2000, 1, 1),
+        Gender.MALE,
+        "StudyWeb",
+        "https://cdn.example.com/avatar.png",
+        UserRole.LEARNER,
+        UserTier.NORMAL,
+        UserStatus.ACTIVE,
+        null,
+        null,
+        java.time.LocalDateTime.now(),
+        java.time.LocalDateTime.now());
   }
 
   @Test
@@ -540,5 +565,153 @@ class UserServiceTest {
     assertThat(response.note()).isEqualTo("Paid via MB Bank");
     assertThat(response.evidenceUrl())
         .isEqualTo("https://s3.example.com/vip-evidence/proof.png");
+  }
+
+  
+
+  @Test
+  void getProfile_returnsMappedProfileResponse() {
+    User u = user();
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userMapper.toUserProfileResponse(u)).thenReturn(sampleProfileResponse());
+
+    UserProfileResponse response = userService.getProfile(GMAIL);
+
+    assertThat(response).isNotNull();
+    assertThat(response.gmail()).isEqualTo(GMAIL);
+    assertThat(response.name()).isEqualTo("Tien");
+  }
+
+  @Test
+  void getProfile_userNotFound_throwsException() {
+    when(userRepository.findByGmail("unknown@studyweb.edu")).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.getProfile("unknown@studyweb.edu"))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+  }
+
+  @Test
+  void updateProfile_updatesFieldsSuccessfully() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    UserProfileResponse expected = sampleProfileResponse();
+    when(userMapper.toUserProfileResponse(any(User.class))).thenReturn(expected);
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest(
+            "New Name",
+            "0909999888",
+            LocalDate.of(2001, 2, 2),
+            Gender.FEMALE,
+            "New School");
+
+    UserProfileResponse result = userService.updateProfile(GMAIL, req);
+
+    assertThat(result).isNotNull();
+    assertThat(u.getName()).isEqualTo("New Name");
+    assertThat(u.getPhone()).isEqualTo("0909999888");
+    assertThat(u.getBirth()).isEqualTo(LocalDate.of(2001, 2, 2));
+    assertThat(u.getGender()).isEqualTo(Gender.FEMALE);
+    assertThat(u.getSchool()).isEqualTo("New School");
+    verify(userRepository).save(u);
+  }
+
+  @Test
+  void updateProfile_userLocked_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest("Name", null, null, null, null);
+
+    assertThatThrownBy(() -> userService.updateProfile(GMAIL, req))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+  }
+
+  @Test
+  void updateProfile_userBanned_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest("Name", null, null, null, null);
+
+    assertThatThrownBy(() -> userService.updateProfile(GMAIL, req))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+  }
+
+  @Test
+  void uploadAvatar_success() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+    when(fileService.uploadAvatarFile(avatar))
+        .thenReturn(new UploadDocumentResult(1024L, "avatar-key", "https://cdn.example.com/new-avatar.png"));
+
+    AvatarResponse response = userService.uploadAvatar(GMAIL, avatar);
+
+    assertThat(response).isNotNull();
+    assertThat(response.avatarUrl()).isEqualTo("https://cdn.example.com/new-avatar.png");
+    assertThat(u.getAvatarUrl()).isEqualTo("https://cdn.example.com/new-avatar.png");
+    verify(fileService).uploadAvatarFile(avatar);
+    verify(userRepository).save(u);
+  }
+
+  @Test
+  void uploadAvatar_fileNullOrEmpty_throwsFileException() {
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, null))
+        .isInstanceOf(FileException.class)
+        .satisfies(
+            ex ->
+                assertThat(((FileException) ex).getCode())
+                    .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
+
+    MockMultipartFile emptyFile = new MockMultipartFile("avatar", new byte[0]);
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, emptyFile))
+        .isInstanceOf(FileException.class)
+        .satisfies(
+            ex ->
+                assertThat(((FileException) ex).getCode())
+                    .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
+  }
+
+  @Test
+  void uploadAvatar_userLocked_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, avatar))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
   }
 }

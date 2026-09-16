@@ -6,11 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.UpdateProfileRequest;
 import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
 import studyweb.cus.dto.response.document.UploadDocumentResult;
+import studyweb.cus.dto.response.user.AvatarResponse;
+import studyweb.cus.dto.response.user.UserProfileResponse;
 import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
@@ -78,6 +82,75 @@ public class UserServiceImpl implements UserService {
             .findByGmail(email)
             .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
     return userMapper.toUserResponse(user);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public UserProfileResponse getProfile(String email) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    return userMapper.toUserProfileResponse(user);
+  }
+
+  @Override
+  @Transactional
+  public UserProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+
+    if (request.name() != null && !request.name().isBlank()) {
+      user.setName(request.name().trim());
+    }
+    if (request.phone() != null) {
+      user.setPhone(request.phone().trim());
+    }
+    if (request.birth() != null) {
+      user.setBirth(request.birth());
+    }
+    if (request.gender() != null) {
+      user.setGender(request.gender());
+    }
+    if (request.school() != null) {
+      user.setSchool(request.school().trim());
+    }
+
+    return userMapper.toUserProfileResponse(savedUser);
+  }
+
+  @Override
+  @Transactional
+  public AvatarResponse uploadAvatar(String email, MultipartFile file) {
+    if (file == null || file.isEmpty()) {
+      throw new FileException(FileErrorCode.FILE_EMPTY);
+    }
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+
+    log.info("Uploading avatar image for user {}", email);
+    UploadDocumentResult uploadResult = fileService.uploadAvatarFile(file);
+    user.setAvatarUrl(uploadResult.fileUrl());
+    
+    return new AvatarResponse(uploadResult.fileUrl());
   }
 
   @Override
