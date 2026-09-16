@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMethod;
+import io.swagger.v3.oas.annotations.Parameter;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+import org.springframework.web.util.WebUtils;
 import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.SingleResponse;
@@ -75,26 +78,32 @@ public class UserController extends AbstractBaseController {
   }
 
   @LogActivity(action = ActionType.UPDATE_PROFILE, description = "Người dùng cập nhật ảnh đại diện")
-  @RequestMapping(
-      value = "/avatar",
-      method = {RequestMethod.POST, RequestMethod.PATCH},
-      consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @Operation(
       summary = "Upload User Avatar",
       description = "Upload a new avatar image for the authenticated user")
   public ResponseEntity<SingleResponse<AvatarResponse>> uploadAvatar(
       @AuthenticationPrincipal String email,
-      @RequestParam(value = "avatar", required = false) MultipartFile avatar,
-      @RequestParam(value = "file", required = false) MultipartFile file) {
+      @Parameter(description = "Avatar image file", required = true)
+          @RequestParam(value = "avatar", required = false)
+          MultipartFile avatar,
+      HttpServletRequest request) {
     if (email == null) {
-      log.warn("[/api/user/avatar] No authentication found");
+      log.warn("[POST /api/user/avatar] No authentication found");
       throw new UserException(UserErrorCode.USER_NOT_AUTHENTICATED);
     }
-    MultipartFile uploadFile = (avatar != null && !avatar.isEmpty()) ? avatar : file;
+    MultipartFile uploadFile = avatar;
+    if (uploadFile == null) {
+      MultipartHttpServletRequest multipartRequest =
+          WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
+      if (multipartRequest != null) {
+        uploadFile = multipartRequest.getFile("file");
+      }
+    }
     if (uploadFile == null || uploadFile.isEmpty()) {
       throw new FileException(FileErrorCode.FILE_EMPTY);
     }
-    log.info("[/api/user/avatar] Uploading avatar for email: {}", email);
+    log.info("[POST /api/user/avatar] Uploading avatar for email: {}", email);
     return successSingle(
         userService.uploadAvatar(email, uploadFile), "Avatar uploaded successfully!");
   }

@@ -125,6 +125,7 @@ public class UserServiceImpl implements UserService {
       user.setSchool(request.school().trim());
     }
 
+    User savedUser = userRepository.save(user);
     return userMapper.toUserProfileResponse(savedUser);
   }
 
@@ -149,7 +150,7 @@ public class UserServiceImpl implements UserService {
     log.info("Uploading avatar image for user {}", email);
     UploadDocumentResult uploadResult = fileService.uploadAvatarFile(file);
     user.setAvatarUrl(uploadResult.fileUrl());
-    
+    userRepository.save(user);
     return new AvatarResponse(uploadResult.fileUrl());
   }
 
