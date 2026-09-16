@@ -30,4 +30,15 @@ public class AsyncConfig implements AsyncConfigurer {
     executor.initialize();
     return executor;
   }
+
+  @Bean(name = "notificationExecutor")
+  public Executor notificationExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(corePoolSize);
+    executor.setMaxPoolSize(maxPoolSize);
+    executor.setQueueCapacity(queueCapacity);
+    executor.setThreadNamePrefix("CUS-Noti-");
+    executor.initialize();
+    return executor;
+  }
 }
