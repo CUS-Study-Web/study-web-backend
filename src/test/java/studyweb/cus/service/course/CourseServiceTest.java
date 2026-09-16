@@ -69,6 +69,7 @@ class CourseServiceTest {
 
   @Mock private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
   @Mock private java.util.concurrent.Executor updateProgressExecutor;
+  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private CourseServiceImpl courseService;
 

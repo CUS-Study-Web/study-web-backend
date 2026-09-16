@@ -51,6 +51,9 @@ import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.course.UserLessonProgressRepository;
 import studyweb.cus.repository.course.UserSubjectProgressRepository;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewCoursePublishedEvent;
+import studyweb.cus.event.notification.NewLessonAddedEvent;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.CourseService;
 import studyweb.cus.service.file.FileService;
@@ -71,6 +74,7 @@ public class CourseServiceImpl implements CourseService {
   private final UserCourseProgressRepository userCourseProgressRepository;
   private final UserSubjectProgressRepository userSubjectProgressRepository;
   private final TransactionTemplate transactionTemplate;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Autowired
   @Qualifier("uploadExecutor")
@@ -181,6 +185,7 @@ public class CourseServiceImpl implements CourseService {
         .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
+    eventPublisher.publishEvent(NewCoursePublishedEvent.of(saved.getTitle()));
     return courseMapper.toCourseSummary(saved, 0L, 0L);
   }
 
@@ -321,6 +326,7 @@ public class CourseServiceImpl implements CourseService {
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     recomputeProgressForSubject(course.getId(), subject.getId());
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
+    eventPublisher.publishEvent(NewLessonAddedEvent.of(saved.getTitle(), course.getTitle()));
     return courseMapper.toLessonCardResponse(saved);
   }
 

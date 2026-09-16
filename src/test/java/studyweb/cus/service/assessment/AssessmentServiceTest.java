@@ -76,6 +76,7 @@ class AssessmentServiceTest {
   @Mock private FileService fileService;
   @Mock private ObjectMapper objectMapper;
   @Mock private TransactionTemplate transactionTemplate;
+  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private AssessmentServiceImpl service;
 

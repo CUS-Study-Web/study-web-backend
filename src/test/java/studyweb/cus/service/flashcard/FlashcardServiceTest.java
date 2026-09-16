@@ -37,6 +37,7 @@ import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.exception.flashcard.FlashcardErrorCode;
 import studyweb.cus.exception.flashcard.FlashcardException;
+import org.springframework.context.ApplicationEventPublisher;
 import studyweb.cus.mapper.flashcard.FlashcardMapper;
 import studyweb.cus.repository.flashcard.FlashcardRepository;
 import studyweb.cus.repository.flashcard.FlashcardTopicRepository;
@@ -49,6 +50,7 @@ class FlashcardServiceTest {
   @Mock private FlashcardTopicRepository flashcardTopicRepository;
   @Mock private FlashcardRepository flashcardRepository;
   @Mock private UserRepository userRepository;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   private final FlashcardMapper flashcardMapper = Mappers.getMapper(FlashcardMapper.class);
   private FlashcardService flashcardService;
@@ -61,7 +63,11 @@ class FlashcardServiceTest {
   void setUp() {
     flashcardService =
         new FlashcardServiceImpl(
-            flashcardTopicRepository, flashcardRepository, userRepository, flashcardMapper);
+            flashcardTopicRepository,
+            flashcardRepository,
+            userRepository,
+            flashcardMapper,
+            eventPublisher);
 
     assistantUser =
         User.builder()

@@ -30,7 +30,9 @@ import studyweb.cus.dto.request.document.UpdateDocumentRequest;
 import studyweb.cus.dto.response.document.DocumentDownloadResponse;
 import studyweb.cus.dto.response.document.DocumentGuestResponse;
 import studyweb.cus.dto.response.document.DocumentResponse;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.enums.AccessTier;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.service.document.DocumentService;
 
@@ -43,6 +45,9 @@ public class DocumentController extends AbstractBaseController {
 
   private final DocumentService documentService;
 
+  @LogActivity(
+      action = ActionType.UPLOAD_DOCUMENT,
+      description = "Trợ giảng tải lên tài liệu mới \"#{#request.title() ?: 'không có tiêu đề'}\"")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(

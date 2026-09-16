@@ -25,6 +25,8 @@ import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.exception.flashcard.FlashcardErrorCode;
 import studyweb.cus.exception.flashcard.FlashcardException;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewFlashcardTopicEvent;
 import studyweb.cus.mapper.flashcard.FlashcardMapper;
 import studyweb.cus.repository.flashcard.FlashcardRepository;
 import studyweb.cus.repository.flashcard.FlashcardTopicRepository;
@@ -40,6 +42,7 @@ public class FlashcardServiceImpl implements FlashcardService {
   private final FlashcardRepository flashcardRepository;
   private final UserRepository userRepository;
   private final FlashcardMapper flashcardMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   @Transactional(readOnly = true)
@@ -72,6 +75,7 @@ public class FlashcardServiceImpl implements FlashcardService {
 
     FlashcardTopic savedTopic = flashcardTopicRepository.save(topic);
     log.info("Flashcard topic created with ID {}", savedTopic.getId());
+    eventPublisher.publishEvent(NewFlashcardTopicEvent.of(savedTopic.getTitle()));
     return flashcardMapper.toTopicResponse(savedTopic);
   }
 
