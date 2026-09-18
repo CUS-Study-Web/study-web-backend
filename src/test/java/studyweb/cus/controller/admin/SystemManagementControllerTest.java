@@ -1221,10 +1221,32 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("Non-ADMIN roles (ASSISTANT) are blocked -> 403 FORBIDDEN on all endpoints")
+    @DisplayName("ASSISTANT role can access read-only learner endpoints -> 200 OK")
     @WithMockUser(roles = "ASSISTANT")
-    void assistantRole_blockedWith403() throws Exception {
-      mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isForbidden());
+    void assistantRole_readOnlyLearnerEndpoints_authorized200() throws Exception {
+      when(systemManagementService.listLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.NORMAL, null))
+          .thenReturn(new UserCountResponse(10));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.VIP, null))
+          .thenReturn(new UserCountResponse(5));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE))
+          .thenReturn(new UserCountResponse(2));
+
+      mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
+      mockMvc
+          .perform(get("/api/system-management/learners/counts/normal"))
+          .andExpect(status().isOk());
+      mockMvc.perform(get("/api/system-management/learners/counts/vip")).andExpect(status().isOk());
+      mockMvc
+          .perform(get("/api/system-management/learners/counts/locked"))
+          .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("ASSISTANT role is blocked from mutations and admin endpoints -> 403 FORBIDDEN")
+    @WithMockUser(roles = "ASSISTANT")
+    void assistantRole_mutationsAndAdminEndpoints_blockedWith403() throws Exception {
       mockMvc.perform(get("/api/system-management/assistants")).andExpect(status().isForbidden());
       mockMvc
           .perform(
@@ -1241,6 +1263,10 @@ class SystemManagementControllerTest {
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
+      mockMvc
+          .perform(get("/api/system-management/assistants/counts"))
+          .andExpect(status().isForbidden());
+
       mockMvc
           .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isForbidden());
@@ -1262,7 +1288,11 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isForbidden());
+
       mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isForbidden());
+      mockMvc
+          .perform(get("/api/system-management/vip-requests/counts"))
+          .andExpect(status().isForbidden());
       mockMvc
           .perform(patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1))
           .andExpect(status().isForbidden());
@@ -1270,7 +1300,9 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1))
           .andExpect(status().isForbidden());
 
-      verify(systemManagementService, never()).listLearners(any(), any(), any());
+      mockMvc.perform(get("/api/system-management/stats/daily")).andExpect(status().isForbidden());
+      mockMvc.perform(get("/api/system-management/stats/monthly")).andExpect(status().isForbidden());
+
       verify(systemManagementService, never()).switchUserStatus(any(), any(), any());
       verify(systemManagementService, never()).listAssistants(any(), any(), any());
       verify(systemManagementService, never()).createAssistant(any());
@@ -1279,6 +1311,8 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).getVipRequests(any(), any(), any());
       verify(systemManagementService, never()).approveVipRequest(any());
       verify(systemManagementService, never()).disapproveVipRequest(any());
+      verify(systemManagementService, never()).getDailyStats(any(), any(), any());
+      verify(systemManagementService, never()).getMonthlyStats(any(), any());
     }
 
     @Test
