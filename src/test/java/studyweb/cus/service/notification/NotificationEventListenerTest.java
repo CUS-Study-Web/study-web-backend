@@ -62,12 +62,12 @@ class NotificationEventListenerTest {
     mockUser.setId(userId);
     when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
 
-    AccountStatusChangedEvent event = AccountStatusChangedEvent.locked(userId);
+    AccountStatusChangedEvent event = AccountStatusChangedEvent.unlocked(userId);
     listener.handleAccountStatusChanged(event);
 
     verify(notificationRepository).save(notificationCaptor.capture());
     Notification saved = notificationCaptor.getValue();
-    assertThat(saved.getType()).isEqualTo(NotificationType.ACCOUNT_LOCKED);
+    assertThat(saved.getType()).isEqualTo(NotificationType.ACCOUNT_UNLOCKED);
     assertThat(saved.getUser().getId()).isEqualTo(userId);
     assertThat(saved.isRead()).isFalse();
   }
@@ -78,7 +78,7 @@ class NotificationEventListenerTest {
     UUID userId = UUID.randomUUID();
     when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-    AccountStatusChangedEvent event = AccountStatusChangedEvent.locked(userId);
+    AccountStatusChangedEvent event = AccountStatusChangedEvent.unlocked(userId);
     // Should NOT throw — error is caught and logged inside the handler
     listener.handleAccountStatusChanged(event);
 

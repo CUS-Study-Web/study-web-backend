@@ -178,14 +178,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       throw new AdminException(AdminErrorCode.USER_BANNED);
     }
     user.setStatus(status);
-    if (role == UserRole.LEARNER) {
-      if (status == UserStatus.INACTIVE) {
-        eventPublisher.publishEvent(AccountStatusChangedEvent.locked(user.getId()));
-      } else if (status == UserStatus.ACTIVE) {
-        eventPublisher.publishEvent(AccountStatusChangedEvent.unlocked(user.getId()));
-      } else if (status == UserStatus.BANNED) {
-        eventPublisher.publishEvent(AccountStatusChangedEvent.banned(user.getId()));
-      }
+    if (role == UserRole.LEARNER && status == UserStatus.ACTIVE) {
+      eventPublisher.publishEvent(AccountStatusChangedEvent.unlocked(user.getId()));
     }
   }
 
