@@ -109,8 +109,11 @@ public class UserServiceImpl implements UserService {
       throw new UserException(UserErrorCode.USER_BANNED);
     }
 
-    if (request.name() != null && !request.name().isBlank()) {
-      user.setName(request.name().trim());
+    if (request.name() != null) {
+      String trimmedName = request.name().trim();
+      if (!trimmedName.isEmpty()) {
+        user.setName(trimmedName);
+      }
     }
     if (request.phone() != null) {
       user.setPhone(request.phone().trim());
@@ -148,9 +151,19 @@ public class UserServiceImpl implements UserService {
     }
 
     log.info("Uploading avatar image for user {}", email);
+    String oldAvatarUrl = user.getAvatarUrl();
     UploadDocumentResult uploadResult = fileService.uploadAvatarFile(file);
     user.setAvatarUrl(uploadResult.fileUrl());
     userRepository.save(user);
+
+    if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
+      try {
+        fileService.deleteFile(oldAvatarUrl);
+      } catch (Exception e) {
+        log.warn("Failed to delete old avatar file from S3: {}", oldAvatarUrl, e);
+      }
+    }
+
     return new AvatarResponse(uploadResult.fileUrl());
   }
 
