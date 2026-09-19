@@ -31,6 +31,8 @@ import studyweb.cus.exception.document.DocumentErrorCode;
 import studyweb.cus.exception.document.DocumentException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewDocumentAddedEvent;
 import studyweb.cus.mapper.document.DocumentMapper;
 import studyweb.cus.repository.badge.BadgeRepository;
 import studyweb.cus.repository.document.DocumentBadgeRepository;
@@ -51,6 +53,7 @@ public class DocumentServiceImpl implements DocumentService {
   private final UserRepository userRepository;
   private final FileService fileService;
   private final DocumentMapper documentMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   @Transactional
@@ -92,6 +95,7 @@ public class DocumentServiceImpl implements DocumentService {
       }
 
       log.info("Document created successfully with ID {}", savedDocument.getId());
+      eventPublisher.publishEvent(NewDocumentAddedEvent.of(savedDocument.getTitle()));
       return documentMapper.toResponse(savedDocument);
     } catch (Exception ex) {
       log.warn(

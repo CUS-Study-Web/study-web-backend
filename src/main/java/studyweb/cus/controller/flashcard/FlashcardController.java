@@ -31,6 +31,8 @@ import studyweb.cus.dto.request.flashcard.UpdateFlashcardTopicRequest;
 import studyweb.cus.dto.response.flashcard.FlashcardMetricsResponse;
 import studyweb.cus.dto.response.flashcard.FlashcardResponse;
 import studyweb.cus.dto.response.flashcard.FlashcardTopicResponse;
+import studyweb.cus.annotation.activity.LogActivity;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.service.flashcard.FlashcardService;
 
@@ -59,6 +61,9 @@ public class FlashcardController extends AbstractBaseController {
 
   // --- Topics ---
 
+  @LogActivity(
+      action = ActionType.CREATE_FLASHCARD_TOPIC,
+      description = "Trợ giảng tạo chủ đề flashcard mới \"#{#request.title() ?: 'không có tiêu đề'}\"")
   @PostMapping("/topics")
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(

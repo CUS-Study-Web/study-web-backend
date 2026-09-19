@@ -1,11 +1,15 @@
 package studyweb.cus.job;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import studyweb.cus.event.notification.VipExpiringSoonEvent;
 import studyweb.cus.repository.user.UserRepository;
 
 @Slf4j
@@ -13,7 +17,10 @@ import studyweb.cus.repository.user.UserRepository;
 @RequiredArgsConstructor
 public class VipSubscriptionExpiryTask {
 
+  private static final int DAYS_BEFORE_EXPIRY = 3;
+
   private final UserRepository userRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   /**
    * Runs daily at midnight (00:00:00) to check and downgrade expired VIP subscriptions. Uses
@@ -38,4 +45,36 @@ public class VipSubscriptionExpiryTask {
         "[VipSubscriptionExpiryTask] Batch downgraded {} expired VIP users to NORMAL tier.",
         updatedCount);
   }
+
+  /**
+   * Runs daily at 00:01:00 (1 minute after VIP expiry downgrade) to notify users whose VIP
+   * subscription is expiring in 3 days. Running at 00:01 ensures the downgrade job at 00:00 has
+   * committed first, so users who expired today are already downgraded and will not receive a
+   * "expiring soon" notification.
+   */
+  @Scheduled(cron = "0 1 0 * * *")
+  @Transactional
+  public void notifyExpiringSoonVipUsers() {
+    LocalDate today = LocalDate.now();
+    LocalDate targetDate = today.plusDays(DAYS_BEFORE_EXPIRY);
+    log.info(
+        "[VipSubscriptionExpiryTask] Checking for VIP users expiring in {} days on {}",
+        DAYS_BEFORE_EXPIRY,
+        targetDate);
+
+    List<UUID> userIds = userRepository.findActiveVipLearnerIdsWithVipEndDate(targetDate);
+    if (userIds.isEmpty()) {
+      log.info("[VipSubscriptionExpiryTask] No VIP subscriptions expiring on {}", targetDate);
+      return;
+    }
+
+    log.info(
+        "[VipSubscriptionExpiryTask] Found {} VIP user(s) expiring on {}. Publishing notifications.",
+        userIds.size(),
+        targetDate);
+    for (UUID userId : userIds) {
+      eventPublisher.publishEvent(VipExpiringSoonEvent.of(userId, DAYS_BEFORE_EXPIRY));
+    }
+  }
 }
+

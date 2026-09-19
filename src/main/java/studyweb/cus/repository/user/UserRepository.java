@@ -79,4 +79,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   @Query("SELECT u.id FROM User u WHERE u.role = :role")
   List<UUID> findIdsByRole(@Param("role") UserRole role);
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.status = 'ACTIVE'")
+  List<UUID> findActiveLearnerIds();
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE'")
+  List<UUID> findActiveVipLearnerIds();
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE' AND u.vipEndDate = :targetDate")
+  List<UUID> findActiveVipLearnerIdsWithVipEndDate(@Param("targetDate") LocalDate targetDate);
 }

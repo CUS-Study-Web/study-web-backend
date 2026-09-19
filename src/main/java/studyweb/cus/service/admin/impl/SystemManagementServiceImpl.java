@@ -62,6 +62,9 @@ import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.AccountStatusChangedEvent;
+import studyweb.cus.event.notification.VipRequestResolvedEvent;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.service.admin.SystemManagementService;
 import studyweb.cus.service.log.LokiQueryService;
@@ -82,6 +85,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final PasswordEncoder passwordEncoder;
   private final LokiQueryService lokiQueryService;
   private final LokiProperties lokiProperties;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   @Transactional(readOnly = true)
@@ -174,6 +178,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       throw new AdminException(AdminErrorCode.USER_BANNED);
     }
     user.setStatus(status);
+    if (role == UserRole.LEARNER && status == UserStatus.ACTIVE) {
+      eventPublisher.publishEvent(AccountStatusChangedEvent.unlocked(user.getId()));
+    }
   }
 
   @Override
@@ -432,6 +439,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             ? user.getVipEndDate()
             : now;
     user.setVipEndDate(calculateVipEndDate(baseDate, billingPeriod));
+    eventPublisher.publishEvent(VipRequestResolvedEvent.approved(user.getId()));
   }
 
   @Override
@@ -448,6 +456,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     if (rowsUpdated == 0) {
       throw new AdminException(AdminErrorCode.STATUS_TRANSITION_INVALID);
     }
+    eventPublisher.publishEvent(
+        VipRequestResolvedEvent.declined(vipRequest.getUser().getId(), vipRequest.getNote()));
   }
 
   private void validateVipRequestBeforeSwitchStatus(VipRequest request) {

@@ -25,6 +25,8 @@ import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.exception.flashcard.FlashcardErrorCode;
 import studyweb.cus.exception.flashcard.FlashcardException;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewFlashcardTopicEvent;
 import studyweb.cus.mapper.flashcard.FlashcardMapper;
 import studyweb.cus.repository.flashcard.FlashcardRepository;
 import studyweb.cus.repository.flashcard.FlashcardTopicRepository;
@@ -40,6 +42,7 @@ public class FlashcardServiceImpl implements FlashcardService {
   private final FlashcardRepository flashcardRepository;
   private final UserRepository userRepository;
   private final FlashcardMapper flashcardMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   @Transactional(readOnly = true)
@@ -72,6 +75,9 @@ public class FlashcardServiceImpl implements FlashcardService {
 
     FlashcardTopic savedTopic = flashcardTopicRepository.save(topic);
     log.info("Flashcard topic created with ID {}", savedTopic.getId());
+    if (savedTopic.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewFlashcardTopicEvent.of(savedTopic.getTitle()));
+    }
     return flashcardMapper.toTopicResponse(savedTopic);
   }
 
@@ -81,6 +87,7 @@ public class FlashcardServiceImpl implements FlashcardService {
       UUID topicId, UpdateFlashcardTopicRequest request, String userEmail) {
     log.info("Updating flashcard topic ID {} by user '{}'", topicId, userEmail);
     FlashcardTopic topic = requireTopic(topicId);
+    CourseCreateStatus oldStatus = topic.getStatus();
 
     if (request.title() != null) {
       if (request.title().trim().isEmpty()) {
@@ -104,6 +111,9 @@ public class FlashcardServiceImpl implements FlashcardService {
 
     FlashcardTopic updatedTopic = flashcardTopicRepository.save(topic);
     log.info("Flashcard topic ID {} updated successfully", topicId);
+    if (oldStatus != CourseCreateStatus.PUBLISH && updatedTopic.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewFlashcardTopicEvent.of(updatedTopic.getTitle()));
+    }
     return flashcardMapper.toTopicResponse(updatedTopic);
   }
 

@@ -89,6 +89,9 @@ public class CourseController extends AbstractBaseController {
     return paging(courseService.listCoursesForAssistant(pageable), "Courses fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.CREATE_COURSE,
+      description = "Quản trị viên tạo khóa học mới \"#{#request.title() ?: 'không có tiêu đề'}\"")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create Course", description = "Create a new course (admin only)")

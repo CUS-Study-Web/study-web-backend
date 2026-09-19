@@ -47,6 +47,7 @@ import studyweb.cus.exception.document.DocumentException;
 import studyweb.cus.mapper.document.DocumentMapper;
 import studyweb.cus.repository.badge.BadgeRepository;
 import studyweb.cus.repository.document.DocumentBadgeRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import studyweb.cus.repository.document.DocumentRepository;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.document.impl.DocumentServiceImpl;
@@ -60,10 +61,11 @@ class DocumentServiceTest {
   @Mock private BadgeRepository badgeRepository;
   @Mock private UserRepository userRepository;
   @Mock private FileService fileService;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   private DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
-  private DocumentService documentService;
+  private DocumentServiceImpl documentService;
 
   @Captor private ArgumentCaptor<Document> documentCaptor;
 
@@ -83,7 +85,8 @@ class DocumentServiceTest {
             badgeRepository,
             userRepository,
             fileService,
-            documentMapper);
+            documentMapper,
+            eventPublisher);
 
     sampleBadge = Badge.builder().name("Toán").build();
     sampleBadge.setId(UUID.randomUUID());

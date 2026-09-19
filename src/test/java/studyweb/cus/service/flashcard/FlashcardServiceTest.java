@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +38,8 @@ import studyweb.cus.enums.CourseCreateStatus;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.exception.flashcard.FlashcardErrorCode;
 import studyweb.cus.exception.flashcard.FlashcardException;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewFlashcardTopicEvent;
 import studyweb.cus.mapper.flashcard.FlashcardMapper;
 import studyweb.cus.repository.flashcard.FlashcardRepository;
 import studyweb.cus.repository.flashcard.FlashcardTopicRepository;
@@ -49,6 +52,7 @@ class FlashcardServiceTest {
   @Mock private FlashcardTopicRepository flashcardTopicRepository;
   @Mock private FlashcardRepository flashcardRepository;
   @Mock private UserRepository userRepository;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   private final FlashcardMapper flashcardMapper = Mappers.getMapper(FlashcardMapper.class);
   private FlashcardService flashcardService;
@@ -61,7 +65,11 @@ class FlashcardServiceTest {
   void setUp() {
     flashcardService =
         new FlashcardServiceImpl(
-            flashcardTopicRepository, flashcardRepository, userRepository, flashcardMapper);
+            flashcardTopicRepository,
+            flashcardRepository,
+            userRepository,
+            flashcardMapper,
+            eventPublisher);
 
     assistantUser =
         User.builder()
@@ -226,6 +234,92 @@ class FlashcardServiceTest {
 
       assertThat(result.getContent()).hasSize(1);
       assertThat(result.getContent().get(0).title()).isEqualTo(sampleTopic.getTitle());
+    }
+
+    @Test
+    @DisplayName("Should not publish notification event when creating topic in DRAFT status")
+    void testCreateTopic_statusDraft_doesNotPublishEvent() {
+      FlashcardTopic draftTopic =
+          FlashcardTopic.builder()
+              .title("Draft Vocab")
+              .status(CourseCreateStatus.DRAFT)
+              .build();
+      draftTopic.setId(UUID.randomUUID());
+
+      CreateFlashcardTopicRequest request =
+          new CreateFlashcardTopicRequest("Draft Vocab", "Desc", CourseCreateStatus.DRAFT);
+      when(userRepository.findByGmail("assistant@studyweb.edu"))
+          .thenReturn(Optional.of(assistantUser));
+      when(flashcardTopicRepository.save(any(FlashcardTopic.class))).thenReturn(draftTopic);
+
+      flashcardService.createTopic(request, "assistant@studyweb.edu");
+
+      verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    @DisplayName("Should publish notification event when creating topic in PUBLISH status")
+    void testCreateTopic_statusPublish_publishesNewFlashcardTopicEvent() {
+      CreateFlashcardTopicRequest request =
+          new CreateFlashcardTopicRequest("IELTS Vocab", "Desc", CourseCreateStatus.PUBLISH);
+      when(userRepository.findByGmail("assistant@studyweb.edu"))
+          .thenReturn(Optional.of(assistantUser));
+      when(flashcardTopicRepository.save(any(FlashcardTopic.class))).thenReturn(sampleTopic);
+
+      flashcardService.createTopic(request, "assistant@studyweb.edu");
+
+      verify(eventPublisher).publishEvent(any(NewFlashcardTopicEvent.class));
+    }
+
+    @Test
+    @DisplayName("Should publish notification event when topic transitions from DRAFT to PUBLISH")
+    void testUpdateTopic_transitionsFromDraftToPublish_publishesNewFlashcardTopicEvent() {
+      UUID topicId = UUID.randomUUID();
+      FlashcardTopic topic =
+          FlashcardTopic.builder()
+              .title("Vocab Topic")
+              .status(CourseCreateStatus.DRAFT)
+              .build();
+      topic.setId(topicId);
+
+      UpdateFlashcardTopicRequest request =
+          new UpdateFlashcardTopicRequest("Vocab Topic", "Desc", CourseCreateStatus.PUBLISH);
+
+      when(flashcardTopicRepository.findByIdAndDeletedAtIsNull(topicId))
+          .thenReturn(Optional.of(topic));
+      when(userRepository.findByGmail("assistant@studyweb.edu"))
+          .thenReturn(Optional.of(assistantUser));
+      when(flashcardTopicRepository.save(any(FlashcardTopic.class))).thenReturn(topic);
+
+      flashcardService.updateTopic(topicId, request, "assistant@studyweb.edu");
+
+      assertThat(topic.getStatus()).isEqualTo(CourseCreateStatus.PUBLISH);
+      verify(eventPublisher).publishEvent(any(NewFlashcardTopicEvent.class));
+    }
+
+    @Test
+    @DisplayName("Should not publish notification event when topic status remains DRAFT")
+    void testUpdateTopic_statusRemainsDraft_doesNotPublishEvent() {
+      UUID topicId = UUID.randomUUID();
+      FlashcardTopic topic =
+          FlashcardTopic.builder()
+              .title("Vocab Topic")
+              .status(CourseCreateStatus.DRAFT)
+              .build();
+      topic.setId(topicId);
+
+      UpdateFlashcardTopicRequest request =
+          new UpdateFlashcardTopicRequest("Vocab Topic", "Desc", CourseCreateStatus.DRAFT);
+
+      when(flashcardTopicRepository.findByIdAndDeletedAtIsNull(topicId))
+          .thenReturn(Optional.of(topic));
+      when(userRepository.findByGmail("assistant@studyweb.edu"))
+          .thenReturn(Optional.of(assistantUser));
+      when(flashcardTopicRepository.save(any(FlashcardTopic.class))).thenReturn(topic);
+
+      flashcardService.updateTopic(topicId, request, "assistant@studyweb.edu");
+
+      verify(eventPublisher, never()).publishEvent(any());
     }
   }
 

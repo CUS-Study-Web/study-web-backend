@@ -18,7 +18,8 @@ public class AsyncConfig implements AsyncConfigurer {
   @Value("${thread.thread-queue-capacity}")
   private int queueCapacity;
 
-  private String UpdateProgressThread = "CUS-Progress";
+  private final String updateProgressThreadPrefix = "CUS-Progress";
+  private final String notificationThreadPrefix = "CUS-Noti";
 
   @Bean(name = "uploadExecutor")
   public Executor uploadExecutor() {
@@ -26,7 +27,18 @@ public class AsyncConfig implements AsyncConfigurer {
     executor.setCorePoolSize(corePoolSize);
     executor.setMaxPoolSize(maxPoolSize);
     executor.setQueueCapacity(queueCapacity);
-    executor.setThreadNamePrefix(UpdateProgressThread);
+    executor.setThreadNamePrefix(updateProgressThreadPrefix);
+    executor.initialize();
+    return executor;
+  }
+
+  @Bean(name = "notificationExecutor")
+  public Executor notificationExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(corePoolSize);
+    executor.setMaxPoolSize(maxPoolSize);
+    executor.setQueueCapacity(queueCapacity);
+    executor.setThreadNamePrefix(notificationThreadPrefix);
     executor.initialize();
     return executor;
   }
