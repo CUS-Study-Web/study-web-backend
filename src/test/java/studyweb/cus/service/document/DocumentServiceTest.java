@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -47,8 +48,7 @@ import studyweb.cus.exception.document.DocumentException;
 import studyweb.cus.mapper.document.DocumentMapper;
 import studyweb.cus.repository.badge.BadgeRepository;
 import studyweb.cus.repository.document.DocumentBadgeRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import studyweb.cus.repository.document.DocumentRepository;
+import studyweb.cus.repository.document.DocumentDataAccessor;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.document.impl.DocumentServiceImpl;
 import studyweb.cus.service.file.FileService;
@@ -56,7 +56,7 @@ import studyweb.cus.service.file.FileService;
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
 
-  @Mock private DocumentRepository documentRepository;
+  @Mock private DocumentDataAccessor documentRepository;
   @Mock private DocumentBadgeRepository documentBadgeRepository;
   @Mock private BadgeRepository badgeRepository;
   @Mock private UserRepository userRepository;
@@ -527,14 +527,14 @@ class DocumentServiceTest {
           documentService.listDocumentsForGuest(null, null, null, pageable);
 
       assertThat(result.getContent()).hasSize(1);
-      DocumentGuestResponse guestDoc = result.getContent().get(0);
-      assertThat(guestDoc.id()).isEqualTo(publicDocument.getId());
-      assertThat(guestDoc.title()).isEqualTo(publicDocument.getTitle());
-      assertThat(guestDoc.description()).isEqualTo(publicDocument.getDescription());
-      assertThat(guestDoc.numPages()).isEqualTo(publicDocument.getNumPages());
-      assertThat(guestDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
-      assertThat(guestDoc.accessTier()).isEqualTo(publicDocument.getAccessTier());
-      assertThat(guestDoc.badges()).isNotNull();
+      DocumentGuestResponse actualDoc = result.getContent().get(0);
+      assertThat(actualDoc.id()).isEqualTo(publicDocument.getId());
+      assertThat(actualDoc.title()).isEqualTo(publicDocument.getTitle());
+      assertThat(actualDoc.description()).isEqualTo(publicDocument.getDescription());
+      assertThat(actualDoc.numPages()).isEqualTo(publicDocument.getNumPages());
+      assertThat(actualDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
+      assertThat(actualDoc.accessTier()).isEqualTo(publicDocument.getAccessTier());
+      assertThat(actualDoc.badges()).isNotNull();
     }
 
     @Test
