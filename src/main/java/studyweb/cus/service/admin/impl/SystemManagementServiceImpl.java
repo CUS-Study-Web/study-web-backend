@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -530,10 +530,11 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     List<ActionType> effectiveActions = resolveActions(actions);
     LocalDate startDate = effectiveEndDate.minusDays(windowDays - 1);
 
+    ZoneId zone = ZoneId.systemDefault();
     long startNano =
-        startDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+        startDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
     long endNano =
-        effectiveEndDate.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+        effectiveEndDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
 
     String actionPattern =
         effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
@@ -558,7 +559,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           if (pair != null && pair.size() >= 2) {
             long epochSec = parseEpochSeconds(pair.get(0));
             int count = parseCount(pair.get(1));
-            LocalDate date = Instant.ofEpochSecond(epochSec).atZone(ZoneOffset.UTC).toLocalDate();
+            LocalDate date = Instant.ofEpochSecond(epochSec).atZone(zone).toLocalDate().minusDays(1);
             Map<String, Integer> counts = dailyCounts.get(date);
             if (counts != null) {
               counts.merge(action, count, Integer::sum);
@@ -594,13 +595,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     String actionPattern =
         effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
 
+    ZoneId zone = ZoneId.systemDefault();
     List<MonthlyStatItemResponse> items = new ArrayList<>(12);
     for (int month = 1; month <= 12; month++) {
       YearMonth ym = YearMonth.of(targetYear, month);
       long startNano =
-          ym.atDay(1).atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli() * 1_000_000L;
+          ym.atDay(2).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
       long endNano =
-          ym.atEndOfMonth().atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli()
+          ym.atEndOfMonth().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
               * 1_000_000L;
 
       LokiQueryRangeResponse response =

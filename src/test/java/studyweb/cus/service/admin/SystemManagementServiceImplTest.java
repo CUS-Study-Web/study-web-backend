@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -166,9 +166,10 @@ class SystemManagementServiceImplTest {
     LocalDate d2 = endDate.minusDays(1);
     LocalDate d3 = endDate;
 
-    long d1Nano = d1.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli() * 1_000_000L;
-    long d2Milli = d2.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-    long d3Sec = d3.atStartOfDay(ZoneOffset.UTC).toInstant().getEpochSecond();
+    ZoneId zone = ZoneId.systemDefault();
+    long d1Nano = d1.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
+    long d2Milli = d2.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli();
+    long d3Sec = d3.plusDays(1).atStartOfDay(zone).toInstant().getEpochSecond();
     String d3SecStr = String.valueOf(d3Sec);
 
     LokiResultItem itemMetric =
