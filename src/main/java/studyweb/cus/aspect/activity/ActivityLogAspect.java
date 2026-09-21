@@ -19,6 +19,7 @@ import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -44,7 +45,7 @@ public class ActivityLogAspect {
     String userId = "ANONYMOUS";
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-    if (auth != null && auth.isAuthenticated()) {
+    if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) {
       userId = auth.getName();
     } else {
       for (Object arg : joinPoint.getArgs()) {
