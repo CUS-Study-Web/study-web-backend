@@ -80,6 +80,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   @Query("SELECT u.id FROM User u WHERE u.role = :role")
   List<UUID> findIdsByRole(@Param("role") UserRole role);
 
+  @Query("SELECT u.gmail FROM User u WHERE u.role = :role")
+  List<String> findGmailsByRole(@Param("role") UserRole role);
+
   @Query(
       "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.status = 'ACTIVE'")
   List<UUID> findActiveLearnerIds();

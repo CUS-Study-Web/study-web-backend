@@ -9,12 +9,10 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 import studyweb.cus.constant.admin.SystemManagementConstants;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 
@@ -69,18 +67,8 @@ public interface SystemManagementMapper {
   @Mapping(target = "status", source = "user.status")
   @Mapping(target = "numExams", source = "numExams")
   @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
-  @Mapping(target = "recentActivities", source = "recentActivities")
   @Mapping(target = "avatarUrl", source = "user.avatarUrl")
-  AssistantSummaryResponse toAssistantSummary(
-      User user, int numExams, List<AssistantActivityResponse> recentActivities);
-
-  @Mapping(target = "id", source = "activityLog.id")
-  @Mapping(target = "description", source = "activityLog.description")
-  @Mapping(
-      target = "timestamp",
-      source = "activityLog.createdAt",
-      qualifiedByName = "formatLastLogin")
-  AssistantActivityResponse toAssistantActivity(ActivityLog activityLog);
+  AssistantSummaryResponse toAssistantSummary(User user, int numExams);
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {

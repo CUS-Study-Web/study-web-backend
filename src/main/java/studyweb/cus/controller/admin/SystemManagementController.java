@@ -29,6 +29,7 @@ import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.ActivityLogResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
@@ -370,5 +371,28 @@ public class SystemManagementController extends AbstractBaseController {
     return successSingle(
         systemManagementService.getMonthlyStats(year, actions),
         "Monthly stats fetched successfully!");
+  }
+
+  @GetMapping("/activities")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get Recent Activity Logs",
+      description = "Retrieve recent raw activity logs from Loki for admin dashboard and activity history")
+  public ResponseEntity<SingleResponse<List<ActivityLogResponse>>> getActivityLogs(
+      @RequestParam(required = false, defaultValue = "20") Integer limit,
+      @RequestParam(required = false) List<ActionType> actions,
+      @RequestParam(required = false, defaultValue = "7") Integer days,
+      @RequestParam(required = false) String gmail,
+      @RequestParam(required = false) UserRole role) {
+    log.info(
+        "[GET /api/system-management/activities] limit={}, actions={}, days={}, gmail={}, role={}",
+        limit,
+        actions,
+        days,
+        gmail,
+        role);
+    return successSingle(
+        systemManagementService.getActivityLogs(limit, actions, days, gmail, role),
+        "Activity logs fetched successfully!");
   }
 }

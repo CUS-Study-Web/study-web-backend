@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.ActivityLogResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
@@ -49,4 +50,12 @@ public interface SystemManagementService {
   DailyStatsResponse getDailyStats(LocalDate endDate, Integer days, List<ActionType> actions);
 
   MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions);
+
+  List<ActivityLogResponse> getActivityLogs(
+      Integer limit, List<ActionType> actions, Integer days, String gmail, UserRole role);
+
+  default List<ActivityLogResponse> getActivityLogs(
+      Integer limit, List<ActionType> actions, Integer days) {
+    return getActivityLogs(limit, actions, days, null, null);
+  }
 }

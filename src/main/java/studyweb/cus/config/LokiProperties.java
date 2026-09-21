@@ -13,6 +13,7 @@ public class LokiProperties {
 
   private String url;
   private String maxQueryLength;
+  private Integer maxLimit = 100;
 
   public boolean hasUrl() {
     return url != null && !url.isBlank();
@@ -20,6 +21,10 @@ public class LokiProperties {
 
   public String cleanUrl() {
     return url != null ? url.replaceAll("/+$", "") : "";
+  }
+
+  public int getMaxLimit() {
+    return (maxLimit != null && maxLimit > 0) ? maxLimit : 100;
   }
 
   public int getMaxQueryLengthDays() {
