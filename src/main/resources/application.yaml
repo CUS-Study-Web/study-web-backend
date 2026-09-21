@@ -9,6 +9,10 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2000ms}
+      lettuce:
+        shutdown-timeout: ${REDIS_LETTUCE_SHUTDOWN_TIMEOUT:100ms}
   servlet:
     multipart:
       max-file-size: 100MB
@@ -36,6 +40,8 @@ app:
     expiration-seconds: ${OTP_EXPIRATION_SECONDS}
     max-attempts: ${OTP_MAX_ATTEMPTS}
     cooldown-seconds: ${OTP_COOLDOWN_SECONDS}
+  cache:
+    document-ttl: ${DOCUMENT_CACHE_TTL:43200s}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
