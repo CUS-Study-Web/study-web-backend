@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.ActionType;
@@ -58,23 +57,5 @@ class UserEntityTest {
     assertThat(request.getStatus()).isEqualTo(VipRequestStatus.WAITING);
     assertThat(request.getNote()).isEqualTo("Please upgrade");
     assertThat(request.getRequestDate()).isNotNull();
-  }
-
-  @Test
-  @DisplayName("Should build ActivityLog entity correctly")
-  void testActivityLogBuilder() {
-    User user = User.builder().gmail("user@studyweb.edu").name("User").password("pass").build();
-    user.setId(UUID.randomUUID());
-
-    ActivityLog log =
-        ActivityLog.builder()
-            .user(user)
-            .actionType(ActionType.LOGIN)
-            .description("User logged in successfully")
-            .build();
-
-    assertThat(log.getUser()).isEqualTo(user);
-    assertThat(log.getActionType()).isEqualTo(ActionType.LOGIN);
-    assertThat(log.getDescription()).isEqualTo("User logged in successfully");
   }
 }

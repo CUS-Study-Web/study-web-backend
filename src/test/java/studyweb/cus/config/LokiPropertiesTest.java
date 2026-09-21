@@ -114,4 +114,26 @@ class LokiPropertiesTest {
     verify(builder).baseUrl("http://localhost:3100");
     verify(builder).build();
   }
+
+  @Test
+  @DisplayName("getMaxLimit returns configured value when positive")
+  void getMaxLimit_positive_returnsConfiguredValue() {
+    LokiProperties properties = new LokiProperties();
+    properties.setMaxLimit(50);
+    assertThat(properties.getMaxLimit()).isEqualTo(50);
+  }
+
+  @Test
+  @DisplayName("getMaxLimit defaults to 100 when null or non-positive")
+  void getMaxLimit_nullOrNonPositive_returnsDefault100() {
+    LokiProperties properties = new LokiProperties();
+    properties.setMaxLimit(null);
+    assertThat(properties.getMaxLimit()).isEqualTo(100);
+
+    properties.setMaxLimit(0);
+    assertThat(properties.getMaxLimit()).isEqualTo(100);
+
+    properties.setMaxLimit(-10);
+    assertThat(properties.getMaxLimit()).isEqualTo(100);
+  }
 }

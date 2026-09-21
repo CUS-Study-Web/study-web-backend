@@ -621,10 +621,9 @@ class SystemManagementServiceTest {
               UserStatus.ACTIVE,
               12,
               "Hôm nay, 10:42",
-              List.of(),
               "https://cdn.studyweb.edu/avatars/assistant1.png");
 
-      when(systemManagementMapper.toAssistantSummary(assistant, 12, List.of())).thenReturn(res);
+      when(systemManagementMapper.toAssistantSummary(assistant, 12)).thenReturn(res);
 
       mockMvc
           .perform(get("/api/system-management/assistants").accept(MediaType.APPLICATION_JSON))

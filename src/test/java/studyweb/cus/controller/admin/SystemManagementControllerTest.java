@@ -51,7 +51,6 @@ import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
@@ -168,11 +167,6 @@ class SystemManagementControllerTest {
         UserStatus.ACTIVE,
         12,
         "Hôm nay, 10:42",
-        List.of(
-            new AssistantActivityResponse(
-                UUID.randomUUID(), "Đăng tải đề thi V-ACT mã đề 007", "Hôm nay, 10:42"),
-            new AssistantActivityResponse(
-                UUID.randomUUID(), "Tạo bài học mới: Tư duy logic nâng cao", "Hôm qua, 14:20")),
         "https://cdn.studyweb.edu/avatars/assistant1.png");
   }
 
@@ -783,9 +777,6 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data[0].name").value("Trần Minh Hiếu"))
           .andExpect(jsonPath("$.data[0].status").value("ACTIVE"))
           .andExpect(jsonPath("$.data[0].numExams").value(12))
-          .andExpect(
-              jsonPath("$.data[0].recentActivities[0].description")
-                  .value("Đăng tải đề thi V-ACT mã đề 007"))
           .andExpect(
               jsonPath("$.data[0].avatarUrl")
                   .value("https://cdn.studyweb.edu/avatars/assistant1.png"))

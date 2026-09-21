@@ -30,7 +30,6 @@ import studyweb.cus.entity.progress.UserSubjectProgress;
 import studyweb.cus.entity.progress.UserTopicProgress;
 import studyweb.cus.entity.stat.DailySystemStat;
 import studyweb.cus.entity.stat.MonthlySystemStat;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 
@@ -65,7 +64,6 @@ class EntityInheritanceTest {
             UserTopicProgress.class,
             DailySystemStat.class,
             MonthlySystemStat.class,
-            ActivityLog.class,
             User.class,
             VipRequest.class);
 
@@ -127,15 +125,6 @@ class EntityInheritanceTest {
     assertThat(attempt.getId()).isEqualTo(testId);
     assertThat(attempt.getCreatedAt()).isEqualTo(now);
     assertThat(attempt.getUpdatedAt()).isEqualTo(now);
-
-    ActivityLog log = new ActivityLog();
-    log.setId(testId);
-    log.setCreatedAt(now);
-    log.setUpdatedAt(now);
-
-    assertThat(log.getId()).isEqualTo(testId);
-    assertThat(log.getCreatedAt()).isEqualTo(now);
-    assertThat(log.getUpdatedAt()).isEqualTo(now);
   }
 
   @Test
