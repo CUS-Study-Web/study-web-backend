@@ -1,6 +1,7 @@
 package studyweb.cus.repository.user;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -94,4 +95,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
   @Query(
       "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE' AND u.vipEndDate = :targetDate")
   List<UUID> findActiveVipLearnerIdsWithVipEndDate(@Param("targetDate") LocalDate targetDate);
+
+  @Query("SELECT u FROM User u WHERE LOWER(u.gmail) IN :gmails")
+  List<User> findByGmailInIgnoreCase(@Param("gmails") Collection<String> gmails);
 }

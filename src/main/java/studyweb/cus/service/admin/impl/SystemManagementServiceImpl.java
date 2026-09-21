@@ -7,6 +7,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -735,7 +736,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
             ? roleGmails.stream().map(String::toLowerCase).collect(Collectors.toSet())
             : null;
 
-    List<ActivityLogResponse> logList = new ArrayList<>();
+    List<ActivityLogResponse> rawLogs = new ArrayList<>();
+    Set<String> rawUserIds = new HashSet<>();
+
     if (response != null && response.data() != null && response.data().result() != null) {
       for (LokiResultItem item : response.data().result()) {
         if (item.values() == null) {
@@ -752,15 +755,12 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           try {
             JsonNode node = objectMapper.readTree(logObj.toString());
             String ts = node.hasNonNull("timestamp") ? node.get("timestamp").asText() : null;
-            String userName =
-                node.hasNonNull("userName")
-                    ? node.get("userName").asText()
-                    : (node.hasNonNull("userId") ? node.get("userId").asText() : "");
+            String rawUserId = node.hasNonNull("userId") ? node.get("userId").asText() : "";
 
-            if (gmail != null && !gmail.isBlank() && !gmail.trim().equalsIgnoreCase(userName)) {
+            if (gmail != null && !gmail.isBlank() && !gmail.trim().equalsIgnoreCase(rawUserId)) {
               continue;
             }
-            if (roleEmailSet != null && !roleEmailSet.contains(userName.toLowerCase())) {
+            if (roleEmailSet != null && !roleEmailSet.contains(rawUserId.toLowerCase())) {
               continue;
             }
 
@@ -769,12 +769,25 @@ public class SystemManagementServiceImpl implements SystemManagementService {
                     ? ActionType.valueOf(node.get("actionType").asText())
                     : null;
             String desc = node.hasNonNull("description") ? node.get("description").asText() : "";
-            logList.add(new ActivityLogResponse(ts, userName, act, desc));
+            rawLogs.add(new ActivityLogResponse(ts, rawUserId, act, desc));
+            if (!rawUserId.isBlank()) {
+              rawUserIds.add(rawUserId);
+            }
           } catch (Exception e) {
             log.warn("Failed to parse activity log line: {}", logObj, e);
           }
         }
       }
+    }
+
+    Map<String, String> userNames = resolveUserNames(rawUserIds);
+
+    List<ActivityLogResponse> logList = new ArrayList<>(rawLogs.size());
+    for (ActivityLogResponse raw : rawLogs) {
+      String resolvedName =
+          userNames.getOrDefault(raw.userName().toLowerCase(), raw.userName());
+      logList.add(
+          new ActivityLogResponse(raw.timestamp(), resolvedName, raw.actionType(), raw.description()));
     }
 
     logList.sort(
@@ -789,5 +802,48 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       return logList.subList(0, queryLimit);
     }
     return logList;
+  }
+
+  private Map<String, String> resolveUserNames(Set<String> rawUserIds) {
+    if (rawUserIds == null || rawUserIds.isEmpty()) {
+      return Map.of();
+    }
+    Set<UUID> uuids = new HashSet<>();
+    Set<String> gmails = new HashSet<>();
+    for (String idStr : rawUserIds) {
+      if (idStr == null || idStr.isBlank() || "anonymousUser".equalsIgnoreCase(idStr)) {
+        continue;
+      }
+      try {
+        uuids.add(UUID.fromString(idStr));
+      } catch (IllegalArgumentException e) {
+        gmails.add(idStr.toLowerCase());
+      }
+    }
+
+    Map<String, String> nameMap = new HashMap<>();
+    if (!gmails.isEmpty()) {
+      List<User> users = userRepository.findByGmailInIgnoreCase(gmails);
+      for (User u : users) {
+        if (u.getName() != null && !u.getName().isBlank()) {
+          nameMap.put(u.getGmail().toLowerCase(), u.getName());
+          if (u.getId() != null) {
+            nameMap.put(u.getId().toString().toLowerCase(), u.getName());
+          }
+        }
+      }
+    }
+    if (!uuids.isEmpty()) {
+      List<User> users = userRepository.findAllById(uuids);
+      for (User u : users) {
+        if (u.getName() != null && !u.getName().isBlank()) {
+          nameMap.put(u.getGmail().toLowerCase(), u.getName());
+          if (u.getId() != null) {
+            nameMap.put(u.getId().toString().toLowerCase(), u.getName());
+          }
+        }
+      }
+    }
+    return nameMap;
   }
 }
