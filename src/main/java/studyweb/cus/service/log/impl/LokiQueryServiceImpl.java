@@ -27,7 +27,7 @@ public class LokiQueryServiceImpl implements LokiQueryService {
 
   @Override
   public LokiQueryRangeResponse queryRange(
-      String query, long startNano, long endNano, String step) {
+      String query, long startNano, long endNano, String step, Integer limit, String direction) {
     if (!lokiProperties.hasUrl()) {
       throw new LokiException(LokiErrorCode.LOKI_NOT_CONFIGURED, "Missing config for Loki URL.");
     }
@@ -42,6 +42,14 @@ public class LokiQueryServiceImpl implements LokiQueryService {
 
       if (step != null && !step.isBlank()) {
         builder.queryParam("step", step);
+      }
+
+      if (limit != null && limit > 0) {
+        builder.queryParam("limit", limit);
+      }
+
+      if (direction != null && !direction.isBlank()) {
+        builder.queryParam("direction", direction);
       }
 
       URI uri = builder.build().toUri();
