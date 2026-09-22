@@ -20,7 +20,7 @@
                       "timestamp":"%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
                       "userId": "%X{user_id}",
                       "actionType": "%X{action_type:-UNKNOWN}",
-                      "description": "%message"
+                      "description": "%replace(%message){'\"', '\\\"'}"
                     }
                 </pattern>
             </message>
