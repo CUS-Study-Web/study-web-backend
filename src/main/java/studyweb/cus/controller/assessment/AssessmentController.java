@@ -158,7 +158,7 @@ public class AssessmentController extends AbstractBaseController {
         "Assessment ready!");
   }
 
-  @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "Người dùng nộp bài làm")
+  @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "Người dùng nộp bài làm cho bài tập ID: #{#assessmentId}")
   @PostMapping("/{assessmentId}/submit")
   @PreAuthorize("hasRole('LEARNER')")
   @Operation(
