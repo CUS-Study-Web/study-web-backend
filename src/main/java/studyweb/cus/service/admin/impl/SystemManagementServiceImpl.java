@@ -774,7 +774,40 @@ public class SystemManagementServiceImpl implements SystemManagementService {
               rawUserIds.add(rawUserId);
             }
           } catch (Exception e) {
-            log.warn("Failed to parse activity log line: {}", logObj, e);
+            log.warn("Malformed JSON in Loki log line, attempting fallback parsing: {} - {}", logObj, e.getMessage());
+
+            try {
+              String rawLog = logObj.toString();
+              java.util.regex.Matcher tsMatcher = java.util.regex.Pattern.compile("\"timestamp\"\\s*:\\s*\"([^\"]+)\"").matcher(rawLog);
+              java.util.regex.Matcher userMatcher = java.util.regex.Pattern.compile("\"userId\"\\s*:\\s*\"([^\"]*)\"").matcher(rawLog);
+              java.util.regex.Matcher actionMatcher = java.util.regex.Pattern.compile("\"actionType\"\\s*:\\s*\"([^\"]+)\"").matcher(rawLog);
+              java.util.regex.Matcher descMatcher = java.util.regex.Pattern.compile("\"description\"\\s*:\\s*\"(.*)\"\\s*\\}").matcher(rawLog);
+
+              if (tsMatcher.find() && actionMatcher.find()) {
+                String ts = tsMatcher.group(1);
+                String rawUserId = userMatcher.find() ? userMatcher.group(1) : "";
+
+                if (gmail != null && !gmail.isBlank() && !gmail.trim().equalsIgnoreCase(rawUserId)) {
+                  continue;
+                }
+                if (roleEmailSet != null && !roleEmailSet.contains(rawUserId.toLowerCase())) {
+                  continue;
+                }
+
+                ActionType act = ActionType.valueOf(actionMatcher.group(1));
+                String desc = descMatcher.find() ? descMatcher.group(1) : "";
+                if (desc.endsWith("\"")) {
+                    desc = desc.substring(0, desc.length() - 1);
+                }
+
+                rawLogs.add(new ActivityLogResponse(ts, rawUserId, act, desc));
+                if (!rawUserId.isBlank()) {
+                  rawUserIds.add(rawUserId);
+                }
+              }
+            } catch (Exception fallbackEx) {
+               log.warn("Fallback parsing also failed for log line: {}", logObj);
+            }
           }
         }
       }
