@@ -40,29 +40,47 @@ public class RequestVipFormContentServiceImpl implements RequestVipFormContentSe
     log.info("Updating VIP request form content by: {}", updaterEmail);
     RequestVipFormContent content = getOrCreateContent();
     String oldQrUrl = content.getAccountHolderQrUrl();
+    String newUploadedKey = null;
 
     requestVipFormContentMapper.updateEntityFromRequest(request, content);
 
-    if (request.accountHolderQr() != null && !request.accountHolderQr().isEmpty()) {
-      UploadDocumentResult uploadResult = fileService.uploadAvatarFile(request.accountHolderQr());
-      content.setAccountHolderQrUrl(uploadResult.fileUrl());
+    RequestVipFormContent reqVipFormContentSaved;
+    try {
+      if (request.accountHolderQr() != null && !request.accountHolderQr().isEmpty()) {
+        UploadDocumentResult uploadResult = fileService.uploadQrFile(request.accountHolderQr());
+        newUploadedKey = uploadResult.fileKey();
+        content.setAccountHolderQrUrl(uploadResult.fileUrl());
+      }
 
-      if (oldQrUrl != null && !oldQrUrl.isBlank()) {
+      if (updaterEmail != null && !updaterEmail.isBlank()) {
+        userRepository.findByGmail(updaterEmail).ifPresent(content::setUpdatedBy);
+      }
+
+     reqVipFormContentSaved = requestVipFormContentRepository.save(content);
+    } catch (Exception ex) {
+      if (newUploadedKey != null) {
         try {
-          fileService.deleteFile(oldQrUrl);
-        } catch (Exception e) {
-          log.warn("Failed to delete old QR code file: {}", oldQrUrl, e);
+          fileService.deleteFile(newUploadedKey);
+        } catch (Exception deleteEx) {
+          log.error(
+              "Failed to delete newly uploaded QR file {} after database error",
+              newUploadedKey,
+              deleteEx);
         }
+      }
+      throw ex;
+    }
+
+    if (newUploadedKey != null && oldQrUrl != null && !oldQrUrl.isBlank()) {
+      try {
+        fileService.deleteFile(oldQrUrl);
+      } catch (Exception e) {
+        log.warn("Failed to delete old QR code file: {}", oldQrUrl, e);
       }
     }
 
-    if (updaterEmail != null && !updaterEmail.isBlank()) {
-      userRepository.findByGmail(updaterEmail).ifPresent(content::setUpdatedBy);
-    }
-
-    RequestVipFormContent saved = requestVipFormContentRepository.save(content);
     log.info("VIP request form content updated successfully");
-    return requestVipFormContentMapper.toResponse(saved);
+    return requestVipFormContentMapper.toResponse(reqVipFormContentSaved);
   }
 
   private RequestVipFormContent getOrCreateContent() {
