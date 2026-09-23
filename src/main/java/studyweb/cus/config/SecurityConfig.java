@@ -55,7 +55,9 @@ public class SecurityConfig {
                     "/api/*/guest",
                     "/api/*/guest/**",
                     "/api/homepage",
-                    "/api/homepage/**")
+                    "/api/homepage/**",
+                    "/api/vip-form-content",
+                    "/api/vip-form-content/**")
                 .permitAll()
                 .requestMatchers(
                     HttpMethod.POST,

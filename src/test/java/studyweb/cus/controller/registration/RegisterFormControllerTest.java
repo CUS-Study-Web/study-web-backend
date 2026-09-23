@@ -196,13 +196,13 @@ class RegisterFormControllerTest {
 
   @Test
   @WithMockUser(roles = "ADMIN")
-  @DisplayName("GET /api/register-forms - Admin allowed to view all forms")
+  @DisplayName("GET /api/register-forms - Admin allowed to view all forms with date filter")
   void listRegisterForms_adminAllowed() throws Exception {
-    when(registerFormService.listRegisterForms(any(), any(Pageable.class)))
+    when(registerFormService.listRegisterForms(eq(LocalDate.of(2026, 9, 22)), eq("Toán"), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(sampleResponse()), PageRequest.of(0, 10), 1));
 
     mockMvc
-        .perform(get("/api/register-forms"))
+        .perform(get("/api/register-forms").param("date", "2026-09-22").param("search", "Toán"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.data[0].id").value(FORM_ID.toString()));
@@ -212,7 +212,7 @@ class RegisterFormControllerTest {
   @WithMockUser(roles = "ASSISTANT")
   @DisplayName("GET /api/register-forms - Assistant allowed to view all forms")
   void listRegisterForms_assistantAllowed() throws Exception {
-    when(registerFormService.listRegisterForms(any(), any(Pageable.class)))
+    when(registerFormService.listRegisterForms(any(), any(), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of(sampleResponse()), PageRequest.of(0, 10), 1));
 
     mockMvc
@@ -236,6 +236,44 @@ class RegisterFormControllerTest {
     mockMvc
         .perform(get("/api/register-forms"))
         .andExpect(status().isUnauthorized());
+  }
+
+  // --- GET /api/register-forms/counts ---
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  @DisplayName("GET /api/register-forms/counts - Admin allowed to count forms")
+  void countRegisterForms_adminAllowed() throws Exception {
+    when(registerFormService.countRegisterForms(eq(LocalDate.of(2026, 9, 22)), eq("Toán")))
+        .thenReturn(120L);
+
+    mockMvc
+        .perform(get("/api/register-forms/counts").param("date", "2026-09-22").param("search", "Toán"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.count").value(120));
+  }
+
+  @Test
+  @WithMockUser(roles = "ASSISTANT")
+  @DisplayName("GET /api/register-forms/counts - Assistant allowed to count forms")
+  void countRegisterForms_assistantAllowed() throws Exception {
+    when(registerFormService.countRegisterForms(any(), any())).thenReturn(50L);
+
+    mockMvc
+        .perform(get("/api/register-forms/counts"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.count").value(50));
+  }
+
+  @Test
+  @WithMockUser(roles = "LEARNER")
+  @DisplayName("GET /api/register-forms/counts - Learner forbidden from counting forms")
+  void countRegisterForms_learnerForbidden() throws Exception {
+    mockMvc
+        .perform(get("/api/register-forms/counts"))
+        .andExpect(status().isForbidden());
   }
 
   // --- GET /api/register-forms/{id} ---

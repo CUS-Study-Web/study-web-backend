@@ -1,5 +1,6 @@
 package studyweb.cus.service.registration.impl;
 
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,11 +37,19 @@ public class RegisterFormServiceImpl implements RegisterFormService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<RegisterFormResponse> listRegisterForms(String search, Pageable pageable) {
-    log.info("Fetching register forms: search='{}', pageable={}", search, pageable);
+  public Page<RegisterFormResponse> listRegisterForms(
+      LocalDate date, String search, Pageable pageable) {
+    log.info("Fetching register forms: date={}, search='{}', pageable={}", date, search, pageable);
     return registerFormRepository
-        .searchRegisterForms(search, pageable)
+        .searchRegisterForms(date, search, pageable)
         .map(registerFormMapper::toResponse);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public long countRegisterForms(LocalDate date, String search) {
+    log.info("Counting register forms: date={}, search='{}'", date, search);
+    return registerFormRepository.countRegisterForms(date, search);
   }
 
   @Override

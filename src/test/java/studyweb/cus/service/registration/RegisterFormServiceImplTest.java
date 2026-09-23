@@ -113,8 +113,9 @@ class RegisterFormServiceImplTest {
   }
 
   @Test
-  @DisplayName("listRegisterForms returns paged list of register forms")
+  @DisplayName("listRegisterForms returns paged list of register forms with date filter")
   void listRegisterForms_success() {
+    LocalDate filterDate = LocalDate.of(2026, 9, 22);
     Pageable pageable = PageRequest.of(0, 10);
     RegisterForm form =
         RegisterForm.builder()
@@ -122,20 +123,34 @@ class RegisterFormServiceImplTest {
             .phoneNumer("0987654321")
             .email("nguyenvana@example.com")
             .subject("Toán học")
-            .registeredDate(LocalDate.now())
+            .registeredDate(filterDate)
             .build();
     form.setId(UUID.randomUUID());
 
-    when(registerFormRepository.searchRegisterForms(eq("Toán"), eq(pageable)))
+    when(registerFormRepository.searchRegisterForms(eq(filterDate), eq("Toán"), eq(pageable)))
         .thenReturn(new PageImpl<>(List.of(form), pageable, 1));
 
-    Page<RegisterFormResponse> result = registerFormService.listRegisterForms("Toán", pageable);
+    Page<RegisterFormResponse> result =
+        registerFormService.listRegisterForms(filterDate, "Toán", pageable);
 
     assertThat(result).isNotNull();
     assertThat(result.getTotalElements()).isEqualTo(1);
     assertThat(result.getContent().getFirst().name()).isEqualTo("Nguyen Van A");
+    assertThat(result.getContent().getFirst().registeredDate()).isEqualTo(filterDate);
 
-    verify(registerFormRepository).searchRegisterForms("Toán", pageable);
+    verify(registerFormRepository).searchRegisterForms(filterDate, "Toán", pageable);
+  }
+
+  @Test
+  @DisplayName("countRegisterForms returns count matching date and search")
+  void countRegisterForms_success() {
+    LocalDate filterDate = LocalDate.of(2026, 9, 22);
+    when(registerFormRepository.countRegisterForms(eq(filterDate), eq("Toán"))).thenReturn(120L);
+
+    long count = registerFormService.countRegisterForms(filterDate, "Toán");
+
+    assertThat(count).isEqualTo(120L);
+    verify(registerFormRepository).countRegisterForms(filterDate, "Toán");
   }
 
   @Test

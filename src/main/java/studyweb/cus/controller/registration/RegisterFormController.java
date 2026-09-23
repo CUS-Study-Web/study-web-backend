@@ -3,12 +3,14 @@ package studyweb.cus.controller.registration;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +24,7 @@ import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.SingleResponse;
 import studyweb.cus.dto.request.registration.RegisterFormRequest;
+import studyweb.cus.dto.response.registration.RegisterFormCountResponse;
 import studyweb.cus.dto.response.registration.RegisterFormResponse;
 import studyweb.cus.service.registration.RegisterFormService;
 
@@ -51,19 +54,36 @@ public class RegisterFormController extends AbstractBaseController {
   @Operation(
       summary = "List register forms",
       description =
-          "List all offline exam registration forms with optional search and pagination (Admin and Assistant only)")
+          "List all offline exam registration forms with optional date filtering, search, and pagination (Admin and Assistant only)")
   public ResponseEntity<PageResponse<RegisterFormResponse>> listRegisterForms(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
       @RequestParam(required = false) String search,
       @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
           Pageable pageable) {
     log.info(
-        "[GET /api/register-forms] search='{}', page={}, size={}",
+        "[GET /api/register-forms] date={}, search='{}', page={}, size={}",
+        date,
         search,
         pageable.getPageNumber(),
         pageable.getPageSize());
     return paging(
-        registerFormService.listRegisterForms(search, pageable),
+        registerFormService.listRegisterForms(date, search, pageable),
         "Register forms fetched successfully!");
+  }
+
+  @GetMapping("/counts")
+  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+  @Operation(
+      summary = "Count register forms",
+      description =
+          "Count offline exam registration forms by optional date and search keyword (Admin and Assistant only)")
+  public ResponseEntity<SingleResponse<RegisterFormCountResponse>> countRegisterForms(
+      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+      @RequestParam(required = false) String search) {
+    log.info("[GET /api/register-forms/counts] date={}, search='{}'", date, search);
+    long count = registerFormService.countRegisterForms(date, search);
+    return successSingle(
+        new RegisterFormCountResponse(count), "Register forms count fetched successfully!");
   }
 
   @GetMapping("/{id}")
