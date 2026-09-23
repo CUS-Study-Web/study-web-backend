@@ -31,13 +31,13 @@ public class RequestVipFormContentController extends AbstractBaseController {
 
   private final RequestVipFormContentService requestVipFormContentService;
 
-  @GetMapping({"", "/guest"})
+  @GetMapping("/guest")
   @Operation(
       summary = "Get VIP Request Form Content",
       description =
           "Retrieve banking info, hotline, and form details for VIP request submission (Public/Guest)")
   public ResponseEntity<SingleResponse<RequestVipFormContentResponse>> getContent() {
-    log.info("[GET /api/vip-form-content] Fetching VIP request form content");
+    log.info("[GET /api/vip-form-content/guest] Fetching VIP request form content");
     return successSingle(
         requestVipFormContentService.getContent(),
         "VIP request form content fetched successfully!");
