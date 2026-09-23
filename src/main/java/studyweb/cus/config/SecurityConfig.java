@@ -58,6 +58,11 @@ public class SecurityConfig {
                     "/api/homepage/**")
                 .permitAll()
                 .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/register-forms",
+                    "/api/register-forms/**")
+                .permitAll()
+                .requestMatchers(
                     "/api-docs/**",
                     "/v3/api-docs",
                     "/v3/api-docs/**",
