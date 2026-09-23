@@ -360,6 +360,26 @@ class CourseServiceTest {
   }
 
   @Test
+  void updateCourse_withMaxScores_updatesMaxScores() {
+    Course course = course();
+    when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.of(course));
+
+    CourseRequest request =
+        new CourseRequest(
+            "Java for Beginners",
+            "sub",
+            "badge",
+            "desc",
+            null,
+            studyweb.cus.enums.CourseCreateStatus.DRAFT,
+            36);
+
+    courseService.updateCourse(courseId, request);
+
+    assertThat(course.getMaxScores()).isEqualTo(36);
+  }
+
+  @Test
   void updateCourse_unknownCourseThrowsCourseNotFound() {
     when(courseRepository.findByIdAndDeletedAtIsNull(courseId)).thenReturn(Optional.empty());
 

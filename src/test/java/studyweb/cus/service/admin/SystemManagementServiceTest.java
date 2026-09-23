@@ -191,7 +191,8 @@ class SystemManagementServiceTest {
               null,
               null,
               null,
-              "https://cdn.studyweb.edu/avatars/user1.png");
+              "https://cdn.studyweb.edu/avatars/user1.png",
+              null);
 
       when(systemManagementMapper.toLearnerSummary(eq(user), isNull(), eq(0.0), eq(0)))
           .thenReturn(sampleResponse);
@@ -238,6 +239,7 @@ class SystemManagementServiceTest {
               UserTier.NORMAL,
               "Nguyễn Văn A",
               0,
+              null,
               null,
               null,
               null,
@@ -328,7 +330,8 @@ class SystemManagementServiceTest {
               null,
               null,
               null,
-              "https://cdn.studyweb.edu/avatars/user1.png");
+              "https://cdn.studyweb.edu/avatars/user1.png",
+              100);
 
       when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(10.0), eq(2)))
           .thenReturn(summaryResponse);
@@ -384,6 +387,7 @@ class SystemManagementServiceTest {
               UserTier.NORMAL,
               "Nguyễn Văn A",
               0,
+              null,
               null,
               null,
               null,
@@ -470,6 +474,7 @@ class SystemManagementServiceTest {
               null,
               null,
               null,
+              null,
               null);
 
       when(systemManagementMapper.toLearnerSummary(eq(user), eq(progress), eq(10.0), eq(1)))
@@ -537,6 +542,7 @@ class SystemManagementServiceTest {
               null,
               null,
               null,
+              null,
               null);
       LearnerSummaryResponse res2 =
           new LearnerSummaryResponse(
@@ -550,6 +556,7 @@ class SystemManagementServiceTest {
               UserTier.NORMAL,
               "Learner Two",
               0,
+              null,
               null,
               null,
               null,

@@ -150,7 +150,8 @@ class SystemManagementControllerTest {
         "Kích hoạt VIP 1 năm",
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
-        "https://cdn.studyweb.edu/avatars/nguyenvana.png");
+        "https://cdn.studyweb.edu/avatars/nguyenvana.png",
+        100);
   }
 
   private CreateAssistantRequest sampleCreateAssistantRequest() {
@@ -712,6 +713,7 @@ class SystemManagementControllerTest {
           .andExpect(
               jsonPath("$.data[0].avatarUrl")
                   .value("https://cdn.studyweb.edu/avatars/nguyenvana.png"))
+          .andExpect(jsonPath("$.data[0].courseMaxScore").value(100))
           .andExpect(jsonPath("$.paging.total").value(1));
 
       verify(systemManagementService)
