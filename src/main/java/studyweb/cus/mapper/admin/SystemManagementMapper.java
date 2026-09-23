@@ -34,8 +34,16 @@ public interface SystemManagementMapper {
   @Mapping(target = "vipStartDate", source = "user.vipStartDate")
   @Mapping(target = "vipEndDate", source = "user.vipEndDate")
   @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+  @Mapping(target = "courseMaxScore", expression = "java(resolveCourseMaxScore(progress))")
   LearnerSummaryResponse toLearnerSummary(
       User user, UserCourseProgress progress, Double averageScore, int numExams);
+
+  default Integer resolveCourseMaxScore(UserCourseProgress progress) {
+    if (progress != null && progress.getCourse() != null) {
+      return progress.getCourse().getMaxScores();
+    }
+    return null;
+  }
 
   default String resolvePrimaryCourse(UserCourseProgress progress) {
     if (progress != null

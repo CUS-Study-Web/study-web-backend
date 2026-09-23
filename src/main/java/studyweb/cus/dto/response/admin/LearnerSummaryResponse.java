@@ -19,4 +19,5 @@ public record LearnerSummaryResponse(
     String note,
     LocalDate vipStartDate,
     LocalDate vipEndDate,
-    String avatarUrl) {}
+    String avatarUrl,
+    Integer courseMaxScore) {}
