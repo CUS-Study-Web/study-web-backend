@@ -214,6 +214,9 @@ public class CourseServiceImpl implements CourseService {
     if (request.status() != null) {
       course.setStatus(request.status());
     }
+    if (request.maxScores() != null) {
+      course.setMaxScores(request.maxScores());
+    }
     log.info("Updated course {}", id);
     if (oldStatus != CourseCreateStatus.PUBLISH && course.getStatus() == CourseCreateStatus.PUBLISH) {
       eventPublisher.publishEvent(NewCoursePublishedEvent.of(course.getTitle()));
