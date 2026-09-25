@@ -46,177 +46,158 @@ import studyweb.cus.service.assessment.LearnerAssessmentService;
 @Tag(name = "Assessment", description = "CRUD endpoints for homework and exams")
 public class AssessmentController extends AbstractBaseController {
 
-  private final AssessmentService assessmentService;
-  private final LearnerAssessmentService learnerAssessmentService;
+    private final AssessmentService assessmentService;
+    private final LearnerAssessmentService learnerAssessmentService;
 
-  @LogActivity(
-      action = ActionType.CREATE_ASSESSMENT,
-      description =
-          "#{'EXAM'.equals(#request.assessmentType()?.name()) ? ('Trợ giảng tạo bài kiểm tra \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng tạo bài tập \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@subjectRepository.findById(#request.subjectId()).orElse(null)?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
-  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("hasAnyRole('ASSISTANT')")
-  @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
-  public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> createAssessment(
-      @PathVariable UUID courseId, @Valid @ModelAttribute CreateAssessmentRequest request) {
-    log.info(
-        "[POST /api/courses/{}/assessments] Creating {} '{}'",
-        courseId,
-        request.assessmentType(),
-        request.title());
-    return successSingle(
-        assessmentService.createAssessment(courseId, request), "Assessment created successfully!");
-  }
+    @LogActivity(action = ActionType.CREATE_ASSESSMENT, description = "#{'EXAM'.equals(#request.assessmentType()?.name()) ? ('Trợ giảng tạo bài kiểm tra \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng tạo bài tập \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@subjectRepository.findById(#request.subjectId()).orElse(null)?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ASSISTANT')")
+    @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
+    public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> createAssessment(
+            @PathVariable UUID courseId, @Valid @ModelAttribute CreateAssessmentRequest request) {
+        log.info(
+                "[POST /api/courses/{}/assessments] Creating {} '{}'",
+                courseId,
+                request.assessmentType(),
+                request.title());
+        return successSingle(
+                assessmentService.createAssessment(courseId, request), "Assessment created successfully!");
+    }
 
-  @GetMapping("/{assessmentId}")
-  @Operation(summary = "Assessment Detail", description = "Get assessment detail with answer keys")
-  public ResponseEntity<SingleResponse<AssessmentDetailResponse>> getAssessmentDetail(
-      @PathVariable UUID courseId, @PathVariable UUID assessmentId) {
-    log.info("[GET /api/courses/{}/assessments/{}] Fetching detail", courseId, assessmentId);
-    return successSingle(
-        assessmentService.getAssessmentDetail(courseId, assessmentId),
-        "Assessment fetched successfully!");
-  }
+    @GetMapping("/{assessmentId}")
+    @Operation(summary = "Assessment Detail", description = "Get assessment detail with answer keys")
+    public ResponseEntity<SingleResponse<AssessmentDetailResponse>> getAssessmentDetail(
+            @PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        log.info("[GET /api/courses/{}/assessments/{}] Fetching detail", courseId, assessmentId);
+        return successSingle(
+                assessmentService.getAssessmentDetail(courseId, assessmentId),
+                "Assessment fetched successfully!");
+    }
 
-  @GetMapping("/exams")
-  @Operation(summary = "List Exams", description = "List all exams of a course")
-  public ResponseEntity<PageResponse<AssessmentSummaryResponse>> listExams(
-      @PathVariable UUID courseId, @PageableDefault(size = 10) Pageable pageable) {
-    log.info(
-        "[GET /api/courses/{}/assessments/exams] Page {}, size {}",
-        courseId,
-        pageable.getPageNumber(),
-        pageable.getPageSize());
-    return paging(
-        assessmentService.listExamsByCourse(courseId, pageable), "Exams fetched successfully!");
-  }
+    @GetMapping("/exams")
+    @Operation(summary = "List Exams", description = "List all exams of a course")
+    public ResponseEntity<PageResponse<AssessmentSummaryResponse>> listExams(
+            @PathVariable UUID courseId, @PageableDefault(size = 10) Pageable pageable) {
+        log.info(
+                "[GET /api/courses/{}/assessments/exams] Page {}, size {}",
+                courseId,
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+        return paging(
+                assessmentService.listExamsByCourse(courseId, pageable), "Exams fetched successfully!");
+    }
 
-  @GetMapping("/homework")
-  @Operation(
-      summary = "List Homework by Subject",
-      description = "List homework of a subject within a course")
-  public ResponseEntity<PageResponse<AssessmentSummaryResponse>> listHomework(
-      @PathVariable UUID courseId,
-      @RequestParam UUID subjectId,
-      @PageableDefault(size = 10) Pageable pageable) {
-    log.info(
-        "[GET /api/courses/{}/assessments/homework?subjectId={}] Page {}, size {}",
-        courseId,
-        subjectId,
-        pageable.getPageNumber(),
-        pageable.getPageSize());
-    return paging(
-        assessmentService.listHomeworkBySubject(courseId, subjectId, pageable),
-        "Homework fetched successfully!");
-  }
+    @GetMapping("/homework")
+    @Operation(summary = "List Homework by Subject", description = "List homework of a subject within a course")
+    public ResponseEntity<PageResponse<AssessmentSummaryResponse>> listHomework(
+            @PathVariable UUID courseId,
+            @RequestParam UUID subjectId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        log.info(
+                "[GET /api/courses/{}/assessments/homework?subjectId={}] Page {}, size {}",
+                courseId,
+                subjectId,
+                pageable.getPageNumber(),
+                pageable.getPageSize());
+        return paging(
+                assessmentService.listHomeworkBySubject(courseId, subjectId, pageable),
+                "Homework fetched successfully!");
+    }
 
-  @LogActivity(
-      action = ActionType.UPDATE_ASSESSMENT,
-      description =
-          "#{'EXAM'.equals(#result?.body?.data?.assessmentType()?.name()) ? ('Trợ giảng cập nhật bài kiểm tra \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng cập nhật bài tập \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
-  @PatchMapping(value = "/{assessmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("hasAnyRole('ASSISTANT')")
-  @Operation(summary = "Update Assessment", description = "Update an existing homework or exam")
-  public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> updateAssessment(
-      @PathVariable UUID courseId,
-      @PathVariable UUID assessmentId,
-      @Valid @ModelAttribute UpdateAssessmentRequest request) {
-    log.info("[PATCH /api/courses/{}/assessments/{}] Updating assessment", courseId, assessmentId);
-    return successSingle(
-        assessmentService.updateAssessment(courseId, assessmentId, request),
-        "Assessment updated successfully!");
-  }
+    @LogActivity(action = ActionType.UPDATE_ASSESSMENT, description = "#{'EXAM'.equals(#result?.body?.data?.assessmentType()?.name()) ? ('Trợ giảng cập nhật bài kiểm tra \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng cập nhật bài tập \"' + (#result?.body?.data?.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
+    @PatchMapping(value = "/{assessmentId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ASSISTANT')")
+    @Operation(summary = "Update Assessment", description = "Update an existing homework or exam")
+    public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> updateAssessment(
+            @PathVariable UUID courseId,
+            @PathVariable UUID assessmentId,
+            @Valid @ModelAttribute UpdateAssessmentRequest request) {
+        log.info("[PATCH /api/courses/{}/assessments/{}] Updating assessment", courseId, assessmentId);
+        return successSingle(
+                assessmentService.updateAssessment(courseId, assessmentId, request),
+                "Assessment updated successfully!");
+    }
 
-  @LogActivity(
-      action = ActionType.DELETE_ASSESSMENT,
-      description =
-          "#{'EXAM'.equals(@assessmentRepository.findById(#assessmentId).orElse(null)?.assessmentType?.name()) ? ('Trợ giảng xóa bài kiểm tra \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng xóa bài tập \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
-  @DeleteMapping("/{assessmentId}")
-  @PreAuthorize("hasAnyRole('ASSISTANT')")
-  @Operation(summary = "Delete Assessment", description = "Soft-delete an assessment")
-  public ResponseEntity<SuccessResponse> deleteAssessment(
-      @PathVariable UUID courseId, @PathVariable UUID assessmentId) {
-    log.info("[DELETE /api/courses/{}/assessments/{}] Deleting assessment", courseId, assessmentId);
-    assessmentService.deleteAssessment(courseId, assessmentId);
-    return success("Assessment deleted successfully!");
-  }
+    @LogActivity(action = ActionType.DELETE_ASSESSMENT, description = "#{'EXAM'.equals(@assessmentRepository.findById(#assessmentId).orElse(null)?.assessmentType?.name()) ? ('Trợ giảng xóa bài kiểm tra \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng xóa bài tập \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.title ?: 'không có tiêu đề') + '\" cho môn học \"' + (@assessmentRepository.findById(#assessmentId).orElse(null)?.subject?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
+    @DeleteMapping("/{assessmentId}")
+    @PreAuthorize("hasAnyRole('ASSISTANT')")
+    @Operation(summary = "Delete Assessment", description = "Soft-delete an assessment")
+    public ResponseEntity<SuccessResponse> deleteAssessment(
+            @PathVariable UUID courseId, @PathVariable UUID assessmentId) {
+        log.info("[DELETE /api/courses/{}/assessments/{}] Deleting assessment", courseId, assessmentId);
+        assessmentService.deleteAssessment(courseId, assessmentId);
+        return success("Assessment deleted successfully!");
+    }
 
-  @GetMapping("/{assessmentId}/start")
-  @PreAuthorize("hasRole('LEARNER')")
-  @Operation(
-      summary = "Start Assessment",
-      description = "Get assessment details for taking (without answer keys)")
-  public ResponseEntity<SingleResponse<AssessmentStartResponse>> startAssessment(
-      @PathVariable UUID courseId,
-      @PathVariable UUID assessmentId,
-      @AuthenticationPrincipal String email) {
-    log.info(
-        "[GET /api/courses/{}/assessments/{}/start] Learner starting assessment",
-        courseId,
-        assessmentId);
-    return successSingle(
-        learnerAssessmentService.getAssessmentForTaking(courseId, assessmentId, email),
-        "Assessment ready!");
-  }
+    @GetMapping("/{assessmentId}/start")
+    @PreAuthorize("hasRole('LEARNER')")
+    @Operation(summary = "Start Assessment", description = "Get assessment details for taking (without answer keys)")
+    public ResponseEntity<SingleResponse<AssessmentStartResponse>> startAssessment(
+            @PathVariable UUID courseId,
+            @PathVariable UUID assessmentId,
+            @AuthenticationPrincipal String email) {
+        log.info(
+                "[GET /api/courses/{}/assessments/{}/start] Learner starting assessment",
+                courseId,
+                assessmentId);
+        return successSingle(
+                learnerAssessmentService.getAssessmentForTaking(courseId, assessmentId, email),
+                "Assessment ready!");
+    }
 
-  @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "Người dùng nộp bài làm cho bài tập ID: #{#assessmentId}")
-  @PostMapping("/{assessmentId}/submit")
-  @PreAuthorize("hasRole('LEARNER')")
-  @Operation(
-      summary = "Submit Assessment",
-      description = "Submit answers and get detailed grading results")
-  public ResponseEntity<SingleResponse<AssessmentSubmitResponse>> submitAssessment(
-      @PathVariable UUID courseId,
-      @PathVariable UUID assessmentId,
-      @AuthenticationPrincipal String email,
-      @Valid @RequestBody AssessmentSubmitRequest request) {
-    log.info(
-        "[POST /api/courses/{}/assessments/{}/submit] Learner {} submitting assessment",
-        courseId,
-        assessmentId,
-        email);
-    return successSingle(
-        learnerAssessmentService.submitAssessment(courseId, assessmentId, email, request),
-        "Assessment submitted successfully!");
-  }
+    @LogActivity(action = ActionType.SUBMIT_ASSESSMENT, description = "Học viên vừa nộp bài")
+    @PostMapping("/{assessmentId}/submit")
+    @PreAuthorize("hasRole('LEARNER')")
+    @Operation(summary = "Submit Assessment", description = "Submit answers and get detailed grading results")
+    public ResponseEntity<SingleResponse<AssessmentSubmitResponse>> submitAssessment(
+            @PathVariable UUID courseId,
+            @PathVariable UUID assessmentId,
+            @AuthenticationPrincipal String email,
+            @Valid @RequestBody AssessmentSubmitRequest request) {
+        log.info(
+                "[POST /api/courses/{}/assessments/{}/submit] Learner {} submitting assessment",
+                courseId,
+                assessmentId,
+                email);
+        return successSingle(
+                learnerAssessmentService.submitAssessment(courseId, assessmentId, email, request),
+                "Assessment submitted successfully!");
+    }
 
-  @GetMapping("/{assessmentId}/attempts")
-  @PreAuthorize("hasRole('LEARNER')")
-  @Operation(
-      summary = "List Attempts",
-      description = "Get history of attempts for the current learner")
-  public ResponseEntity<PageResponse<AssessmentAttemptResponse>> listAttempts(
-      @PathVariable UUID courseId,
-      @PathVariable UUID assessmentId,
-      @AuthenticationPrincipal String email,
-      @PageableDefault(size = 10) Pageable pageable) {
-    log.info(
-        "[GET /api/courses/{}/assessments/{}/attempts] Learner {} fetching history",
-        courseId,
-        assessmentId,
-        email);
-    return paging(
-        learnerAssessmentService.listAttempts(courseId, assessmentId, email, pageable),
-        "Attempts fetched successfully!");
-  }
+    @GetMapping("/{assessmentId}/attempts")
+    @PreAuthorize("hasRole('LEARNER')")
+    @Operation(summary = "List Attempts", description = "Get history of attempts for the current learner")
+    public ResponseEntity<PageResponse<AssessmentAttemptResponse>> listAttempts(
+            @PathVariable UUID courseId,
+            @PathVariable UUID assessmentId,
+            @AuthenticationPrincipal String email,
+            @PageableDefault(size = 10) Pageable pageable) {
+        log.info(
+                "[GET /api/courses/{}/assessments/{}/attempts] Learner {} fetching history",
+                courseId,
+                assessmentId,
+                email);
+        return paging(
+                learnerAssessmentService.listAttempts(courseId, assessmentId, email, pageable),
+                "Attempts fetched successfully!");
+    }
 
-  @GetMapping("/{assessmentId}/attempts/{attemptId}")
-  @PreAuthorize("hasRole('LEARNER')")
-  @Operation(
-      summary = "Get Attempt Detail",
-      description = "Get detailed results of a specific attempt")
-  public ResponseEntity<SingleResponse<AssessmentSubmitResponse>> getAttemptDetail(
-      @PathVariable UUID courseId,
-      @PathVariable UUID assessmentId,
-      @PathVariable UUID attemptId,
-      @AuthenticationPrincipal String email) {
-    log.info(
-        "[GET /api/courses/{}/assessments/{}/attempts/{}] Learner {} fetching attempt detail",
-        courseId,
-        assessmentId,
-        attemptId,
-        email);
-    return successSingle(
-        learnerAssessmentService.getAttemptDetail(courseId, assessmentId, attemptId, email),
-        "Attempt detail fetched successfully!");
-  }
+    @GetMapping("/{assessmentId}/attempts/{attemptId}")
+    @PreAuthorize("hasRole('LEARNER')")
+    @Operation(summary = "Get Attempt Detail", description = "Get detailed results of a specific attempt")
+    public ResponseEntity<SingleResponse<AssessmentSubmitResponse>> getAttemptDetail(
+            @PathVariable UUID courseId,
+            @PathVariable UUID assessmentId,
+            @PathVariable UUID attemptId,
+            @AuthenticationPrincipal String email) {
+        log.info(
+                "[GET /api/courses/{}/assessments/{}/attempts/{}] Learner {} fetching attempt detail",
+                courseId,
+                assessmentId,
+                attemptId,
+                email);
+        return successSingle(
+                learnerAssessmentService.getAttemptDetail(courseId, assessmentId, attemptId, email),
+                "Attempt detail fetched successfully!");
+    }
 }
