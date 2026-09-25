@@ -8,7 +8,9 @@ import static studyweb.cus.constant.FileConstants.FOLDER_AVATARS;
 import static studyweb.cus.constant.FileConstants.FOLDER_DOCUMENTS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXAMS;
 import static studyweb.cus.constant.FileConstants.FOLDER_EXERCISES;
+import static studyweb.cus.constant.FileConstants.FOLDER_QR;
 import static studyweb.cus.constant.FileConstants.FOLDER_VIP_EVIDENCE;
+import static studyweb.cus.constant.FileConstants.QR_EXTENSIONS;
 import static studyweb.cus.constant.FileConstants.VIP_EVIDENCE_EXTENSIONS;
 
 import java.util.List;
@@ -71,6 +73,18 @@ public class FileServiceImpl implements FileService {
       throw new FileException(FileErrorCode.FILE_TOO_LARGE);
     }
     return upload(file, FOLDER_VIP_EVIDENCE, VIP_EVIDENCE_EXTENSIONS);
+  }
+
+  @Override
+  public UploadDocumentResult uploadQrFile(MultipartFile file) {
+    long maxSize =
+        s3Properties.getMaxsizeavatarupload() != null
+            ? s3Properties.getMaxsizeavatarupload()
+            : 10485760L;
+    if (file.getSize() > maxSize) {
+      throw new FileException(FileErrorCode.FILE_TOO_LARGE);
+    }
+    return upload(file, FOLDER_QR, QR_EXTENSIONS);
   }
 
   @Override
