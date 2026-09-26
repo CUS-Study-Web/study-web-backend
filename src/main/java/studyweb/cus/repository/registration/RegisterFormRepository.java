@@ -17,8 +17,8 @@ public interface RegisterFormRepository extends JpaRepository<RegisterForm, UUID
       value =
           """
           SELECT rf FROM RegisterForm rf
-          WHERE (:date IS NULL OR rf.registeredDate = :date)
-            AND (:search IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+          WHERE (CAST(:date AS date) IS NULL OR rf.registeredDate = :date)
+            AND (CAST(:search AS string) IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.phoneNumer) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.subject) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
@@ -26,8 +26,8 @@ public interface RegisterFormRepository extends JpaRepository<RegisterForm, UUID
       countQuery =
           """
           SELECT COUNT(rf) FROM RegisterForm rf
-          WHERE (:date IS NULL OR rf.registeredDate = :date)
-            AND (:search IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+          WHERE (CAST(:date AS date) IS NULL OR rf.registeredDate = :date)
+            AND (CAST(:search AS string) IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.phoneNumer) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
              OR LOWER(rf.subject) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
@@ -38,8 +38,8 @@ public interface RegisterFormRepository extends JpaRepository<RegisterForm, UUID
   @Query(
       """
       SELECT COUNT(rf) FROM RegisterForm rf
-      WHERE (:date IS NULL OR rf.registeredDate = :date)
-        AND (:search IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+      WHERE (CAST(:date AS date) IS NULL OR rf.registeredDate = :date)
+        AND (CAST(:search AS string) IS NULL OR LOWER(rf.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
          OR LOWER(rf.phoneNumer) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
          OR LOWER(rf.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
          OR LOWER(rf.subject) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
