@@ -123,6 +123,7 @@ public class CourseController extends AbstractBaseController {
         "Course fetched successfully!");
   }
 
+  @LogActivity(action = ActionType.UPDATE_COURSE, description = "Quản trị viên cập nhật khóa học ID: #{#id}")
   @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Update Course", description = "Update an existing course (admin only)")
@@ -133,6 +134,7 @@ public class CourseController extends AbstractBaseController {
     return successSingle(courseService.updateCourse(id, request), "Course updated successfully!");
   }
 
+  @LogActivity(action = ActionType.DELETE_COURSE, description = "Quản trị viên xóa khóa học ID: #{#id}")
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Delete Course", description = "Soft-delete a course (admin only)")

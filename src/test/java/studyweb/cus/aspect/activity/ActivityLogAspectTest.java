@@ -44,7 +44,8 @@ class ActivityLogAspectTest {
 
   @BeforeEach
   void setUp() {
-    activityLogAspect = new ActivityLogAspect(applicationContext);
+    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+    activityLogAspect = new ActivityLogAspect(applicationContext, mapper);
     activityLogger = (Logger) LoggerFactory.getLogger("ACTIVITY_LOGGER");
     listAppender = new ListAppender<>();
     listAppender.start();
@@ -67,7 +68,7 @@ class ActivityLogAspectTest {
 
   @Test
   @DisplayName("handleActivityLog logs authenticated user and simple description")
-  void handleActivityLog_authenticatedUser() {
+  void handleActivityLog_authenticatedUser() throws Exception {
     Authentication auth = mock(Authentication.class);
     when(auth.isAuthenticated()).thenReturn(true);
     when(auth.getName()).thenReturn("authuser@studyweb.edu");
@@ -83,7 +84,8 @@ class ActivityLogAspectTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.get(0);
-    assertThat(event.getMessage()).isEqualTo("User logged in successfully");
+    com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(event.getMessage());
+    assertThat(node.get("description").asText()).isEqualTo("User logged in successfully");
     assertThat(event.getMDCPropertyMap().get("user_id")).isEqualTo("authuser@studyweb.edu");
     assertThat(event.getMDCPropertyMap().get("action_type")).isEqualTo(ActionType.LOGIN.name());
     assertThat(MDC.get("user_id")).isNull();
@@ -147,7 +149,7 @@ class ActivityLogAspectTest {
   @Test
   @DisplayName(
       "handleActivityLog defaults description to 'Executed <methodName>' when description is empty")
-  void handleActivityLog_emptyDescription() {
+  void handleActivityLog_emptyDescription() throws Exception {
     when(joinPoint.getArgs()).thenReturn(new Object[] {});
     when(joinPoint.getSignature()).thenReturn(methodSignature);
     when(methodSignature.getName()).thenReturn("submitAssessment");
@@ -158,12 +160,13 @@ class ActivityLogAspectTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.get(0);
-    assertThat(event.getMessage()).isEqualTo("Executed submitAssessment");
+    com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(event.getMessage());
+    assertThat(node.get("description").asText()).isEqualTo("Executed submitAssessment");
   }
 
   @Test
   @DisplayName("handleActivityLog evaluates SpEL expression with arguments and result")
-  void handleActivityLog_evaluatesSpelExpression() throws NoSuchMethodException {
+  void handleActivityLog_evaluatesSpelExpression() throws Exception {
     Method method = ActivityLogAspectTest.class.getMethod("sampleMethod", String.class);
     when(joinPoint.getSignature()).thenReturn(methodSignature);
     when(methodSignature.getMethod()).thenReturn(method);
@@ -176,12 +179,13 @@ class ActivityLogAspectTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.get(0);
-    assertThat(event.getMessage()).isEqualTo("Created lesson: Calculus result: SUCCESS_RESULT");
+    com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(event.getMessage());
+    assertThat(node.get("description").asText()).isEqualTo("Created lesson: Calculus result: SUCCESS_RESULT");
   }
 
   @Test
   @DisplayName("handleActivityLog falls back to raw description when SpEL throws evaluation error")
-  void handleActivityLog_spelErrorFallsBackToRaw() throws NoSuchMethodException {
+  void handleActivityLog_spelErrorFallsBackToRaw() throws Exception {
     Method method = ActivityLogAspectTest.class.getMethod("sampleMethod", String.class);
     when(joinPoint.getSignature()).thenReturn(methodSignature);
     when(methodSignature.getMethod()).thenReturn(method);
@@ -195,6 +199,7 @@ class ActivityLogAspectTest {
 
     assertThat(listAppender.list).hasSize(1);
     ILoggingEvent event = listAppender.list.get(0);
-    assertThat(event.getMessage()).isEqualTo(badSpel);
+    com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(event.getMessage());
+    assertThat(node.get("description").asText()).isEqualTo(badSpel);
   }
 }

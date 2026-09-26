@@ -122,6 +122,7 @@ public class DocumentController extends AbstractBaseController {
         documentService.downloadDocument(id, email), "Document ready for download!");
   }
 
+  @LogActivity(action = ActionType.UPDATE_DOCUMENT, description = "Trợ giảng cập nhật tài liệu ID: #{#id}")
   @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -134,6 +135,7 @@ public class DocumentController extends AbstractBaseController {
         documentService.updateDocument(id, request), "Document updated successfully!");
   }
 
+  @LogActivity(action = ActionType.DELETE_DOCUMENT, description = "Trợ giảng xóa tài liệu ID: #{#id}")
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(summary = "Delete Document", description = "Delete a document (Assistant role only)")
