@@ -14,7 +14,6 @@ public final class FileConstants {
   public static final String FOLDER_EXERCISES = "exercises/";
   public static final String FOLDER_EXAMS = "exams/";
   public static final String FOLDER_VIP_EVIDENCE = "vip-evidence/";
-  public static final String FOLDER_QR = "qr-codes/";
 
   public static final List<String> ALL_FOLDERS =
       List.of(
@@ -22,12 +21,10 @@ public final class FileConstants {
           FOLDER_AVATARS,
           FOLDER_EXERCISES,
           FOLDER_EXAMS,
-          FOLDER_VIP_EVIDENCE,
-          FOLDER_QR);
+          FOLDER_VIP_EVIDENCE);
 
   public static final Set<String> AVATAR_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp");
   public static final Set<String> VIP_EVIDENCE_EXTENSIONS = AVATAR_EXTENSIONS;
-  public static final Set<String> QR_EXTENSIONS = AVATAR_EXTENSIONS;
   public static final Set<String> DOCUMENT_EXTENSIONS =
       Set.of("pdf", "doc", "docx", "xls", "xlsx", "pptx", "ppt");
   public static final Set<String> EXERCISE_EXTENSIONS = DOCUMENT_EXTENSIONS;
