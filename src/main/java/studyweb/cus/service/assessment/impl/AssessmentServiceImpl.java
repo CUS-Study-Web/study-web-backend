@@ -40,7 +40,11 @@ import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
+import studyweb.cus.repository.user.UserRepository;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.event.notification.NewAssessmentAddedEvent;
 import studyweb.cus.service.assessment.AssessmentService;
 import studyweb.cus.service.file.FileService;
@@ -57,6 +61,7 @@ public class AssessmentServiceImpl implements AssessmentService {
   private final AnswerKeyRepository answerKeyRepository;
   private final CourseRepository courseRepository;
   private final SubjectRepository subjectRepository;
+  private final UserRepository userRepository;
   private final AssessmentMapper assessmentMapper;
   private final FileService fileService;
   private final ObjectMapper objectMapper;
@@ -64,15 +69,18 @@ public class AssessmentServiceImpl implements AssessmentService {
 
   @Override
   public AssessmentSummaryResponse createAssessment(
-      UUID courseId, CreateAssessmentRequest request) {
+      UUID courseId, CreateAssessmentRequest request, String email) {
     Course course = courseRepository.requireCourse(courseId);
+
+    User uploadedBy = resolveUploadedBy(email);
 
     Assessment.AssessmentBuilder builder =
         Assessment.builder()
             .title(request.title())
             .assessmentType(request.assessmentType())
             .numQuestions(defaultOr(request.numQuestions(), 0))
-            .explanationUrl(request.explanationUrl());
+            .explanationUrl(request.explanationUrl())
+            .uploadedBy(uploadedBy);
 
     applyTypeSpecificFields(builder, course, courseId, request);
 
@@ -196,7 +204,8 @@ public class AssessmentServiceImpl implements AssessmentService {
       log.info("Updated assessment {}", assessmentId);
       if (oldStatus != AssessmentStatus.PUBLISHED && assessment.getStatus() == AssessmentStatus.PUBLISHED) {
         eventPublisher.publishEvent(
-            NewAssessmentAddedEvent.of(assessment.getTitle(), course.getTitle()));
+            NewAssessmentAddedEvent.of(
+                assessment.getTitle(), course.getTitle(), assessment.getAccess()));
       }
       return mapToSummary(assessment);
     } catch (Exception ex) {
@@ -439,10 +448,25 @@ public class AssessmentServiceImpl implements AssessmentService {
           Assessment finalAssessment = assessmentRepository.save(savedAssessment);
           if (resolvedStatus == AssessmentStatus.PUBLISHED) {
             eventPublisher.publishEvent(
-                NewAssessmentAddedEvent.of(finalAssessment.getTitle(), courseTitle));
+                NewAssessmentAddedEvent.of(
+                    finalAssessment.getTitle(), courseTitle, finalAssessment.getAccess()));
           }
           return mapToSummary(finalAssessment);
         });
+  }
+
+  private User resolveUploadedBy(String email) {
+    String resolvedEmail = email;
+    if (resolvedEmail == null || resolvedEmail.isBlank()) {
+      Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+      if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
+        resolvedEmail = auth.getName();
+      }
+    }
+    if (resolvedEmail != null && !resolvedEmail.isBlank()) {
+      return userRepository.findByGmail(resolvedEmail).orElse(null);
+    }
+    return null;
   }
 
   private AssessmentSummaryResponse mapToSummary(Assessment assessment) {

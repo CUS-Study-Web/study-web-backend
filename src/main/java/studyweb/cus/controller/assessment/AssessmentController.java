@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.annotation.activity.LogActivity;
@@ -57,14 +58,16 @@ public class AssessmentController extends AbstractBaseController {
   @PreAuthorize("hasAnyRole('ASSISTANT')")
   @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
   public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> createAssessment(
-      @PathVariable UUID courseId, @Valid @ModelAttribute CreateAssessmentRequest request) {
+      @PathVariable UUID courseId,
+      @Valid @ModelAttribute CreateAssessmentRequest request,
+      @AuthenticationPrincipal String email) {
     log.info(
         "[POST /api/courses/{}/assessments] Creating {} '{}'",
         courseId,
         request.assessmentType(),
         request.title());
     return successSingle(
-        assessmentService.createAssessment(courseId, request), "Assessment created successfully!");
+        assessmentService.createAssessment(courseId, request, email), "Assessment created successfully!");
   }
 
   @GetMapping("/{assessmentId}")
