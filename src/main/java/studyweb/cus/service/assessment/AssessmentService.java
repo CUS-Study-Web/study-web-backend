@@ -10,7 +10,8 @@ import studyweb.cus.dto.response.assessment.AssessmentSummaryResponse;
 
 public interface AssessmentService {
 
-  AssessmentSummaryResponse createAssessment(UUID courseId, CreateAssessmentRequest request);
+  AssessmentSummaryResponse createAssessment(
+      UUID courseId, CreateAssessmentRequest request, String email);
 
   AssessmentDetailResponse getAssessmentDetail(UUID courseId, UUID assessmentId);
 

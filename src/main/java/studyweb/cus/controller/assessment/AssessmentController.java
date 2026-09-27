@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import studyweb.cus.annotation.activity.LogActivity;
@@ -49,20 +50,25 @@ public class AssessmentController extends AbstractBaseController {
     private final AssessmentService assessmentService;
     private final LearnerAssessmentService learnerAssessmentService;
 
-    @LogActivity(action = ActionType.CREATE_ASSESSMENT, description = "#{'EXAM'.equals(#request.assessmentType()?.name()) ? ('Trợ giảng tạo bài kiểm tra \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng tạo bài tập \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@subjectRepository.findById(#request.subjectId()).orElse(null)?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ASSISTANT')")
-    @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
-    public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> createAssessment(
-            @PathVariable UUID courseId, @Valid @ModelAttribute CreateAssessmentRequest request) {
-        log.info(
-                "[POST /api/courses/{}/assessments] Creating {} '{}'",
-                courseId,
-                request.assessmentType(),
-                request.title());
-        return successSingle(
-                assessmentService.createAssessment(courseId, request), "Assessment created successfully!");
-    }
+  @LogActivity(
+      action = ActionType.CREATE_ASSESSMENT,
+      description =
+          "#{'EXAM'.equals(#request.assessmentType()?.name()) ? ('Trợ giảng tạo bài kiểm tra \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"') : ('Trợ giảng tạo bài tập \"' + (#request.title() ?: 'không có tiêu đề') + '\" cho môn học \"' + (@subjectRepository.findById(#request.subjectId()).orElse(null)?.title ?: 'không có tiêu đề') + '\" của khóa học \"' + (@courseRepository.findById(#courseId).orElse(null)?.title ?: 'không có tiêu đề') + '\"')}")
+  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  @PreAuthorize("hasAnyRole('ASSISTANT')")
+  @Operation(summary = "Create Assessment", description = "Create a new homework or exam")
+  public ResponseEntity<SingleResponse<AssessmentSummaryResponse>> createAssessment(
+      @PathVariable UUID courseId,
+      @Valid @ModelAttribute CreateAssessmentRequest request,
+      @AuthenticationPrincipal String email) {
+    log.info(
+        "[POST /api/courses/{}/assessments] Creating {} '{}'",
+        courseId,
+        request.assessmentType(),
+        request.title());
+    return successSingle(
+        assessmentService.createAssessment(courseId, request, email), "Assessment created successfully!");
+  }
 
     @GetMapping("/{assessmentId}")
     @Operation(summary = "Assessment Detail", description = "Get assessment detail with answer keys")

@@ -1,5 +1,6 @@
 package studyweb.cus.event.notification;
 
+import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.NotificationType;
 
 public record NewAssessmentAddedEvent(
@@ -7,9 +8,11 @@ public record NewAssessmentAddedEvent(
     String courseTitle,
     NotificationType type,
     String title,
-    String message) {
+    String message,
+    AccessTier access) {
 
-  public static NewAssessmentAddedEvent of(String assessmentTitle, String courseTitle) {
+  public static NewAssessmentAddedEvent of(
+      String assessmentTitle, String courseTitle, AccessTier access) {
     return new NewAssessmentAddedEvent(
         assessmentTitle,
         courseTitle,
@@ -19,6 +22,7 @@ public record NewAssessmentAddedEvent(
             + assessmentTitle
             + "' đã được thêm vào khóa học '"
             + courseTitle
-            + "'. Hãy thử sức ngay!");
+            + "'. Hãy thử sức ngay!",
+        access != null ? access : AccessTier.PUBLIC);
   }
 }

@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import studyweb.cus.entity.user.Notification;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.NotificationType;
 import studyweb.cus.event.notification.AccountStatusChangedEvent;
 import studyweb.cus.event.notification.NewAssessmentAddedEvent;
@@ -155,13 +156,13 @@ class NotificationEventListenerTest {
   }
 
   @Test
-  @DisplayName("handleNewLessonAdded - broadcasts to VIP learners")
-  void handleNewLessonAdded_Success() {
-    UUID vipId = UUID.randomUUID();
-    when(userRepository.findActiveVipLearnerIds()).thenReturn(List.of(vipId));
-    when(userRepository.getReferenceById(vipId)).thenReturn(User.builder().build());
+  @DisplayName("handleNewLessonAdded - public access broadcasts to all active learners")
+  void handleNewLessonAdded_publicAccess_broadcastsToAllActiveLearners() {
+    UUID user1 = UUID.randomUUID();
+    when(userRepository.findActiveLearnerIds()).thenReturn(List.of(user1));
+    when(userRepository.getReferenceById(user1)).thenReturn(User.builder().build());
 
-    NewLessonAddedEvent event = NewLessonAddedEvent.of("Bài 1: Giới thiệu", "Toán 12");
+    NewLessonAddedEvent event = NewLessonAddedEvent.of("Bài 1: Giới thiệu", "Toán 12", AccessTier.PUBLIC);
     listener.handleNewLessonAdded(event);
 
     verify(notificationRepository).saveAll(batchCaptor.capture());
@@ -171,13 +172,29 @@ class NotificationEventListenerTest {
   }
 
   @Test
-  @DisplayName("handleNewAssessmentAdded - broadcasts to VIP learners")
-  void handleNewAssessmentAdded_Success() {
+  @DisplayName("handleNewLessonAdded - vip access broadcasts only to VIP learners")
+  void handleNewLessonAdded_vipAccess_broadcastsOnlyToActiveVipLearners() {
     UUID vipId = UUID.randomUUID();
     when(userRepository.findActiveVipLearnerIds()).thenReturn(List.of(vipId));
     when(userRepository.getReferenceById(vipId)).thenReturn(User.builder().build());
 
-    NewAssessmentAddedEvent event = NewAssessmentAddedEvent.of("Đề thi thử 1", "Toán 12");
+    NewLessonAddedEvent event = NewLessonAddedEvent.of("Bài 1: Giới thiệu", "Toán 12", AccessTier.VIP);
+    listener.handleNewLessonAdded(event);
+
+    verify(notificationRepository).saveAll(batchCaptor.capture());
+    List<Notification> savedList = batchCaptor.getValue();
+    assertThat(savedList).hasSize(1);
+    assertThat(savedList.get(0).getType()).isEqualTo(NotificationType.NEW_LESSON_ADDED);
+  }
+
+  @Test
+  @DisplayName("handleNewAssessmentAdded - public access broadcasts to all active learners")
+  void handleNewAssessmentAdded_publicAccess_broadcastsToAllActiveLearners() {
+    UUID user1 = UUID.randomUUID();
+    when(userRepository.findActiveLearnerIds()).thenReturn(List.of(user1));
+    when(userRepository.getReferenceById(user1)).thenReturn(User.builder().build());
+
+    NewAssessmentAddedEvent event = NewAssessmentAddedEvent.of("Đề thi thử 1", "Toán 12", AccessTier.PUBLIC);
     listener.handleNewAssessmentAdded(event);
 
     verify(notificationRepository).saveAll(batchCaptor.capture());
@@ -187,13 +204,29 @@ class NotificationEventListenerTest {
   }
 
   @Test
-  @DisplayName("handleNewDocumentAdded - broadcasts to VIP learners")
-  void handleNewDocumentAdded_Success() {
+  @DisplayName("handleNewAssessmentAdded - vip access broadcasts only to VIP learners")
+  void handleNewAssessmentAdded_vipAccess_broadcastsOnlyToActiveVipLearners() {
     UUID vipId = UUID.randomUUID();
     when(userRepository.findActiveVipLearnerIds()).thenReturn(List.of(vipId));
     when(userRepository.getReferenceById(vipId)).thenReturn(User.builder().build());
 
-    NewDocumentAddedEvent event = NewDocumentAddedEvent.of("Cẩm nang ngữ pháp");
+    NewAssessmentAddedEvent event = NewAssessmentAddedEvent.of("Đề thi thử 1", "Toán 12", AccessTier.VIP);
+    listener.handleNewAssessmentAdded(event);
+
+    verify(notificationRepository).saveAll(batchCaptor.capture());
+    List<Notification> savedList = batchCaptor.getValue();
+    assertThat(savedList).hasSize(1);
+    assertThat(savedList.get(0).getType()).isEqualTo(NotificationType.NEW_ASSESSMENT_ADDED);
+  }
+
+  @Test
+  @DisplayName("handleNewDocumentAdded - public access broadcasts to all active learners")
+  void handleNewDocumentAdded_publicAccess_broadcastsToAllActiveLearners() {
+    UUID user1 = UUID.randomUUID();
+    when(userRepository.findActiveLearnerIds()).thenReturn(List.of(user1));
+    when(userRepository.getReferenceById(user1)).thenReturn(User.builder().build());
+
+    NewDocumentAddedEvent event = NewDocumentAddedEvent.of("Cẩm nang ngữ pháp", AccessTier.PUBLIC);
     listener.handleNewDocumentAdded(event);
 
     verify(notificationRepository).saveAll(batchCaptor.capture());
@@ -203,11 +236,27 @@ class NotificationEventListenerTest {
   }
 
   @Test
-  @DisplayName("handleNewFlashcardTopic - broadcasts to VIP learners")
-  void handleNewFlashcardTopic_Success() {
+  @DisplayName("handleNewDocumentAdded - vip access broadcasts only to VIP learners")
+  void handleNewDocumentAdded_vipAccess_broadcastsOnlyToActiveVipLearners() {
     UUID vipId = UUID.randomUUID();
     when(userRepository.findActiveVipLearnerIds()).thenReturn(List.of(vipId));
     when(userRepository.getReferenceById(vipId)).thenReturn(User.builder().build());
+
+    NewDocumentAddedEvent event = NewDocumentAddedEvent.of("Cẩm nang ngữ pháp", AccessTier.VIP);
+    listener.handleNewDocumentAdded(event);
+
+    verify(notificationRepository).saveAll(batchCaptor.capture());
+    List<Notification> savedList = batchCaptor.getValue();
+    assertThat(savedList).hasSize(1);
+    assertThat(savedList.get(0).getType()).isEqualTo(NotificationType.NEW_DOCUMENT_ADDED);
+  }
+
+  @Test
+  @DisplayName("handleNewFlashcardTopic - broadcasts to all active learners")
+  void handleNewFlashcardTopic_Success() {
+    UUID userId = UUID.randomUUID();
+    when(userRepository.findActiveLearnerIds()).thenReturn(List.of(userId));
+    when(userRepository.getReferenceById(userId)).thenReturn(User.builder().build());
 
     NewFlashcardTopicEvent event = NewFlashcardTopicEvent.of("Oxford 3000 Words");
     listener.handleNewFlashcardTopic(event);

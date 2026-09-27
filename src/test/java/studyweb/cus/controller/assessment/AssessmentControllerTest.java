@@ -130,7 +130,7 @@ class AssessmentControllerTest {
             "PDF",
             null,
             0L);
-    when(assessmentService.createAssessment(eq(COURSE_ID), any(CreateAssessmentRequest.class)))
+    when(assessmentService.createAssessment(eq(COURSE_ID), any(CreateAssessmentRequest.class), any()))
         .thenReturn(summary);
 
     mockMvc
@@ -142,6 +142,8 @@ class AssessmentControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.statusCode").value(200))
         .andExpect(jsonPath("$.data.id").value(ASSESSMENT_ID.toString()));
+
+    verify(assessmentService).createAssessment(eq(COURSE_ID), any(CreateAssessmentRequest.class), any());
   }
 
   @Test

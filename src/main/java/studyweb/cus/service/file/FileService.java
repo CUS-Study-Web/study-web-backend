@@ -12,6 +12,8 @@ public interface FileService {
 
   UploadDocumentResult uploadVipEvidenceFile(MultipartFile file);
 
+  UploadDocumentResult uploadQrFile(MultipartFile file);
+
   UploadDocumentResult uploadExerciseFile(MultipartFile file);
 
   UploadDocumentResult uploadExamFile(MultipartFile file);

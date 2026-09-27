@@ -93,6 +93,21 @@ class FileServiceTest {
   }
 
   @Test
+  void uploadQrFileUsesQrFolderAndImageExtensions() {
+    stubPutObject();
+
+    UploadDocumentResult result = fileService.uploadQrFile(file("qr.png", "image/png", 9));
+
+    assertThat(result.fileKey()).startsWith("qr-codes/").endsWith(".png");
+    assertThat(result.fileUrl())
+        .isEqualTo("https://minio.test.invalid:9000/bucket-vmt/" + result.fileKey());
+
+    assertThatThrownBy(() -> fileService.uploadQrFile(file("qr.pdf", "application/pdf", 1)))
+        .isInstanceOf(FileException.class)
+        .hasMessage(FileErrorCode.FILE_EXTENSION_NOT_ALLOWED.message());
+  }
+
+  @Test
   void uploadExerciseFileUsesExerciseFolderAndAllowedExtensions() {
     stubPutObject();
 
