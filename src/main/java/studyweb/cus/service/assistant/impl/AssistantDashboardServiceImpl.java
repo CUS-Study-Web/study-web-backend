@@ -13,6 +13,7 @@ import studyweb.cus.dto.response.assistant.AssistantDashboardResponse;
 import studyweb.cus.dto.response.assistant.AssistantStatResponse;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.ActionType;
+import studyweb.cus.enums.AssessmentType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.user.UserRepository;
@@ -35,34 +36,45 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
 
   @Override
   public AssistantDashboardResponse getDashboardStats(String email) {
-    User currentUser = userRepository.findByGmail(email).orElseThrow(() -> new studyweb.cus.exception.user.UserException(studyweb.cus.exception.user.UserErrorCode.USER_NOT_FOUND));
+    User currentUser = userRepository.findByGmail(email).orElseThrow(
+        () -> new studyweb.cus.exception.user.UserException(studyweb.cus.exception.user.UserErrorCode.USER_NOT_FOUND));
     UUID currentUserId = currentUser.getId();
 
     // Total Learners Stats
     long totalLearners = userRepository.countByRole(UserRole.LEARNER);
-    
-    // We can use Loki for estimating new learners delta
-    long newLearnersDelta = systemManagementService.getActivityLogs(MAX_NEW_LEARNERS_LIMIT, List.of(ActionType.REGISTER), DELTA_DAYS).size();
 
-    // Total Exercises / Exams Stats (Estimating based on all assessments)
-    List<Object[]> examsCounts = assessmentRepository.countExamsByAssistantIds(List.of(currentUserId));
-    long totalAssessments = examsCounts.isEmpty() ? 0 : (long) examsCounts.get(0)[1];
-    
-    long totalExercises = totalAssessments; 
-    long newExercisesDelta = systemManagementService.getActivityLogs(MAX_NEW_ASSESSMENTS_LIMIT, List.of(ActionType.CREATE_ASSESSMENT), DELTA_DAYS, email, null).size();
-    
-    long totalExams = totalAssessments; // Since AssessmentRepository doesn't distinguish in the group by
-    long newExamsDelta = newExercisesDelta; 
+    // We can use Loki for estimating new learners delta
+    long newLearnersDelta = systemManagementService
+        .getActivityLogs(MAX_NEW_LEARNERS_LIMIT, List.of(ActionType.REGISTER), DELTA_DAYS).size();
+
+    // Total Exercises (HOMEWORK) and Total Exams (EXAM) created by current user
+    long totalExercises = assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(
+        currentUserId, AssessmentType.HOMEWORK);
+    long totalExams = assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(
+        currentUserId, AssessmentType.EXAM);
+
+    List<ActivityLogResponse> assessmentLogs = systemManagementService
+        .getActivityLogs(MAX_NEW_ASSESSMENTS_LIMIT, List.of(ActionType.CREATE_ASSESSMENT), DELTA_DAYS, email, null);
+
+    long newExercisesDelta = assessmentLogs.stream()
+        .filter(logItem -> isHomeworkLog(logItem.description()))
+        .count();
+
+    long newExamsDelta = assessmentLogs.stream()
+        .filter(logItem -> isExamLog(logItem.description()))
+        .count();
 
     // Recent Activities via Loki
     List<ActionType> allowedActions = List.of(
         ActionType.CREATE_COURSE, ActionType.UPDATE_COURSE, ActionType.DELETE_COURSE,
         ActionType.CREATE_LESSON, ActionType.UPDATE_LESSON, ActionType.DELETE_LESSON,
-        ActionType.CREATE_ASSESSMENT, ActionType.UPDATE_ASSESSMENT, ActionType.DELETE_ASSESSMENT, ActionType.SUBMIT_ASSESSMENT,
-        ActionType.UPLOAD_DOCUMENT, ActionType.UPDATE_DOCUMENT, ActionType.DELETE_DOCUMENT, ActionType.CREATE_FLASHCARD_TOPIC
-    );
-    List<ActivityLogResponse> activities = systemManagementService.getActivityLogs(RECENT_ACTIVITIES_LIMIT, allowedActions, DELTA_DAYS, null, null);
-    
+        ActionType.CREATE_ASSESSMENT, ActionType.UPDATE_ASSESSMENT, ActionType.DELETE_ASSESSMENT,
+        ActionType.SUBMIT_ASSESSMENT,
+        ActionType.UPLOAD_DOCUMENT, ActionType.UPDATE_DOCUMENT, ActionType.DELETE_DOCUMENT,
+        ActionType.CREATE_FLASHCARD_TOPIC);
+    List<ActivityLogResponse> activities = systemManagementService.getActivityLogs(RECENT_ACTIVITIES_LIMIT,
+        allowedActions, DELTA_DAYS, null, null);
+
     List<AssistantActivityItemResponse> recentActivities = activities.stream()
         .map(this::mapToActivityResponse)
         .toList();
@@ -71,26 +83,24 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
         new AssistantStatResponse(totalLearners, newLearnersDelta),
         new AssistantStatResponse(totalExercises, newExercisesDelta),
         new AssistantStatResponse(totalExams, newExamsDelta),
-        recentActivities
-    );
+        recentActivities);
   }
 
   private AssistantActivityItemResponse mapToActivityResponse(ActivityLogResponse log) {
     String type = mapActionTypeToFeType(log.actionType());
     LocalDateTime createdAt = null;
     if (log.timestamp() != null) {
-        try {
-            createdAt = LocalDateTime.parse(log.timestamp(), DateTimeFormatter.ISO_DATE_TIME);
-        } catch (Exception e) {
-            // ignore
-        }
+      try {
+        createdAt = LocalDateTime.parse(log.timestamp(), DateTimeFormatter.ISO_DATE_TIME);
+      } catch (Exception e) {
+        // ignore
+      }
     }
     return new AssistantActivityItemResponse(
         UUID.randomUUID(), // FE requires ID
         type,
         log.description(),
-        createdAt
-    );
+        createdAt);
   }
 
   private String mapActionTypeToFeType(ActionType actionType) {
@@ -98,10 +108,28 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
       return "other";
     }
     return switch (actionType) {
-      case CREATE_ASSESSMENT, UPDATE_ASSESSMENT, DELETE_ASSESSMENT, UPLOAD_DOCUMENT, UPDATE_DOCUMENT, DELETE_DOCUMENT, CREATE_FLASHCARD_TOPIC -> "material";
+      case CREATE_ASSESSMENT, UPDATE_ASSESSMENT, DELETE_ASSESSMENT, UPLOAD_DOCUMENT, UPDATE_DOCUMENT, DELETE_DOCUMENT,
+          CREATE_FLASHCARD_TOPIC ->
+        "material";
       case CREATE_COURSE, UPDATE_COURSE, DELETE_COURSE, CREATE_LESSON, UPDATE_LESSON, DELETE_LESSON -> "course";
       case SUBMIT_ASSESSMENT, REGISTER, REQUEST_VIP -> "student";
       default -> "other";
     };
+  }
+
+  private boolean isExamLog(String description) {
+    if (description == null) {
+      return false;
+    }
+    String lower = description.toLowerCase();
+    return lower.contains("kiểm tra") || lower.contains("exam") || lower.contains("đề thi");
+  }
+
+  private boolean isHomeworkLog(String description) {
+    if (description == null) {
+      return false;
+    }
+    String lower = description.toLowerCase();
+    return lower.contains("bài tập") || lower.contains("homework") || lower.contains("exercise");
   }
 }
