@@ -53,4 +53,9 @@ public interface SystemManagementService {
 
   Page<ActivityLogResponse> getActivityLogs(
       Integer limit, List<ActionType> actions, Integer days, String gmail, UserRole role);
+
+  default Page<ActivityLogResponse> getActivityLogs(
+      Integer limit, List<ActionType> actions, Integer days) {
+    return getActivityLogs(limit, actions, days, null, null);
+  }
 }

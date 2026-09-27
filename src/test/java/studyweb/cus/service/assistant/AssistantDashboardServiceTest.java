@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import studyweb.cus.dto.response.admin.ActivityLogResponse;
 import studyweb.cus.dto.response.assistant.AssistantDashboardResponse;
 import studyweb.cus.entity.user.User;
@@ -59,10 +60,10 @@ class AssistantDashboardServiceTest {
 
     // Mock Loki queries for deltas
     when(systemManagementService.getActivityLogs(eq(1000), eq(List.of(ActionType.REGISTER)), eq(7)))
-        .thenReturn(List.of(
+        .thenReturn(new PageImpl<>(List.of(
             new ActivityLogResponse("2026-09-22T10:00:00Z", "Learner 1", ActionType.REGISTER, "Reg"),
             new ActivityLogResponse("2026-09-21T10:00:00Z", "Learner 2", ActionType.REGISTER, "Reg")
-        )); // newLearnersDelta = 2
+        ))); // newLearnersDelta = 2
 
     // Mock Repository for total exercises (HOMEWORK) and total exams (EXAM)
     when(assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(mockUserId, AssessmentType.HOMEWORK))
@@ -73,16 +74,16 @@ class AssistantDashboardServiceTest {
     // Mock Loki queries for new exercises/exams
     when(systemManagementService.getActivityLogs(
             eq(100), eq(List.of(ActionType.CREATE_ASSESSMENT)), eq(7), eq(mockEmail), isNull()))
-        .thenReturn(List.of(
+        .thenReturn(new PageImpl<>(List.of(
             new ActivityLogResponse("2026-09-22T10:00:00Z", "test", ActionType.CREATE_ASSESSMENT, "Trợ giảng tạo bài tập 1"),
             new ActivityLogResponse("2026-09-22T10:00:00Z", "test", ActionType.CREATE_ASSESSMENT, "Created exam")
-        ));
+        )));
 
     // Mock Loki queries for recent activities
     when(systemManagementService.getActivityLogs(eq(10), org.mockito.ArgumentMatchers.anyList(), eq(7), isNull(), isNull()))
-        .thenReturn(List.of(
+        .thenReturn(new PageImpl<>(List.of(
             new ActivityLogResponse("2026-09-22T10:00:00Z", "test", ActionType.CREATE_ASSESSMENT, "Created exam")
-        ));
+        )));
 
     // Act
     AssistantDashboardResponse response = dashboardService.getDashboardStats(mockEmail);
@@ -120,7 +121,7 @@ class AssistantDashboardServiceTest {
     when(userRepository.countByRole(UserRole.LEARNER)).thenReturn(0);
 
     when(systemManagementService.getActivityLogs(eq(1000), eq(List.of(ActionType.REGISTER)), eq(7)))
-        .thenReturn(Collections.emptyList());
+        .thenReturn(new PageImpl<>(Collections.emptyList()));
 
     when(assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(mockUserId, AssessmentType.HOMEWORK))
         .thenReturn(0L);
@@ -129,10 +130,10 @@ class AssistantDashboardServiceTest {
 
     when(systemManagementService.getActivityLogs(
             eq(100), eq(List.of(ActionType.CREATE_ASSESSMENT)), eq(7), eq(mockEmail), isNull()))
-        .thenReturn(Collections.emptyList());
+        .thenReturn(new PageImpl<>(Collections.emptyList()));
 
     when(systemManagementService.getActivityLogs(eq(10), org.mockito.ArgumentMatchers.anyList(), eq(7), isNull(), isNull()))
-        .thenReturn(Collections.emptyList());
+        .thenReturn(new PageImpl<>(Collections.emptyList()));
 
     AssistantDashboardResponse response = dashboardService.getDashboardStats(mockEmail);
 
@@ -152,7 +153,7 @@ class AssistantDashboardServiceTest {
     when(userRepository.findByGmail(mockEmail)).thenReturn(Optional.of(mockUser));
     when(userRepository.countByRole(UserRole.LEARNER)).thenReturn(10);
     when(systemManagementService.getActivityLogs(eq(1000), eq(List.of(ActionType.REGISTER)), eq(7)))
-        .thenReturn(Collections.emptyList());
+        .thenReturn(new PageImpl<>(Collections.emptyList()));
 
     when(assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(mockUserId, AssessmentType.HOMEWORK))
         .thenReturn(8L);
@@ -161,15 +162,15 @@ class AssistantDashboardServiceTest {
 
     when(systemManagementService.getActivityLogs(
             eq(100), eq(List.of(ActionType.CREATE_ASSESSMENT)), eq(7), eq(mockEmail), isNull()))
-        .thenReturn(Collections.emptyList());
+        .thenReturn(new PageImpl<>(Collections.emptyList()));
 
     when(systemManagementService.getActivityLogs(eq(10), org.mockito.ArgumentMatchers.anyList(), eq(7), isNull(), isNull()))
-        .thenReturn(List.of(
+        .thenReturn(new PageImpl<>(List.of(
             new ActivityLogResponse("2026-09-22T10:00:00Z", "u1", ActionType.CREATE_COURSE, "Tạo khóa học"),
             new ActivityLogResponse("2026-09-22T10:05:00Z", "u2", ActionType.SUBMIT_ASSESSMENT, "Học viên nộp bài"),
             new ActivityLogResponse("2026-09-22T10:10:00Z", "u3", ActionType.UPLOAD_DOCUMENT, "Tải lên tài liệu"),
             new ActivityLogResponse("2026-09-22T10:15:00Z", "u4", ActionType.LOGIN, "Đăng nhập")
-        ));
+        )));
 
     AssistantDashboardResponse response = dashboardService.getDashboardStats(mockEmail);
 

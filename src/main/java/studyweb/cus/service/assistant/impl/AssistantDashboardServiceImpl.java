@@ -45,7 +45,8 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
 
     // We can use Loki for estimating new learners delta
     long newLearnersDelta = systemManagementService
-        .getActivityLogs(MAX_NEW_LEARNERS_LIMIT, List.of(ActionType.REGISTER), DELTA_DAYS).size();
+        .getActivityLogs(MAX_NEW_LEARNERS_LIMIT, List.of(ActionType.REGISTER), DELTA_DAYS)
+        .getTotalElements();
 
     // Total Exercises (HOMEWORK) and Total Exams (EXAM) created by current user
     long totalExercises = assessmentRepository.countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(
@@ -54,7 +55,8 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
         currentUserId, AssessmentType.EXAM);
 
     List<ActivityLogResponse> assessmentLogs = systemManagementService
-        .getActivityLogs(MAX_NEW_ASSESSMENTS_LIMIT, List.of(ActionType.CREATE_ASSESSMENT), DELTA_DAYS, email, null);
+        .getActivityLogs(MAX_NEW_ASSESSMENTS_LIMIT, List.of(ActionType.CREATE_ASSESSMENT), DELTA_DAYS, email, null)
+        .getContent();
 
     long newExercisesDelta = assessmentLogs.stream()
         .filter(logItem -> isHomeworkLog(logItem.description()))
@@ -73,7 +75,8 @@ public class AssistantDashboardServiceImpl implements AssistantDashboardService 
         ActionType.UPLOAD_DOCUMENT, ActionType.UPDATE_DOCUMENT, ActionType.DELETE_DOCUMENT,
         ActionType.CREATE_FLASHCARD_TOPIC);
     List<ActivityLogResponse> activities = systemManagementService.getActivityLogs(RECENT_ACTIVITIES_LIMIT,
-        allowedActions, DELTA_DAYS, null, null);
+        allowedActions, DELTA_DAYS, null, null)
+        .getContent();
 
     List<AssistantActivityItemResponse> recentActivities = activities.stream()
         .map(this::mapToActivityResponse)
