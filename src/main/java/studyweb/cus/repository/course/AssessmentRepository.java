@@ -42,15 +42,26 @@ public interface AssessmentRepository extends JpaRepository<Assessment, UUID> {
 
   List<Assessment> findByStatusAndCreatedAtBefore(AssessmentStatus status, LocalDateTime createdAt);
 
-  @Query(
-      """
-        SELECT a.uploadedBy.id, COUNT(a)
-        FROM Assessment a
-        WHERE a.uploadedBy.id IN :assistantIds
-          AND a.deletedAt IS NULL
-        GROUP BY a.uploadedBy.id
-        """)
+  @Query("""
+      SELECT a.uploadedBy.id, COUNT(a)
+      FROM Assessment a
+      WHERE a.uploadedBy.id IN :assistantIds
+        AND a.deletedAt IS NULL
+      GROUP BY a.uploadedBy.id
+      """)
   List<Object[]> countExamsByAssistantIds(@Param("assistantIds") List<UUID> assistantIds);
+
+  @Query("""
+      SELECT COUNT(a)
+      FROM Assessment a
+      WHERE a.uploadedBy.id = :uploadedById
+        AND a.assessmentType = :assessmentType
+        AND a.deletedAt IS NULL
+      """)
+  long countByUploadedByIdAndAssessmentTypeAndDeletedAtIsNull(
+      @Param("uploadedById") UUID uploadedById,
+      @Param("assessmentType") AssessmentType assessmentType);
+
 
   default Assessment requireAssessment(UUID id) {
     return findByIdAndDeletedAtIsNull(id)
