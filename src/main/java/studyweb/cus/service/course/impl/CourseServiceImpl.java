@@ -336,7 +336,8 @@ public class CourseServiceImpl implements CourseService {
     recomputeProgressForSubject(course.getId(), subject.getId());
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
     if (course.getStatus() == CourseCreateStatus.PUBLISH) {
-      eventPublisher.publishEvent(NewLessonAddedEvent.of(saved.getTitle(), course.getTitle()));
+      eventPublisher.publishEvent(
+          NewLessonAddedEvent.of(saved.getTitle(), course.getTitle(), saved.getAccess()));
     }
     return courseMapper.toLessonCardResponse(saved);
   }

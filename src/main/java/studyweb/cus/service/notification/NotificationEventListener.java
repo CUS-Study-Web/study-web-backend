@@ -11,6 +11,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import studyweb.cus.entity.user.Notification;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.NotificationType;
 import studyweb.cus.event.notification.AccountStatusChangedEvent;
 import studyweb.cus.event.notification.NewAssessmentAddedEvent;
@@ -94,38 +95,52 @@ public class NotificationEventListener {
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
   public void handleNewLessonAdded(NewLessonAddedEvent event) {
     log.info(
-        "Handling NewLessonAddedEvent: lesson='{}', course='{}'",
+        "Handling NewLessonAddedEvent: lesson='{}', course='{}', access={}",
         event.lessonTitle(),
-        event.courseTitle());
-    List<UUID> activeVipIds = userRepository.findActiveVipLearnerIds();
-    sendToUsers(activeVipIds, event.type(), event.title(), event.message());
+        event.courseTitle(),
+        event.access());
+    List<UUID> targetUserIds =
+        event.access() == AccessTier.VIP
+            ? userRepository.findActiveVipLearnerIds()
+            : userRepository.findActiveLearnerIds();
+    sendToUsers(targetUserIds, event.type(), event.title(), event.message());
   }
 
   @Async("notificationExecutor")
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
   public void handleNewAssessmentAdded(NewAssessmentAddedEvent event) {
     log.info(
-        "Handling NewAssessmentAddedEvent: assessment='{}', course='{}'",
+        "Handling NewAssessmentAddedEvent: assessment='{}', course='{}', access={}",
         event.assessmentTitle(),
-        event.courseTitle());
-    List<UUID> activeVipIds = userRepository.findActiveVipLearnerIds();
-    sendToUsers(activeVipIds, event.type(), event.title(), event.message());
+        event.courseTitle(),
+        event.access());
+    List<UUID> targetUserIds =
+        event.access() == AccessTier.VIP
+            ? userRepository.findActiveVipLearnerIds()
+            : userRepository.findActiveLearnerIds();
+    sendToUsers(targetUserIds, event.type(), event.title(), event.message());
   }
 
   @Async("notificationExecutor")
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
   public void handleNewDocumentAdded(NewDocumentAddedEvent event) {
-    log.info("Handling NewDocumentAddedEvent: document='{}'", event.documentTitle());
-    List<UUID> activeVipIds = userRepository.findActiveVipLearnerIds();
-    sendToUsers(activeVipIds, event.type(), event.title(), event.message());
+    log.info(
+        "Handling NewDocumentAddedEvent: document='{}', access={}",
+        event.documentTitle(),
+        event.accessTier());
+    List<UUID> targetUserIds =
+        event.accessTier() == AccessTier.VIP
+            ? userRepository.findActiveVipLearnerIds()
+            : userRepository.findActiveLearnerIds();
+    sendToUsers(targetUserIds, event.type(), event.title(), event.message());
   }
 
   @Async("notificationExecutor")
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
   public void handleNewFlashcardTopic(NewFlashcardTopicEvent event) {
     log.info("Handling NewFlashcardTopicEvent: topic='{}'", event.topicName());
-    List<UUID> activeVipIds = userRepository.findActiveVipLearnerIds();
-    sendToUsers(activeVipIds, event.type(), event.title(), event.message());
+    List<UUID> activeLearnerIds = userRepository.findActiveLearnerIds();
+    sendToUsers(activeLearnerIds, event.type(), event.title(), event.message());
   }
 
   private void sendToUser(UUID userId, NotificationType type, String title, String message) {

@@ -96,7 +96,8 @@ public class DocumentServiceImpl implements DocumentService {
       }
 
       log.info("Document created successfully with ID {}", savedDocument.getId());
-      eventPublisher.publishEvent(NewDocumentAddedEvent.of(savedDocument.getTitle()));
+      eventPublisher.publishEvent(
+          NewDocumentAddedEvent.of(savedDocument.getTitle(), savedDocument.getAccessTier()));
       return documentMapper.toResponse(savedDocument);
     } catch (Exception ex) {
       log.warn(
