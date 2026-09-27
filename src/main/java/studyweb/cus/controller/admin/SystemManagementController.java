@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -378,7 +379,7 @@ public class SystemManagementController extends AbstractBaseController {
   @Operation(
       summary = "Get Recent Activity Logs",
       description = "Retrieve recent raw activity logs from Loki for admin dashboard and activity history")
-  public ResponseEntity<SingleResponse<List<ActivityLogResponse>>> getActivityLogs(
+  public ResponseEntity<PageResponse<ActivityLogResponse>> getActivityLogs(
       @RequestParam(required = false, defaultValue = "20") Integer limit,
       @RequestParam(required = false) List<ActionType> actions,
       @RequestParam(required = false, defaultValue = "7") Integer days,
@@ -391,7 +392,7 @@ public class SystemManagementController extends AbstractBaseController {
         days,
         gmail,
         role);
-    return successSingle(
+    return paging(
         systemManagementService.getActivityLogs(limit, actions, days, gmail, role),
         "Activity logs fetched successfully!");
   }

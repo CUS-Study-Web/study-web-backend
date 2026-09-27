@@ -51,11 +51,6 @@ public interface SystemManagementService {
 
   MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions);
 
-  List<ActivityLogResponse> getActivityLogs(
+  Page<ActivityLogResponse> getActivityLogs(
       Integer limit, List<ActionType> actions, Integer days, String gmail, UserRole role);
-
-  default List<ActivityLogResponse> getActivityLogs(
-      Integer limit, List<ActionType> actions, Integer days) {
-    return getActivityLogs(limit, actions, days, null, null);
-  }
 }

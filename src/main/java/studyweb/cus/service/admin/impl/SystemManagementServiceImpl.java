@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -688,7 +690,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   }
 
   @Override
-  public List<ActivityLogResponse> getActivityLogs(
+  public Page<ActivityLogResponse> getActivityLogs(
       Integer limit, List<ActionType> actions, Integer days, String gmail, UserRole role) {
     if (days == null || days <= 0) {
       throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Days must be positive");
@@ -709,7 +711,7 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     if (role != null) {
       roleGmails = userRepository.findGmailsByRole(role);
       if (roleGmails.isEmpty()) {
-        return List.of();
+        return new PageImpl<>(List.of(), PageRequest.of(0, queryLimit), 0);
       }
     }
 
@@ -831,10 +833,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
           return b.timestamp().compareTo(a.timestamp());
         });
 
-    if (logList.size() > queryLimit) {
-      return logList.subList(0, queryLimit);
-    }
-    return logList;
+    List<ActivityLogResponse> resultLogs =
+        logList.size() > queryLimit ? logList.subList(0, queryLimit) : logList;
+    return new PageImpl<>(resultLogs, PageRequest.of(0, queryLimit), resultLogs.size());
   }
 
   private Map<String, String> resolveUserNames(Set<String> rawUserIds) {
