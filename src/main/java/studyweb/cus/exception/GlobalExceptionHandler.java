@@ -126,8 +126,16 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(AccessDeniedException.class)
-  public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
-    log.warn("Access denied: {}", ex.getMessage());
+  public ResponseEntity<ErrorResponse> handleAccessDenied(
+      AccessDeniedException ex, 
+      jakarta.servlet.http.HttpServletRequest request) {
+      
+    org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    String username = (auth != null) ? auth.getName() : "anonymous";
+    String authorities = (auth != null) ? auth.getAuthorities().toString() : "[]";
+    
+    log.warn("Access denied for {} (Authorities: {}) requesting [{} {}]: {}", 
+        username, authorities, request.getMethod(), request.getRequestURI(), ex.getMessage());
     ErrorResponse response = new ErrorResponse(
         SystemErrorCode.FORBIDDEN.httpStatus().value(),
         SystemErrorCode.FORBIDDEN.message(),

@@ -36,6 +36,7 @@ public class ActivityLogAspect {
   private static final Logger activityLogger = LoggerFactory.getLogger("ACTIVITY_LOGGER");
 
   private final ApplicationContext applicationContext;
+  private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
   private final ExpressionParser parser = new SpelExpressionParser();
   private final ParserContext templateContext = new TemplateParserContext();
   private final ParameterNameDiscoverer paramDiscoverer = new DefaultParameterNameDiscoverer();
@@ -70,7 +71,15 @@ public class ActivityLogAspect {
       MDC.put("user_id", userId);
       MDC.put("action_type", logActivity.action().name());
 
-      activityLogger.info(description);
+      com.fasterxml.jackson.databind.node.ObjectNode node = objectMapper.createObjectNode();
+      node.put("timestamp", java.time.OffsetDateTime.now().format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+      node.put("userId", userId);
+      node.put("actionType", logActivity.action().name());
+      node.put("description", description);
+
+      activityLogger.info(objectMapper.writeValueAsString(node));
+    } catch (Exception e) {
+      log.error("Failed to serialize activity log", e);
     } finally {
       MDC.clear();
     }
