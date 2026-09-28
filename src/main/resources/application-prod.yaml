@@ -13,6 +13,8 @@ spring:
   flyway:
     enabled: false
 logging:
+  loki:
+    url: ${LOKI_URL}
   file:
     name: logs/backend.log
   logback:

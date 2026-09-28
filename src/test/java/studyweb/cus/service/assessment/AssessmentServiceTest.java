@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ import studyweb.cus.entity.course.AnswerKey;
 import studyweb.cus.entity.course.Assessment;
 import studyweb.cus.entity.course.Course;
 import studyweb.cus.entity.course.Subject;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.AssessmentFileType;
@@ -60,8 +62,10 @@ import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.CourseRepository;
 import studyweb.cus.repository.course.SubjectRepository;
+import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.assessment.impl.AssessmentServiceImpl;
 import studyweb.cus.service.file.FileService;
+import studyweb.cus.event.notification.NewAssessmentAddedEvent;
 import studyweb.cus.utils.TestFixtures;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,6 +80,8 @@ class AssessmentServiceTest {
   @Mock private FileService fileService;
   @Mock private ObjectMapper objectMapper;
   @Mock private TransactionTemplate transactionTemplate;
+  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
+  @Mock private UserRepository userRepository;
 
   @InjectMocks private AssessmentServiceImpl service;
 
@@ -153,7 +159,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+    assertThatThrownBy(() -> service.createAssessment(courseId, request, null))
         .isInstanceOf(AssessmentException.class)
         .satisfies(
             ex ->
@@ -195,7 +201,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+    assertThatThrownBy(() -> service.createAssessment(courseId, request, null))
         .isInstanceOf(RuntimeException.class)
         .hasMessageContaining("S3 Connection Timeout");
 
@@ -240,11 +246,95 @@ class AssessmentServiceTest {
             null,
             null);
 
-    AssessmentSummaryResponse result = service.createAssessment(courseId, request);
+    AssessmentSummaryResponse result = service.createAssessment(courseId, request, null);
 
     assertThat(result.title()).isEqualTo("Midterm Exam");
     verify(assessmentRepository).saveAndFlush(any(Assessment.class));
     verify(assessmentRepository).save(any(Assessment.class));
+  }
+
+  @Test
+  void createAssessment_withAuthenticatedUser_setsUploadedBy() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    User uploader = TestFixtures.createMockUser(UUID.randomUUID(), "assistant@example.com");
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(userRepository.findByGmail("assistant@example.com")).thenReturn(Optional.of(uploader));
+    when(fileService.uploadExamFile(any()))
+        .thenReturn(new UploadDocumentResult(100L, "key", "exams/exam.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class)))
+        .thenAnswer(
+            inv -> {
+              Assessment saved = inv.getArgument(0);
+              saved.setId(assessmentId);
+              return saved;
+            });
+    when(assessmentRepository.save(any(Assessment.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
+
+    CreateAssessmentRequest request =
+        new CreateAssessmentRequest(
+            AssessmentType.EXAM,
+            "Midterm Exam",
+            40,
+            null,
+            null,
+            60,
+            100,
+            AccessTier.PUBLIC,
+            pdfFile(),
+            null,
+            null,
+            null);
+
+    service.createAssessment(courseId, request, "assistant@example.com");
+
+    ArgumentCaptor<Assessment> captor = ArgumentCaptor.forClass(Assessment.class);
+    verify(assessmentRepository).save(captor.capture());
+    assertThat(captor.getValue().getUploadedBy()).isNotNull();
+    assertThat(captor.getValue().getUploadedBy().getGmail()).isEqualTo("assistant@example.com");
+  }
+
+  @Test
+  void createAssessment_vipExam_publishesEventWithVipAccess() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(fileService.uploadExamFile(any()))
+        .thenReturn(new UploadDocumentResult(100L, "key", "exams/exam.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class)))
+        .thenAnswer(
+            inv -> {
+              Assessment saved = inv.getArgument(0);
+              saved.setId(assessmentId);
+              return saved;
+            });
+    when(assessmentRepository.save(any(Assessment.class)))
+        .thenAnswer(inv -> inv.getArgument(0));
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
+
+    CreateAssessmentRequest request =
+        new CreateAssessmentRequest(
+            AssessmentType.EXAM,
+            "VIP Exam",
+            40,
+            null,
+            null,
+            60,
+            100,
+            AccessTier.VIP,
+            pdfFile(),
+            null,
+            AssessmentStatus.PUBLISHED,
+            null);
+
+    service.createAssessment(courseId, request, null);
+
+    ArgumentCaptor<NewAssessmentAddedEvent> captor =
+        ArgumentCaptor.forClass(NewAssessmentAddedEvent.class);
+    verify(eventPublisher).publishEvent(captor.capture());
+    assertThat(captor.getValue().access()).isEqualTo(AccessTier.VIP);
   }
 
   @Test
@@ -267,7 +357,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+    assertThatThrownBy(() -> service.createAssessment(courseId, request, null))
         .isInstanceOf(AssessmentException.class)
         .satisfies(
             ex ->
@@ -314,7 +404,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    service.createAssessment(courseId, request);
+    service.createAssessment(courseId, request, null);
 
     ArgumentCaptor<Assessment> captor = ArgumentCaptor.forClass(Assessment.class);
     verify(assessmentRepository).save(captor.capture());
@@ -356,7 +446,7 @@ class AssessmentServiceTest {
             AssessmentStatus.PUBLISHED,
             null);
 
-    service.createAssessment(courseId, request);
+    service.createAssessment(courseId, request, null);
 
     ArgumentCaptor<Assessment> captor = ArgumentCaptor.forClass(Assessment.class);
     verify(assessmentRepository).save(captor.capture());
@@ -386,7 +476,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+    assertThatThrownBy(() -> service.createAssessment(courseId, request, null))
         .isInstanceOf(CourseException.class)
         .satisfies(
             ex ->
@@ -436,7 +526,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    service.createAssessment(courseId, request);
+    service.createAssessment(courseId, request, null);
 
     verify(answerKeyRepository).saveAll(anyList());
   }
@@ -471,7 +561,7 @@ class AssessmentServiceTest {
             null,
             null);
 
-    assertThatThrownBy(() -> service.createAssessment(courseId, request))
+    assertThatThrownBy(() -> service.createAssessment(courseId, request, null))
         .isInstanceOf(FileException.class)
         .satisfies(
             ex ->
@@ -796,7 +886,7 @@ class AssessmentServiceTest {
         new CreateAssessmentRequest(
             AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, docxFile, null, null, null);
 
-    service.createAssessment(courseId, request);
+    service.createAssessment(courseId, request, null);
 
     ArgumentCaptor<Assessment> captor = ArgumentCaptor.forClass(Assessment.class);
     verify(assessmentRepository).save(captor.capture());
@@ -824,10 +914,99 @@ class AssessmentServiceTest {
         new CreateAssessmentRequest(
             AssessmentType.EXAM, "Exam", 10, null, null, 30, 100, null, xlsxFile, null, null, null);
 
-    service.createAssessment(courseId, request);
+    service.createAssessment(courseId, request, null);
 
     ArgumentCaptor<Assessment> captor = ArgumentCaptor.forClass(Assessment.class);
     verify(assessmentRepository).save(captor.capture());
     assertThat(captor.getValue().getFileType()).isEqualTo(AssessmentFileType.XLSX);
+  }
+
+  // ---- Notification Event Tests ----
+
+  @Test
+  void createAssessment_statusDraft_doesNotPublishEvent() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(fileService.uploadExamFile(any()))
+        .thenReturn(new UploadDocumentResult(100L, "key", "exams/exam.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class)))
+        .thenAnswer(inv -> {
+          Assessment saved = inv.getArgument(0);
+          saved.setId(assessmentId);
+          return saved;
+        });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
+
+    CreateAssessmentRequest request =
+        new CreateAssessmentRequest(
+            AssessmentType.EXAM, "Exam", 40, null, null, 60, 100, AccessTier.PUBLIC, pdfFile(), null, AssessmentStatus.DRAFT, null);
+
+    service.createAssessment(courseId, request, null);
+
+    verify(eventPublisher, never()).publishEvent(any());
+  }
+
+  @Test
+  void createAssessment_statusPublished_publishesNewAssessmentAddedEvent() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(fileService.uploadExamFile(any()))
+        .thenReturn(new UploadDocumentResult(100L, "key", "exams/exam.pdf"));
+    when(assessmentRepository.saveAndFlush(any(Assessment.class)))
+        .thenAnswer(inv -> {
+          Assessment saved = inv.getArgument(0);
+          saved.setId(assessmentId);
+          return saved;
+        });
+    when(assessmentRepository.save(any(Assessment.class))).thenAnswer(inv -> inv.getArgument(0));
+    when(assessmentMapper.toSummary(any(Assessment.class), anyLong()))
+        .thenReturn(summaryResponse());
+
+    CreateAssessmentRequest request =
+        new CreateAssessmentRequest(
+            AssessmentType.EXAM, "Exam", 40, null, null, 60, 100, AccessTier.PUBLIC, pdfFile(), null, AssessmentStatus.PUBLISHED, null);
+
+    service.createAssessment(courseId, request, null);
+
+    verify(eventPublisher).publishEvent(any(NewAssessmentAddedEvent.class));
+  }
+
+  @Test
+  void updateAssessment_statusTransitionsFromDraftToPublished_publishesNewAssessmentAddedEvent() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, course);
+    assessment.setStatus(AssessmentStatus.DRAFT);
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
+
+    UpdateAssessmentRequest request =
+        new UpdateAssessmentRequest(
+            null, null, null, null, null, null, null, null, null, AssessmentStatus.PUBLISHED, null);
+
+    service.updateAssessment(courseId, assessmentId, request);
+
+    assertThat(assessment.getStatus()).isEqualTo(AssessmentStatus.PUBLISHED);
+    verify(eventPublisher).publishEvent(any(NewAssessmentAddedEvent.class));
+  }
+
+  @Test
+  void updateAssessment_statusRemainsDraft_doesNotPublishEvent() {
+    Course course = TestFixtures.createMockCourse(courseId);
+    Assessment assessment = TestFixtures.createMockExam(assessmentId, course);
+    assessment.setStatus(AssessmentStatus.DRAFT);
+    when(courseRepository.requireCourse(courseId)).thenReturn(course);
+    when(assessmentRepository.requireAssessment(assessmentId)).thenReturn(assessment);
+    when(assessmentMapper.toSummary(eq(assessment), anyLong())).thenReturn(summaryResponse());
+
+    UpdateAssessmentRequest request =
+        new UpdateAssessmentRequest(
+            null, null, null, null, null, null, null, null, null, AssessmentStatus.DRAFT, null);
+
+    service.updateAssessment(courseId, assessmentId, request);
+
+    verify(eventPublisher, never()).publishEvent(any());
   }
 }

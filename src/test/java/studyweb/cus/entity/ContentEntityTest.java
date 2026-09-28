@@ -11,6 +11,7 @@ import studyweb.cus.entity.content.HomepageContent;
 import studyweb.cus.entity.content.PricingPageContent;
 import studyweb.cus.entity.content.VipFeature;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.CtaTarget;
 import studyweb.cus.enums.FeatureIconAccess;
 import studyweb.cus.enums.FooterCategory;
 
@@ -29,7 +30,7 @@ class ContentEntityTest {
             .headline1("Learn with the Best")
             .headline2("Achieve Your Dreams")
             .ctaBtn1Name("Get Started")
-            .ctaBtn1Url("/register")
+            .ctaBtn1Target(CtaTarget.REGISTER)
             .updatedBy(admin)
             .build();
 

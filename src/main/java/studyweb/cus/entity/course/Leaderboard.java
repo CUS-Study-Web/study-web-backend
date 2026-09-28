@@ -1,13 +1,16 @@
 package studyweb.cus.entity.course;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,9 +19,7 @@ import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
 
 @Entity
-@Table(
-    name = "leaderboard",
-    indexes = {@Index(name = "idx_leaderboard_course", columnList = "course_id")})
+@Table(name = "leaderboard", indexes = { @Index(name = "idx_leaderboard_course", columnList = "course_id") })
 @Getter
 @Setter
 @NoArgsConstructor
@@ -45,4 +46,7 @@ public class Leaderboard extends AbstractBaseEntity {
 
   @Column(name = "university", length = 255)
   private String university;
+
+  @OneToMany(mappedBy = "achievement", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<AchievementScore> scores;
 }

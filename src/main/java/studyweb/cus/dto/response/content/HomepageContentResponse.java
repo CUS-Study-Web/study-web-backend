@@ -1,0 +1,22 @@
+package studyweb.cus.dto.response.content;
+
+import studyweb.cus.enums.CtaTarget;
+
+public record HomepageContentResponse(
+    String badgeTitle,
+    String headline1,
+    String headline2,
+    String description,
+    String ctaBtn1Name,
+    CtaTarget ctaBtn1Target,
+    String ctaBtn2Name,
+    CtaTarget ctaBtn2Target,
+    String mainImageUrl,
+    String stat1Number,
+    String stat1Desc,
+    String stat2Number,
+    String stat2Desc,
+    String student1Avatar,
+    String student2Avatar,
+    String student3Avatar,
+    String studentStatsDesc) {}

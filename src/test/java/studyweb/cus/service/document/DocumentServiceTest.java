@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -47,7 +48,7 @@ import studyweb.cus.exception.document.DocumentException;
 import studyweb.cus.mapper.document.DocumentMapper;
 import studyweb.cus.repository.badge.BadgeRepository;
 import studyweb.cus.repository.document.DocumentBadgeRepository;
-import studyweb.cus.repository.document.DocumentRepository;
+import studyweb.cus.repository.document.DocumentDataAccessor;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.document.impl.DocumentServiceImpl;
 import studyweb.cus.service.file.FileService;
@@ -55,15 +56,16 @@ import studyweb.cus.service.file.FileService;
 @ExtendWith(MockitoExtension.class)
 class DocumentServiceTest {
 
-  @Mock private DocumentRepository documentRepository;
+  @Mock private DocumentDataAccessor documentRepository;
   @Mock private DocumentBadgeRepository documentBadgeRepository;
   @Mock private BadgeRepository badgeRepository;
   @Mock private UserRepository userRepository;
   @Mock private FileService fileService;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   private DocumentMapper documentMapper = Mappers.getMapper(DocumentMapper.class);
 
-  private DocumentService documentService;
+  private DocumentServiceImpl documentService;
 
   @Captor private ArgumentCaptor<Document> documentCaptor;
 
@@ -83,7 +85,8 @@ class DocumentServiceTest {
             badgeRepository,
             userRepository,
             fileService,
-            documentMapper);
+            documentMapper,
+            eventPublisher);
 
     sampleBadge = Badge.builder().name("Toán").build();
     sampleBadge.setId(UUID.randomUUID());
@@ -503,7 +506,8 @@ class DocumentServiceTest {
       Pageable pageable = PageRequest.of(0, 10);
       Page<Document> page = new PageImpl<>(List.of(vipDocument), pageable, 1);
       when(documentRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
-      when(userRepository.findByGmail("assistant@gmail.com")).thenReturn(Optional.of(assistantUser));
+      when(userRepository.findByGmail("assistant@gmail.com"))
+          .thenReturn(Optional.of(assistantUser));
 
       Page<DocumentResponse> result =
           documentService.listDocuments(null, null, null, null, pageable, "assistant@gmail.com");
@@ -523,14 +527,14 @@ class DocumentServiceTest {
           documentService.listDocumentsForGuest(null, null, null, pageable);
 
       assertThat(result.getContent()).hasSize(1);
-      DocumentGuestResponse guestDoc = result.getContent().get(0);
-      assertThat(guestDoc.id()).isEqualTo(publicDocument.getId());
-      assertThat(guestDoc.title()).isEqualTo(publicDocument.getTitle());
-      assertThat(guestDoc.description()).isEqualTo(publicDocument.getDescription());
-      assertThat(guestDoc.numPages()).isEqualTo(publicDocument.getNumPages());
-      assertThat(guestDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
-      assertThat(guestDoc.accessTier()).isEqualTo(publicDocument.getAccessTier());
-      assertThat(guestDoc.badges()).isNotNull();
+      DocumentGuestResponse actualDoc = result.getContent().get(0);
+      assertThat(actualDoc.id()).isEqualTo(publicDocument.getId());
+      assertThat(actualDoc.title()).isEqualTo(publicDocument.getTitle());
+      assertThat(actualDoc.description()).isEqualTo(publicDocument.getDescription());
+      assertThat(actualDoc.numPages()).isEqualTo(publicDocument.getNumPages());
+      assertThat(actualDoc.downloadCount()).isEqualTo(publicDocument.getDownloadCount());
+      assertThat(actualDoc.accessTier()).isEqualTo(publicDocument.getAccessTier());
+      assertThat(actualDoc.badges()).isNotNull();
     }
 
     @Test

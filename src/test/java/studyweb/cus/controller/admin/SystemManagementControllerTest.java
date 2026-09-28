@@ -51,12 +51,14 @@ import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -84,7 +86,11 @@ import studyweb.cus.service.admin.SystemManagementService;
   ResponseFactory.class,
   SystemManagementControllerTest.TestConfig.class
 })
-@TestPropertySource(properties = {"cors.allowed-origins=http://localhost:3000"})
+@TestPropertySource(
+    properties = {
+      "cors.allowed-origins=http://localhost:3000",
+      "logging.loki.url=http://localhost:3100"
+    })
 class SystemManagementControllerTest {
 
   @TestConfiguration
@@ -144,7 +150,8 @@ class SystemManagementControllerTest {
         "Kích hoạt VIP 1 năm",
         LocalDate.of(2026, 8, 18),
         LocalDate.of(2027, 8, 18),
-        "https://cdn.studyweb.edu/avatars/nguyenvana.png");
+        "https://cdn.studyweb.edu/avatars/nguyenvana.png",
+        100);
   }
 
   private CreateAssistantRequest sampleCreateAssistantRequest() {
@@ -161,11 +168,6 @@ class SystemManagementControllerTest {
         UserStatus.ACTIVE,
         12,
         "Hôm nay, 10:42",
-        List.of(
-            new AssistantActivityResponse(
-                UUID.randomUUID(), "Đăng tải đề thi V-ACT mã đề 007", "Hôm nay, 10:42"),
-            new AssistantActivityResponse(
-                UUID.randomUUID(), "Tạo bài học mới: Tư duy logic nâng cao", "Hôm qua, 14:20")),
         "https://cdn.studyweb.edu/avatars/assistant1.png");
   }
 
@@ -181,6 +183,9 @@ class SystemManagementControllerTest {
         userId,
         "Nguyễn Văn A",
         "learner@studyweb.edu",
+        "0901234567",
+        LocalDate.of(2000, 1, 1),
+        "https://cdn.studyweb.edu/evidence/transfer.png",
         "https://cdn.studyweb.edu/avatars/nguyenvana.png",
         "React Masterclass",
         "Cần kích hoạt VIP để học chuyên sâu",
@@ -708,6 +713,7 @@ class SystemManagementControllerTest {
           .andExpect(
               jsonPath("$.data[0].avatarUrl")
                   .value("https://cdn.studyweb.edu/avatars/nguyenvana.png"))
+          .andExpect(jsonPath("$.data[0].courseMaxScore").value(100))
           .andExpect(jsonPath("$.paging.total").value(1));
 
       verify(systemManagementService)
@@ -773,9 +779,6 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data[0].name").value("Trần Minh Hiếu"))
           .andExpect(jsonPath("$.data[0].status").value("ACTIVE"))
           .andExpect(jsonPath("$.data[0].numExams").value(12))
-          .andExpect(
-              jsonPath("$.data[0].recentActivities[0].description")
-                  .value("Đăng tải đề thi V-ACT mã đề 007"))
           .andExpect(
               jsonPath("$.data[0].avatarUrl")
                   .value("https://cdn.studyweb.edu/avatars/assistant1.png"))
@@ -1211,10 +1214,32 @@ class SystemManagementControllerTest {
     }
 
     @Test
-    @DisplayName("Non-ADMIN roles (ASSISTANT) are blocked -> 403 FORBIDDEN on all endpoints")
+    @DisplayName("ASSISTANT role can access read-only learner endpoints -> 200 OK")
     @WithMockUser(roles = "ASSISTANT")
-    void assistantRole_blockedWith403() throws Exception {
-      mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isForbidden());
+    void assistantRole_readOnlyLearnerEndpoints_authorized200() throws Exception {
+      when(systemManagementService.listLearners(isNull(), isNull(), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of()));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.NORMAL, null))
+          .thenReturn(new UserCountResponse(10));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, UserTier.VIP, null))
+          .thenReturn(new UserCountResponse(5));
+      when(systemManagementService.getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE))
+          .thenReturn(new UserCountResponse(2));
+
+      mockMvc.perform(get("/api/system-management/learners")).andExpect(status().isOk());
+      mockMvc
+          .perform(get("/api/system-management/learners/counts/normal"))
+          .andExpect(status().isOk());
+      mockMvc.perform(get("/api/system-management/learners/counts/vip")).andExpect(status().isOk());
+      mockMvc
+          .perform(get("/api/system-management/learners/counts/locked"))
+          .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("ASSISTANT role is blocked from mutations and admin endpoints -> 403 FORBIDDEN")
+    @WithMockUser(roles = "ASSISTANT")
+    void assistantRole_mutationsAndAdminEndpoints_blockedWith403() throws Exception {
       mockMvc.perform(get("/api/system-management/assistants")).andExpect(status().isForbidden());
       mockMvc
           .perform(
@@ -1231,6 +1256,10 @@ class SystemManagementControllerTest {
       mockMvc
           .perform(patch("/api/system-management/assistants/{id}/ban", ASSISTANT_ID))
           .andExpect(status().isForbidden());
+      mockMvc
+          .perform(get("/api/system-management/assistants/counts"))
+          .andExpect(status().isForbidden());
+
       mockMvc
           .perform(patch("/api/system-management/learners/{id}/lock", LEARNER_ID))
           .andExpect(status().isForbidden());
@@ -1252,7 +1281,11 @@ class SystemManagementControllerTest {
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(sampleUpdateAccountRequest())))
           .andExpect(status().isForbidden());
+
       mockMvc.perform(get("/api/system-management/vip-requests")).andExpect(status().isForbidden());
+      mockMvc
+          .perform(get("/api/system-management/vip-requests/counts"))
+          .andExpect(status().isForbidden());
       mockMvc
           .perform(patch("/api/system-management/vip-requests/{id}/approve", VIP_REQUEST_ID_1))
           .andExpect(status().isForbidden());
@@ -1260,7 +1293,9 @@ class SystemManagementControllerTest {
           .perform(patch("/api/system-management/vip-requests/{id}/disapprove", VIP_REQUEST_ID_1))
           .andExpect(status().isForbidden());
 
-      verify(systemManagementService, never()).listLearners(any(), any(), any());
+      mockMvc.perform(get("/api/system-management/stats/daily")).andExpect(status().isForbidden());
+      mockMvc.perform(get("/api/system-management/stats/monthly")).andExpect(status().isForbidden());
+
       verify(systemManagementService, never()).switchUserStatus(any(), any(), any());
       verify(systemManagementService, never()).listAssistants(any(), any(), any());
       verify(systemManagementService, never()).createAssistant(any());
@@ -1269,6 +1304,8 @@ class SystemManagementControllerTest {
       verify(systemManagementService, never()).getVipRequests(any(), any(), any());
       verify(systemManagementService, never()).approveVipRequest(any());
       verify(systemManagementService, never()).disapproveVipRequest(any());
+      verify(systemManagementService, never()).getDailyStats(any(), any(), any());
+      verify(systemManagementService, never()).getMonthlyStats(any(), any());
     }
 
     @Test
@@ -1465,8 +1502,7 @@ class SystemManagementControllerTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/learners/counts/vip")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/learners/counts/vip").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("VIP learners count fetched successfully!"))
@@ -1483,8 +1519,7 @@ class SystemManagementControllerTest {
 
       mockMvc
           .perform(
-              get("/api/system-management/assistants/counts")
-                  .accept(MediaType.APPLICATION_JSON))
+              get("/api/system-management/assistants/counts").accept(MediaType.APPLICATION_JSON))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.statusCode").value(200))
           .andExpect(jsonPath("$.message").value("Assistants count fetched successfully!"))
@@ -1509,6 +1544,140 @@ class SystemManagementControllerTest {
           .andExpect(jsonPath("$.data.count").value(2));
 
       verify(systemManagementService).getUserCount(UserRole.LEARNER, null, UserStatus.INACTIVE);
+    }
+  }
+
+  // =========================================================================
+  // 14. STATS ENDPOINTS - SYSTEM MANAGEMENT CONTROLLER TESTS
+  // =========================================================================
+  @Nested
+  @DisplayName("14. Stats Endpoints - Controller Tests")
+  class StatsEndpointsTests {
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("GET /stats/daily -> unauthenticated returns 401 Unauthorized")
+    void getDailyStats_unauthenticated_returns401() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "LEARNER")
+    @DisplayName("GET /stats/daily -> non-admin role returns 403 Forbidden")
+    void getDailyStats_learnerRole_returns403() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/daily -> admin with params returns 200 OK and DailyStatsResponse")
+    void getDailyStats_adminWithParams_returns200() throws Exception {
+      LocalDate endDate = LocalDate.of(2026, 7, 23);
+      LocalDate startDate = endDate.minusDays(6);
+      DailyStatsResponse response = new DailyStatsResponse(startDate, endDate, 7, List.of());
+
+      when(systemManagementService.getDailyStats(
+              eq(endDate), eq(7), eq(List.of(ActionType.LOGIN, ActionType.REGISTER))))
+          .thenReturn(response);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/stats/daily")
+                  .param("date", "2026-07-23")
+                  .param("days", "7")
+                  .param("actions", "LOGIN,REGISTER")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Daily stats fetched successfully!"))
+          .andExpect(jsonPath("$.data.totalDays").value(7))
+          .andExpect(jsonPath("$.data.startDate").value("2026-07-17"))
+          .andExpect(jsonPath("$.data.endDate").value("2026-07-23"));
+
+      verify(systemManagementService)
+          .getDailyStats(eq(endDate), eq(7), eq(List.of(ActionType.LOGIN, ActionType.REGISTER)));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/daily -> admin default params returns 200 OK")
+    void getDailyStats_adminDefaultParams_returns200() throws Exception {
+      DailyStatsResponse response =
+          new DailyStatsResponse(LocalDate.now().minusDays(6), LocalDate.now(), 7, List.of());
+
+      when(systemManagementService.getDailyStats(isNull(), eq(7), isNull())).thenReturn(response);
+
+      mockMvc
+          .perform(get("/api/system-management/stats/daily").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Daily stats fetched successfully!"));
+
+      verify(systemManagementService).getDailyStats(isNull(), eq(7), isNull());
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("GET /stats/monthly -> unauthenticated returns 401 Unauthorized")
+    void getMonthlyStats_unauthenticated_returns401() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "LEARNER")
+    @DisplayName("GET /stats/monthly -> non-admin role returns 403 Forbidden")
+    void getMonthlyStats_learnerRole_returns403() throws Exception {
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/monthly -> admin with params returns 200 OK and MonthlyStatsResponse")
+    void getMonthlyStats_adminWithParams_returns200() throws Exception {
+      MonthlyStatsResponse response = new MonthlyStatsResponse(2026, List.of());
+
+      when(systemManagementService.getMonthlyStats(
+              eq(2026), eq(List.of(ActionType.LOGIN, ActionType.REGISTER))))
+          .thenReturn(response);
+
+      mockMvc
+          .perform(
+              get("/api/system-management/stats/monthly")
+                  .param("year", "2026")
+                  .param("actions", "LOGIN,REGISTER")
+                  .accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Monthly stats fetched successfully!"))
+          .andExpect(jsonPath("$.data.year").value(2026));
+
+      verify(systemManagementService)
+          .getMonthlyStats(eq(2026), eq(List.of(ActionType.LOGIN, ActionType.REGISTER)));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /stats/monthly -> admin default params returns 200 OK")
+    void getMonthlyStats_adminDefaultParams_returns200() throws Exception {
+      MonthlyStatsResponse response = new MonthlyStatsResponse(2026, List.of());
+
+      when(systemManagementService.getMonthlyStats(isNull(), isNull())).thenReturn(response);
+
+      mockMvc
+          .perform(get("/api/system-management/stats/monthly").accept(MediaType.APPLICATION_JSON))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.statusCode").value(200))
+          .andExpect(jsonPath("$.message").value("Monthly stats fetched successfully!"));
+
+      verify(systemManagementService).getMonthlyStats(isNull(), isNull());
     }
   }
 }

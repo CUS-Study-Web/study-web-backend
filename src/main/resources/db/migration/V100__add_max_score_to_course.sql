@@ -1,0 +1,1 @@
+ALTER TABLE courses ADD COLUMN max_scores INT DEFAULT 0;

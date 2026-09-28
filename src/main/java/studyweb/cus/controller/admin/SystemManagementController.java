@@ -1,13 +1,18 @@
 package studyweb.cus.controller.admin;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,11 +30,15 @@ import studyweb.cus.dto.base.SuccessResponse;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.ActivityLogResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
@@ -40,11 +49,10 @@ import studyweb.cus.service.admin.SystemManagementService;
 @RequestMapping("/api/system-management")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
 @Tag(
     name = "System management",
     description =
-        "Endpoints for admin to manage learners, assistants, VIP requests, and access logs")
+        "Endpoints for admin to manage learners, assistants, VIP requests, and access logs (Assistants have read-only access to learners)")
 public class SystemManagementController extends AbstractBaseController {
   private final SystemManagementService systemManagementService;
 
@@ -53,7 +61,10 @@ public class SystemManagementController extends AbstractBaseController {
   // =========================================================================
 
   @GetMapping("/learners")
-  @Operation(summary = "List Learners", description = "List all learners with pagination")
+  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
+  @Operation(
+      summary = "List Learners",
+      description = "List all learners with pagination (Admin and Assistant only)")
   public ResponseEntity<PageResponse<LearnerSummaryResponse>> listLearners(
       @RequestParam(required = false) String search,
       @RequestParam(required = false) UserStatus status,
@@ -70,6 +81,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/learners/{id}/lock")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Lock a specific Learner",
       description = "Lock a specific Learner with INACTIVE status from an ACTIVE status")
@@ -80,6 +92,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/learners/{id}/unlock")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Unlock a specific Learner",
       description = "Unlock a specific Learner with ACTIVE status from an INACTIVE status")
@@ -91,6 +104,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/learners/{id}/ban")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Ban a specific Learner",
       description =
@@ -102,6 +116,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PostMapping("/learners/create-vip-account")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Create VIP accounts for learners",
       description = "Create VIP accounts for only learners who pre-register CUS courses")
@@ -115,6 +130,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping(value = "/learners/{id}/update-account")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Update an existing account for learner")
   public ResponseEntity<SuccessResponse> updateLearnerAccount(
       @PathVariable UUID id, @Valid @RequestBody UpdateAccountRequest request) {
@@ -126,9 +142,10 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/learners/counts/normal")
+  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
   @Operation(
       summary = "Get Normal Learners Count",
-      description = "Get count of normal learner accounts")
+      description = "Get count of normal learner accounts (Admin and Assistant only)")
   public ResponseEntity<SingleResponse<UserCountResponse>> getNormalLearnersCount() {
     log.info("[GET /api/system-management/learners/counts/normal]");
     return successSingle(
@@ -137,9 +154,10 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/learners/counts/vip")
+  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
   @Operation(
       summary = "Get VIP Learners Count",
-      description = "Get count of VIP learner accounts")
+      description = "Get count of VIP learner accounts (Admin and Assistant only)")
   public ResponseEntity<SingleResponse<UserCountResponse>> getVipLearnersCount() {
     log.info("[GET /api/system-management/learners/counts/vip]");
     return successSingle(
@@ -148,9 +166,10 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/learners/counts/locked")
+  @PreAuthorize("hasAnyRole('ADMIN', 'ASSISTANT')")
   @Operation(
       summary = "Get Locked Accounts Count",
-      description = "Get count of locked accounts (status INACTIVE)")
+      description = "Get count of locked accounts (status INACTIVE) (Admin and Assistant only)")
   public ResponseEntity<SingleResponse<UserCountResponse>> getLockedAccountsCount() {
     log.info("[GET /api/system-management/learners/counts/locked]");
     return successSingle(
@@ -163,6 +182,7 @@ public class SystemManagementController extends AbstractBaseController {
   // =========================================================================
 
   @GetMapping("/assistants")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "List Assistants",
       description = "List all assistants with pagination, stats, and recent activities")
@@ -182,6 +202,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PostMapping("/assistants")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create Assistant", description = "Create a new assistant account")
   public ResponseEntity<SuccessResponse> createAssistant(
       @Valid @RequestBody CreateAssistantRequest request) {
@@ -193,6 +214,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/assistants/{id}/deactivate")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Deactivate Assistant", description = "Deactivate assistant account")
   public ResponseEntity<SuccessResponse> deactivateAssistant(@PathVariable UUID id) {
     log.info(
@@ -203,6 +225,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/assistants/{id}/activate")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Activate Assistant", description = "Activate assistant account")
   public ResponseEntity<SuccessResponse> activateAssistant(@PathVariable UUID id) {
     log.info(
@@ -212,6 +235,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/assistants/{id}/ban")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Ban Assistant", description = "Ban permanently assistant account")
   public ResponseEntity<SuccessResponse> banAssistant(@PathVariable UUID id) {
     log.info("[PATCH /api/system-management/assistants/{id}] Ban assistant id: {}", id);
@@ -220,9 +244,8 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/assistants/counts")
-  @Operation(
-      summary = "Get Assistants Count",
-      description = "Get count of assistant accounts")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Get Assistants Count", description = "Get count of assistant accounts")
   public ResponseEntity<SingleResponse<UserCountResponse>> getAssistantsCount() {
     log.info("[GET /api/system-management/assistants/counts]");
     return successSingle(
@@ -235,6 +258,7 @@ public class SystemManagementController extends AbstractBaseController {
   // =========================================================================
 
   @GetMapping("/vip-requests")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Get VIP Requests",
       description = "List VIP upgrade requests with status filter and pagination")
@@ -254,6 +278,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @GetMapping("/vip-requests/counts")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Get VIP Request Counts",
       description =
@@ -267,6 +292,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping("/vip-requests/{id}/approve")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Approve VIP Request", description = "Approve learner VIP upgrade request")
   public ResponseEntity<SuccessResponse> approveVipRequest(@PathVariable UUID id) {
     log.info(
@@ -276,6 +302,7 @@ public class SystemManagementController extends AbstractBaseController {
   }
 
   @PatchMapping(value = "/vip-requests/{id}/disapprove")
+  @PreAuthorize("hasRole('ADMIN')")
   @Operation(
       summary = "Disapprove VIP Request",
       description = "Disapprove learner VIP upgrade request")
@@ -285,5 +312,88 @@ public class SystemManagementController extends AbstractBaseController {
         id);
     systemManagementService.disapproveVipRequest(id);
     return success("VIP request disapproved successfully.");
+  }
+
+  // =========================================================================
+  // System Statistics Endpoints
+  // =========================================================================
+
+  @GetMapping("/stats/daily")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get Daily System Statistics",
+      description =
+          "Retrieve daily statistics for arbitrary actions for a date window ending on the specified date. Default window is 7 days.")
+  public ResponseEntity<SingleResponse<DailyStatsResponse>> getDailyStats(
+      @Parameter(
+              description =
+                  "End date of the query window (ISO format YYYY-MM-DD). Defaults to current date if omitted.",
+              example = "2026-07-23")
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+          LocalDate date,
+      @Parameter(
+              description = "Number of days in the window ending on the given date. Defaults to 7.",
+              example = "7")
+          @RequestParam(required = false, defaultValue = "7")
+          Integer days,
+      @Parameter(
+              description = "List of activity action names to aggregate.",
+              example = "LOGIN,REGISTER")
+          @RequestParam(required = false)
+          List<ActionType> actions) {
+    log.info(
+        "[GET /api/system-management/stats/daily] date='{}', days={}, actions={}",
+        date,
+        days,
+        actions);
+    return successSingle(
+        systemManagementService.getDailyStats(date, days, actions),
+        "Daily stats fetched successfully!");
+  }
+
+  @GetMapping("/stats/monthly")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get Monthly System Statistics",
+      description =
+          "Retrieve monthly breakdown statistics for arbitrary actions across all 12 months (T1 to T12) for a given year.")
+  public ResponseEntity<SingleResponse<MonthlyStatsResponse>> getMonthlyStats(
+      @Parameter(
+              description = "Target year. Defaults to current year if omitted.",
+              example = "2026")
+          @RequestParam(required = false)
+          Integer year,
+      @Parameter(
+              description = "List of activity action names to aggregate.",
+              example = "LOGIN,REGISTER")
+          @RequestParam(required = false)
+          List<ActionType> actions) {
+    log.info("[GET /api/system-management/stats/monthly] year='{}', actions={}", year, actions);
+    return successSingle(
+        systemManagementService.getMonthlyStats(year, actions),
+        "Monthly stats fetched successfully!");
+  }
+
+  @GetMapping("/activities")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(
+      summary = "Get Recent Activity Logs",
+      description = "Retrieve recent raw activity logs from Loki for admin dashboard and activity history")
+  public ResponseEntity<PageResponse<ActivityLogResponse>> getActivityLogs(
+      @RequestParam(required = false, defaultValue = "20") Integer limit,
+      @RequestParam(required = false) List<ActionType> actions,
+      @RequestParam(required = false, defaultValue = "7") Integer days,
+      @RequestParam(required = false) String gmail,
+      @RequestParam(required = false) UserRole role) {
+    log.info(
+        "[GET /api/system-management/activities] limit={}, actions={}, days={}, gmail={}, role={}",
+        limit,
+        actions,
+        days,
+        gmail,
+        role);
+    return paging(
+        systemManagementService.getActivityLogs(limit, actions, days, gmail, role),
+        "Activity logs fetched successfully!");
   }
 }

@@ -11,4 +11,5 @@ public record CourseRequest(
     @Size(max = 255, message = "Badge title must not exceed 255 characters") String badgeTitle,
     @Size(max = 255, message = "Description must not exceed 255 characters") String description,
     @Schema(description = "Thumbnail image", format = "binary") MultipartFile thumbnailImage,
-    CourseCreateStatus status) {}
+    CourseCreateStatus status,
+    Integer maxScores) {}

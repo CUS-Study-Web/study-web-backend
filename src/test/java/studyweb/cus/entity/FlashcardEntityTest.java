@@ -40,6 +40,7 @@ class FlashcardEntityTest {
 
     assertThat(topic.getTitle()).isEqualTo("IELTS Vocabulary Band 8+");
     assertThat(topic.getNumWords()).isEqualTo(50);
+    assertThat(topic.getStatus()).isEqualTo(studyweb.cus.enums.CourseCreateStatus.DRAFT);
     assertThat(card.getTopic()).isEqualTo(topic);
     assertThat(card.getWord()).isEqualTo("Eloquent");
     assertThat(card.getPronunciation()).isEqualTo("/ˈel.ə.kwənt/");

@@ -1,10 +1,18 @@
 package studyweb.cus.service.admin.impl;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,15 +20,29 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.temporal.ChronoUnit;
+import studyweb.cus.config.LokiProperties;
+import studyweb.cus.constant.LokiConstants;
 import studyweb.cus.dto.request.admin.CreateAssistantRequest;
 import studyweb.cus.dto.request.admin.CreateVipAccountRequest;
 import studyweb.cus.dto.request.admin.UpdateAccountRequest;
+import studyweb.cus.dto.response.admin.ActivityLogResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
+import studyweb.cus.dto.response.admin.DailyStatItemResponse;
+import studyweb.cus.dto.response.admin.DailyStatsResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
+import studyweb.cus.dto.response.admin.LokiQueryRangeResponse;
+import studyweb.cus.dto.response.admin.LokiQueryRangeResponse.LokiResultItem;
+import studyweb.cus.dto.response.admin.MonthlyStatItemResponse;
+import studyweb.cus.dto.response.admin.MonthlyStatsResponse;
 import studyweb.cus.dto.response.admin.UserCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestCountResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
@@ -32,6 +54,7 @@ import studyweb.cus.entity.course.AssessmentAttemptDetail;
 import studyweb.cus.entity.progress.UserCourseProgress;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.enums.AnswerChoice;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserStatus;
@@ -48,8 +71,12 @@ import studyweb.cus.repository.course.AssessmentAttemptRepository;
 import studyweb.cus.repository.course.AssessmentRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.user.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.AccountStatusChangedEvent;
+import studyweb.cus.event.notification.VipRequestResolvedEvent;
 import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.service.admin.SystemManagementService;
+import studyweb.cus.service.log.LokiQueryService;
 
 @Service
 @RequiredArgsConstructor
@@ -60,11 +87,14 @@ public class SystemManagementServiceImpl implements SystemManagementService {
   private final AssessmentAttemptRepository assessmentAttemptRepository;
   private final AnswerKeyRepository answerKeyRepository;
   private final AssessmentRepository assessmentRepository;
-  // private final ActivityLogRepository activityLogRepository;
   private final VipRequestRepository vipRequestRepository;
   private final PricingPageContentRepository pricingPageContentRepository;
   private final SystemManagementMapper systemManagementMapper;
   private final PasswordEncoder passwordEncoder;
+  private final LokiQueryService lokiQueryService;
+  private final LokiProperties lokiProperties;
+  private final ApplicationEventPublisher eventPublisher;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   @Override
   @Transactional(readOnly = true)
@@ -157,6 +187,9 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       throw new AdminException(AdminErrorCode.USER_BANNED);
     }
     user.setStatus(status);
+    if (role == UserRole.LEARNER && status == UserStatus.ACTIVE) {
+      eventPublisher.publishEvent(AccountStatusChangedEvent.unlocked(user.getId()));
+    }
   }
 
   @Override
@@ -286,15 +319,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
 
     return assistantPage.map(
         user -> {
-          // List<AssistantActivityResponse> recentActivities =
-          //     activityLogRepository
-          //         .findRecentActivitiesByUserId(
-          //             user.getId(), org.springframework.data.domain.PageRequest.of(0, 10))
-          //         .stream()
-          //         .map(systemManagementMapper::toAssistantActivity)
-          //         .toList();
           int numExams = examCountByAssistant.getOrDefault(user.getId(), 0L).intValue();
-          return systemManagementMapper.toAssistantSummary(user, numExams, List.of());
+          return systemManagementMapper.toAssistantSummary(user, numExams);
         });
   }
 
@@ -398,14 +424,24 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     User user = vipRequest.getUser();
     LocalDate now = LocalDate.now();
     user.setTier(UserTier.VIP);
-    user.setVipStartDate(now);
+    if (user.getVipStartDate() == null) {
+      user.setVipStartDate(now);
+    }
 
     String billingPeriod =
         pricingPageContentRepository
             .findFirstByOrderByCreatedAtDesc()
             .map(PricingPageContent::getVipPkgBillingPeriod)
             .orElse(null);
-    user.setVipEndDate(calculateVipEndDate(now, billingPeriod));
+
+    // if user has active VIP (including on end date), extend from current vipEndDate;
+    // otherwise from today
+    LocalDate baseDate =
+        (user.getVipEndDate() != null && !user.getVipEndDate().isBefore(now))
+            ? user.getVipEndDate()
+            : now;
+    user.setVipEndDate(calculateVipEndDate(baseDate, billingPeriod));
+    eventPublisher.publishEvent(VipRequestResolvedEvent.approved(user.getId()));
   }
 
   @Override
@@ -422,6 +458,8 @@ public class SystemManagementServiceImpl implements SystemManagementService {
     if (rowsUpdated == 0) {
       throw new AdminException(AdminErrorCode.STATUS_TRANSITION_INVALID);
     }
+    eventPublisher.publishEvent(
+        VipRequestResolvedEvent.declined(vipRequest.getUser().getId(), vipRequest.getNote()));
   }
 
   private void validateVipRequestBeforeSwitchStatus(VipRequest request) {
@@ -473,5 +511,373 @@ public class SystemManagementServiceImpl implements SystemManagementService {
       return startDate.plusDays(1);
     }
     return startDate.plusMonths(1);
+  }
+
+  @Override
+  public DailyStatsResponse getDailyStats(
+      LocalDate endDate, Integer days, List<ActionType> actions) {
+    LocalDate effectiveEndDate = endDate != null ? endDate : LocalDate.now();
+    if (effectiveEndDate.getYear() < 1970 || effectiveEndDate.getYear() > 2100) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
+    }
+
+    int maxDays = lokiProperties.getMaxQueryLengthDays();
+    int windowDays = days != null ? days : 7;
+    if (windowDays < 1 || windowDays > maxDays) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Days must be between 1 and " + maxDays);
+    }
+
+    List<ActionType> effectiveActions = resolveActions(actions);
+    LocalDate startDate = effectiveEndDate.minusDays(windowDays - 1);
+
+    ZoneId zone = ZoneId.systemDefault();
+    long startNano =
+        startDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
+    long endNano =
+        effectiveEndDate.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
+
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
+
+    LokiQueryRangeResponse response =
+        lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
+
+    Map<LocalDate, Map<String, Integer>> dailyCounts = new HashMap<>();
+    for (int i = 0; i < windowDays; i++) {
+      dailyCounts.put(startDate.plusDays(i), new HashMap<>());
+    }
+
+    if (response != null && response.data() != null && response.data().result() != null) {
+      for (LokiResultItem item : response.data().result()) {
+        Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
+        String action = labels != null ? labels.get("action") : null;
+        if (action == null || item.values() == null) {
+          continue;
+        }
+
+        for (List<Object> pair : item.values()) {
+          if (pair != null && pair.size() >= 2) {
+            long epochSec = parseEpochSeconds(pair.get(0));
+            int count = parseCount(pair.get(1));
+            LocalDate date = Instant.ofEpochSecond(epochSec).atZone(zone).toLocalDate().minusDays(1);
+            Map<String, Integer> counts = dailyCounts.get(date);
+            if (counts != null) {
+              counts.merge(action, count, Integer::sum);
+            }
+          }
+        }
+      }
+    }
+
+    List<DailyStatItemResponse> items = new ArrayList<>(windowDays);
+    for (int i = 0; i < windowDays; i++) {
+      LocalDate d = startDate.plusDays(i);
+      Map<String, Integer> dayCounts = dailyCounts.get(d);
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), dayCounts != null ? dayCounts.getOrDefault(act.name(), 0) : 0);
+      }
+      items.add(new DailyStatItemResponse(d, actionCounts));
+    }
+
+    return new DailyStatsResponse(startDate, effectiveEndDate, windowDays, items);
+  }
+
+  @Override
+  public MonthlyStatsResponse getMonthlyStats(Integer year, List<ActionType> actions) {
+    if (year != null && (year < 1970 || year > 2100)) {
+      throw new SystemException(
+          SystemErrorCode.INVALID_PARAMETER, "Year must be between 1970 and 2100");
+    }
+    int targetYear = year != null ? year : LocalDate.now().getYear();
+
+    List<ActionType> effectiveActions = resolveActions(actions);
+    String actionPattern =
+        effectiveActions.stream().map(ActionType::name).collect(Collectors.joining("|"));
+
+    ZoneId zone = ZoneId.systemDefault();
+    List<MonthlyStatItemResponse> items = new ArrayList<>(12);
+    for (int month = 1; month <= 12; month++) {
+      YearMonth ym = YearMonth.of(targetYear, month);
+      long startNano =
+          ym.atDay(2).atStartOfDay(zone).toInstant().toEpochMilli() * 1_000_000L;
+      long endNano =
+          ym.atEndOfMonth().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+              * 1_000_000L;
+
+      LokiQueryRangeResponse response =
+          lokiQueryService.queryActivityMetricRange(actionPattern, startNano, endNano, "1d");
+
+      Map<String, Integer> monthCounts = new HashMap<>();
+      if (response != null && response.data() != null && response.data().result() != null) {
+        for (LokiResultItem item : response.data().result()) {
+          Map<String, String> labels = item.metric() != null ? item.metric() : item.stream();
+          String action = labels != null ? labels.get("action") : null;
+          if (action == null || item.values() == null) {
+            continue;
+          }
+
+          for (List<Object> pair : item.values()) {
+            if (pair != null && pair.size() >= 2) {
+              int count = parseCount(pair.get(1));
+              monthCounts.merge(action, count, Integer::sum);
+            }
+          }
+        }
+      }
+
+      Map<String, Integer> actionCounts = new LinkedHashMap<>();
+      for (ActionType act : effectiveActions) {
+        actionCounts.put(act.name(), monthCounts.getOrDefault(act.name(), 0));
+      }
+      items.add(new MonthlyStatItemResponse(month, targetYear, actionCounts));
+    }
+
+    return new MonthlyStatsResponse(targetYear, items);
+  }
+
+  private List<ActionType> resolveActions(List<ActionType> actions) {
+    if (actions == null || actions.isEmpty()) {
+      throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Actions cannot be empty.");
+    }
+    List<ActionType> filtered = actions.stream().filter(Objects::nonNull).distinct().toList();
+    return filtered.isEmpty()
+        ? List.of(ActionType.LOGIN, ActionType.REGISTER, ActionType.REQUEST_VIP)
+        : filtered;
+  }
+
+  private long parseEpochSeconds(Object timestampObj) {
+    if (timestampObj instanceof Number number) {
+      long val = number.longValue();
+      if (val > 100_000_000_000_000L) {
+        return val / 1_000_000_000L;
+      }
+      if (val > 100_000_000_000L) {
+        return val / 1_000L;
+      }
+      return val;
+    }
+    if (timestampObj instanceof String str) {
+      try {
+        double d = Double.parseDouble(str);
+        long val = (long) d;
+        if (val > 100_000_000_000_000L) {
+          return val / 1_000_000_000L;
+        }
+        if (val > 100_000_000_000L) {
+          return val / 1_000L;
+        }
+        return val;
+      } catch (NumberFormatException e) {
+        return 0L;
+      }
+    }
+    return 0L;
+  }
+
+  private int parseCount(Object valueObj) {
+    if (valueObj == null) {
+      return 0;
+    }
+    try {
+      double d = Double.parseDouble(valueObj.toString());
+      return (int) Math.round(d);
+    } catch (NumberFormatException e) {
+      return 0;
+    }
+  }
+
+  @Override
+  public Page<ActivityLogResponse> getActivityLogs(
+      Integer limit, List<ActionType> actions, Integer days, String gmail, UserRole role) {
+    if (days == null || days <= 0) {
+      throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Days must be positive");
+    }
+    if (limit == null || limit <= 0) {
+      throw new SystemException(SystemErrorCode.INVALID_PARAMETER, "Limit must be positive");
+    }
+    int maxDays = lokiProperties.getMaxQueryLengthDays();
+    int maxLimit = lokiProperties.getMaxLimit();
+    int queryDays = Math.min(days, maxDays);
+    int queryLimit = Math.min(limit, maxLimit);
+
+    Instant now = Instant.now();
+    long endNano = now.toEpochMilli() * 1_000_000L;
+    long startNano = now.minus(queryDays, ChronoUnit.DAYS).toEpochMilli() * 1_000_000L;
+
+    List<String> roleGmails = null;
+    if (role != null) {
+      roleGmails = userRepository.findGmailsByRole(role);
+      if (roleGmails.isEmpty()) {
+        return new PageImpl<>(List.of(), PageRequest.of(0, queryLimit), 0);
+      }
+    }
+
+    String query;
+    if (actions == null || actions.isEmpty()) {
+      query = LokiConstants.ACTIVITY_LOG_BASE_QUERY;
+    } else {
+      String actionPattern =
+          actions.stream().filter(Objects::nonNull).map(ActionType::name).collect(Collectors.joining("|"));
+      query = String.format(LokiConstants.ACTIVITY_LOG_ACTION_QUERY, actionPattern);
+    }
+
+    if (gmail != null && !gmail.isBlank()) {
+      query += String.format(" |= \"%s\"", gmail.trim());
+    } else if (roleGmails != null) {
+      query += String.format(" |~ \"%s\"", String.join("|", roleGmails));
+    }
+
+    LokiQueryRangeResponse response =
+        lokiQueryService.queryRange(query, startNano, endNano, null, queryLimit, "BACKWARD");
+
+    Set<String> roleEmailSet =
+        roleGmails != null
+            ? roleGmails.stream().map(String::toLowerCase).collect(Collectors.toSet())
+            : null;
+
+    List<ActivityLogResponse> rawLogs = new ArrayList<>();
+    Set<String> rawUserIds = new HashSet<>();
+
+    if (response != null && response.data() != null && response.data().result() != null) {
+      for (LokiResultItem item : response.data().result()) {
+        if (item.values() == null) {
+          continue;
+        }
+        for (List<Object> pair : item.values()) {
+          if (pair == null || pair.size() < 2) {
+            continue;
+          }
+          Object logObj = pair.get(1);
+          if (logObj == null) {
+            continue;
+          }
+          try {
+            JsonNode node = objectMapper.readTree(logObj.toString());
+            String ts = node.hasNonNull("timestamp") ? node.get("timestamp").asText() : null;
+            String rawUserId = node.hasNonNull("userId") ? node.get("userId").asText() : "";
+
+            if (gmail != null && !gmail.isBlank() && !gmail.trim().equalsIgnoreCase(rawUserId)) {
+              continue;
+            }
+            if (roleEmailSet != null && !roleEmailSet.contains(rawUserId.toLowerCase())) {
+              continue;
+            }
+
+            ActionType act =
+                node.hasNonNull("actionType")
+                    ? ActionType.valueOf(node.get("actionType").asText())
+                    : null;
+            String desc = node.hasNonNull("description") ? node.get("description").asText() : "";
+            rawLogs.add(new ActivityLogResponse(ts, rawUserId, act, desc));
+            if (!rawUserId.isBlank()) {
+              rawUserIds.add(rawUserId);
+            }
+          } catch (Exception e) {
+            log.warn("Malformed JSON in Loki log line, attempting fallback parsing: {} - {}", logObj, e.getMessage());
+
+            try {
+              String rawLog = logObj.toString();
+              java.util.regex.Matcher tsMatcher = java.util.regex.Pattern.compile("\"timestamp\"\\s*:\\s*\"([^\"]+)\"").matcher(rawLog);
+              java.util.regex.Matcher userMatcher = java.util.regex.Pattern.compile("\"userId\"\\s*:\\s*\"([^\"]*)\"").matcher(rawLog);
+              java.util.regex.Matcher actionMatcher = java.util.regex.Pattern.compile("\"actionType\"\\s*:\\s*\"([^\"]+)\"").matcher(rawLog);
+              java.util.regex.Matcher descMatcher = java.util.regex.Pattern.compile("\"description\"\\s*:\\s*\"(.*)\"\\s*\\}").matcher(rawLog);
+
+              if (tsMatcher.find() && actionMatcher.find()) {
+                String ts = tsMatcher.group(1);
+                String rawUserId = userMatcher.find() ? userMatcher.group(1) : "";
+
+                if (gmail != null && !gmail.isBlank() && !gmail.trim().equalsIgnoreCase(rawUserId)) {
+                  continue;
+                }
+                if (roleEmailSet != null && !roleEmailSet.contains(rawUserId.toLowerCase())) {
+                  continue;
+                }
+
+                ActionType act = ActionType.valueOf(actionMatcher.group(1));
+                String desc = descMatcher.find() ? descMatcher.group(1) : "";
+                if (desc.endsWith("\"")) {
+                    desc = desc.substring(0, desc.length() - 1);
+                }
+
+                rawLogs.add(new ActivityLogResponse(ts, rawUserId, act, desc));
+                if (!rawUserId.isBlank()) {
+                  rawUserIds.add(rawUserId);
+                }
+              }
+            } catch (Exception fallbackEx) {
+               log.warn("Fallback parsing also failed for log line: {}", logObj);
+            }
+          }
+        }
+      }
+    }
+
+    Map<String, String> userNames = resolveUserNames(rawUserIds);
+
+    List<ActivityLogResponse> logList = new ArrayList<>(rawLogs.size());
+    for (ActivityLogResponse raw : rawLogs) {
+      String resolvedName =
+          userNames.getOrDefault(raw.userName().toLowerCase(), raw.userName());
+      logList.add(
+          new ActivityLogResponse(raw.timestamp(), resolvedName, raw.actionType(), raw.description()));
+    }
+
+    logList.sort(
+        (a, b) -> {
+          if (a.timestamp() == null && b.timestamp() == null) return 0;
+          if (a.timestamp() == null) return 1;
+          if (b.timestamp() == null) return -1;
+          return b.timestamp().compareTo(a.timestamp());
+        });
+
+    List<ActivityLogResponse> resultLogs =
+        logList.size() > queryLimit ? logList.subList(0, queryLimit) : logList;
+    return new PageImpl<>(resultLogs, PageRequest.of(0, queryLimit), resultLogs.size());
+  }
+
+  private Map<String, String> resolveUserNames(Set<String> rawUserIds) {
+    if (rawUserIds == null || rawUserIds.isEmpty()) {
+      return Map.of();
+    }
+    Set<UUID> uuids = new HashSet<>();
+    Set<String> gmails = new HashSet<>();
+    for (String idStr : rawUserIds) {
+      if (idStr == null || idStr.isBlank() || "anonymousUser".equalsIgnoreCase(idStr)) {
+        continue;
+      }
+      try {
+        uuids.add(UUID.fromString(idStr));
+      } catch (IllegalArgumentException e) {
+        gmails.add(idStr.toLowerCase());
+      }
+    }
+
+    Map<String, String> nameMap = new HashMap<>();
+    if (!gmails.isEmpty()) {
+      List<User> users = userRepository.findByGmailInIgnoreCase(gmails);
+      for (User u : users) {
+        if (u.getName() != null && !u.getName().isBlank()) {
+          nameMap.put(u.getGmail().toLowerCase(), u.getName());
+          if (u.getId() != null) {
+            nameMap.put(u.getId().toString().toLowerCase(), u.getName());
+          }
+        }
+      }
+    }
+    if (!uuids.isEmpty()) {
+      List<User> users = userRepository.findAllById(uuids);
+      for (User u : users) {
+        if (u.getName() != null && !u.getName().isBlank()) {
+          nameMap.put(u.getGmail().toLowerCase(), u.getName());
+          if (u.getId() != null) {
+            nameMap.put(u.getId().toString().toLowerCase(), u.getName());
+          }
+        }
+      }
+    }
+    return nameMap;
   }
 }

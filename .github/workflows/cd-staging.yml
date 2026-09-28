@@ -93,21 +93,31 @@ jobs:
         working-directory: gitops-manifests
         env:
           BACKEND_ENV_CONTENT: ${{ secrets.BACKEND_ENV_FILE }}
+          STAGING_ENV_CONTENT: ${{ secrets.STAGING_ENV_FILE }}
         run: |
           echo "Create permanent configs..."
 
           mkdir -p ~/.config/systemd/user/git-ops/nginx
           echo "Copy backend env file..."
           printf "%s" "$BACKEND_ENV_CONTENT" > ~/.config/systemd/user/git-ops/backend.env
+          
+          echo "Copy staging env file..."
+          printf "%s" "$STAGING_ENV_CONTENT" > ~/.config/systemd/user/git-ops/staging.env
 
           echo "Copy nginx config..."
           cp nginx/default.conf ~/.config/systemd/user/git-ops/nginx/default.conf
 
           echo "Copy compose files..."
-          cp compose/docker.*.compose.yml ~/.config/systemd/user/git-ops/
+          cp compose/docker.be.*.compose.yml ~/.config/systemd/user/git-ops/
           
           echo "Copy service files..."
-          cp service/study-*.service ~/.config/systemd/user/git-ops/
+          cp service/study-*.service ~/.config/systemd/user
+
+          cp compose/docker.infra.compose.yml ~/.config/systemd/user/git-ops/
+          
+          echo "Copy pgBackRest dependencies..."
+          cp compose/Dockerfile.postgres ~/.config/systemd/user/git-ops/
+          cp compose/pgbackrest.conf ~/.config/systemd/user/git-ops/
 
 
       - name: Check infra

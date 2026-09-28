@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import studyweb.cus.annotation.activity.LogActivity;
 import studyweb.cus.controller.AbstractBaseController;
 import studyweb.cus.dto.base.PageResponse;
 import studyweb.cus.dto.base.PagedResponse;
@@ -34,6 +35,7 @@ import studyweb.cus.dto.response.course.CourseDetailResponse;
 import studyweb.cus.dto.response.course.CourseSummaryResponse;
 import studyweb.cus.dto.response.course.LessonSummaryResponse;
 import studyweb.cus.dto.response.course.SubjectSummaryResponse;
+import studyweb.cus.enums.ActionType;
 import studyweb.cus.exception.course.CourseErrorCode;
 import studyweb.cus.exception.course.CourseException;
 import studyweb.cus.service.course.CourseService;
@@ -87,6 +89,9 @@ public class CourseController extends AbstractBaseController {
     return paging(courseService.listCoursesForAssistant(pageable), "Courses fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.CREATE_COURSE,
+      description = "Quản trị viên tạo khóa học mới \"#{#request.title() ?: 'không có tiêu đề'}\"")
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Create Course", description = "Create a new course (admin only)")
@@ -118,6 +123,7 @@ public class CourseController extends AbstractBaseController {
         "Course fetched successfully!");
   }
 
+  @LogActivity(action = ActionType.UPDATE_COURSE, description = "Quản trị viên cập nhật khóa học ID: #{#id}")
   @PatchMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Update Course", description = "Update an existing course (admin only)")
@@ -128,6 +134,7 @@ public class CourseController extends AbstractBaseController {
     return successSingle(courseService.updateCourse(id, request), "Course updated successfully!");
   }
 
+  @LogActivity(action = ActionType.DELETE_COURSE, description = "Quản trị viên xóa khóa học ID: #{#id}")
   @DeleteMapping("/{id}")
   @PreAuthorize("hasRole('ADMIN')")
   @Operation(summary = "Delete Course", description = "Soft-delete a course (admin only)")
@@ -189,6 +196,10 @@ public class CourseController extends AbstractBaseController {
         "Lessons fetched successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.CREATE_LESSON,
+      description =
+          "Trợ giảng tạo bài học \"#{#request.title() ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @PostMapping("/{id}/subjects/{subjectId}/lessons")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -207,6 +218,10 @@ public class CourseController extends AbstractBaseController {
         courseService.createLesson(id, subjectId, request), "Lesson created successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.UPDATE_LESSON,
+      description =
+          "Trợ giảng cập nhật bài học \"#{#request.title() ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @PatchMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(
@@ -224,6 +239,10 @@ public class CourseController extends AbstractBaseController {
         "Lesson updated successfully!");
   }
 
+  @LogActivity(
+      action = ActionType.DELETE_LESSON,
+      description =
+          "Trợ giảng xóa bài học \"#{@lessonRepository.findById(#lessonId).orElse(null)?.title ?: 'không có tiêu đề'}\" cho môn học \"#{@subjectRepository.findById(#subjectId).orElse(null)?.title ?: 'không có tiêu đề'}\" của khóa học \"#{@courseRepository.findById(#id).orElse(null)?.title ?: 'không có tiêu đề'}\"")
   @DeleteMapping("/{id}/subjects/{subjectId}/lessons/{lessonId}")
   @PreAuthorize("hasRole('ASSISTANT')")
   @Operation(

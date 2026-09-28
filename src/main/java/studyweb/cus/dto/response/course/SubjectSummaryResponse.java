@@ -9,4 +9,5 @@ public record SubjectSummaryResponse(
     BigDecimal durationHours,
     Integer lessonCount,
     Integer exerciseCount,
-    Integer learningProgress) {}
+    Integer learningProgress,
+    Integer maxScores) {}

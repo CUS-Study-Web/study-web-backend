@@ -1,5 +1,6 @@
 package studyweb.cus.repository.user;
 
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -7,11 +8,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.VipRequestStatus;
 
 public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
+
+  boolean existsByUserAndStatus(User user, VipRequestStatus status);
+
+  Optional<VipRequest> findFirstByUserOrderByCreatedAtDesc(User user);
 
   @Query(
       value =
@@ -22,7 +28,10 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
             AND (:status IS NULL OR vr.status = :status)
             AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                 OR LOWER(vr.note) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+                 OR LOWER(vr.note) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.phone) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """,
       countQuery =
           """
@@ -32,7 +41,10 @@ public interface VipRequestRepository extends JpaRepository<VipRequest, UUID> {
             AND (:status IS NULL OR vr.status = :status)
             AND (CAST(:search AS string) IS NULL OR LOWER(u.gmail) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
                  OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
-                 OR LOWER(vr.note) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+                 OR LOWER(vr.note) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+                 OR LOWER(vr.phone) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
           """)
   Page<VipRequest> searchVipRequests(
       @Param("search") String search,

@@ -1,9 +1,12 @@
 package studyweb.cus.service.course.impl;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +51,9 @@ import studyweb.cus.repository.course.SubjectRepository;
 import studyweb.cus.repository.course.UserCourseProgressRepository;
 import studyweb.cus.repository.course.UserLessonProgressRepository;
 import studyweb.cus.repository.course.UserSubjectProgressRepository;
+import org.springframework.context.ApplicationEventPublisher;
+import studyweb.cus.event.notification.NewCoursePublishedEvent;
+import studyweb.cus.event.notification.NewLessonAddedEvent;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.course.CourseService;
 import studyweb.cus.service.file.FileService;
@@ -68,6 +74,7 @@ public class CourseServiceImpl implements CourseService {
   private final UserCourseProgressRepository userCourseProgressRepository;
   private final UserSubjectProgressRepository userSubjectProgressRepository;
   private final TransactionTemplate transactionTemplate;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Autowired
   @Qualifier("uploadExecutor")
@@ -97,24 +104,20 @@ public class CourseServiceImpl implements CourseService {
     }
     final UUID finalUserId = userId;
 
-    Page<CourseSummaryResponse> result =
-        page.map(
-            course -> {
-              long subjectCount =
-                  subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
-              long examCount =
-                  assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
-                      course.getId(), AssessmentType.EXAM);
-              if (finalUserId != null) {
-                Integer progress =
-                    userCourseProgressRepository
-                        .findByUserIdAndCourseId(finalUserId, course.getId())
-                        .map(p -> defaultOr(p.getProgressPercent(), 0))
-                        .orElse(0);
-                return courseMapper.toCourseSummary(course, subjectCount, examCount, progress);
-              }
-              return courseMapper.toCourseSummary(course, subjectCount, examCount);
-            });
+    Page<CourseSummaryResponse> result = page.map(
+        course -> {
+          long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
+          long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+              course.getId(), AssessmentType.EXAM);
+          if (finalUserId != null) {
+            Integer progress = userCourseProgressRepository
+                .findByUserIdAndCourseId(finalUserId, course.getId())
+                .map(p -> defaultOr(p.getProgressPercent(), 0))
+                .orElse(0);
+            return courseMapper.toCourseSummary(course, subjectCount, examCount, progress);
+          }
+          return courseMapper.toCourseSummary(course, subjectCount, examCount);
+        });
     log.info(
         "Listed {} courses (page {}, size {})",
         result.getNumberOfElements(),
@@ -129,39 +132,35 @@ public class CourseServiceImpl implements CourseService {
     Course course = requireCourse(id);
     List<AccessTier> visibleTiers = visibleTiers(email);
 
-    Page<Subject> page =
-        subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId(), pageable);
+    Page<Subject> page = subjectRepository.findByCourseIdAndDeletedAtIsNull(course.getId(), pageable);
 
-    Map<UUID, Integer> progressMap = java.util.Collections.emptyMap();
+    Map<UUID, Integer> progressMap = Collections.emptyMap();
     if (email != null) {
       User user = userRepository.findByGmail(email).orElse(null);
       if (user != null) {
         List<UUID> subjectIds = page.getContent().stream().map(Subject::getId).toList();
-        progressMap =
-            userSubjectProgressRepository
-                .findByUserIdAndSubjectIdIn(user.getId(), subjectIds)
-                .stream()
-                .collect(
-                    java.util.stream.Collectors.toMap(
-                        p -> p.getSubject().getId(),
-                        p -> defaultOr(p.getProgressPercent(), 0),
-                        (a, b) -> a));
+        progressMap = userSubjectProgressRepository
+            .findByUserIdAndSubjectIdIn(user.getId(), subjectIds)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    p -> p.getSubject().getId(),
+                    p -> defaultOr(p.getProgressPercent(), 0),
+                    (a, b) -> a));
       }
     }
 
     final Map<UUID, Integer> finalProgressMap = progressMap;
-    Page<SubjectSummaryResponse> subjects =
-        page.map(
-            subject -> {
-              long exerciseCount =
-                  assessmentRepository
-                      .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
-                          subject.getId(),
-                          studyweb.cus.enums.AssessmentType.HOMEWORK,
-                          visibleTiers);
-              Integer progress = finalProgressMap.getOrDefault(subject.getId(), 0);
-              return courseMapper.toSubjectSummary(subject, exerciseCount, progress);
-            });
+    Page<SubjectSummaryResponse> subjects = page.map(
+        subject -> {
+          long exerciseCount = assessmentRepository
+              .countBySubjectIdAndDeletedAtIsNullAndAssessmentTypeAndAccessIn(
+                  subject.getId(),
+                  studyweb.cus.enums.AssessmentType.HOMEWORK,
+                  visibleTiers);
+          Integer progress = finalProgressMap.getOrDefault(subject.getId(), 0);
+          return courseMapper.toSubjectSummary(subject, exerciseCount, progress);
+        });
 
     log.info(
         "Fetched course detail {} with {} subject(s) (page {}, size {})",
@@ -175,17 +174,20 @@ public class CourseServiceImpl implements CourseService {
   @Override
   @Transactional
   public CourseSummaryResponse createCourse(CourseRequest request) {
-    Course course =
-        Course.builder()
-            .title(request.title())
-            .subtitle(request.subtitle())
-            .badgeTitle(request.badgeTitle())
-            .description(request.description())
-            .thumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()))
-            .status(defaultOr(request.status(), studyweb.cus.enums.CourseCreateStatus.DRAFT))
-            .build();
+    Course course = Course.builder()
+        .title(request.title())
+        .subtitle(request.subtitle())
+        .badgeTitle(request.badgeTitle())
+        .description(request.description())
+        .thumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()))
+        .status(defaultOr(request.status(), studyweb.cus.enums.CourseCreateStatus.DRAFT))
+        .maxScores(request.maxScores())
+        .build();
     Course saved = courseRepository.save(course);
     log.info("Created course {}", saved.getId());
+    if (saved.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewCoursePublishedEvent.of(saved.getTitle()));
+    }
     return courseMapper.toCourseSummary(saved, 0L, 0L);
   }
 
@@ -208,15 +210,21 @@ public class CourseServiceImpl implements CourseService {
     if (request.thumbnailImage() != null && !request.thumbnailImage().isEmpty()) {
       course.setThumbnailUrl(resolveThumbnailUrl(request.thumbnailImage()));
     }
+    CourseCreateStatus oldStatus = course.getStatus();
     if (request.status() != null) {
       course.setStatus(request.status());
     }
+    if (request.maxScores() != null) {
+      course.setMaxScores(request.maxScores());
+    }
     log.info("Updated course {}", id);
+    if (oldStatus != CourseCreateStatus.PUBLISH && course.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(NewCoursePublishedEvent.of(course.getTitle()));
+    }
 
     long subjectCount = subjectRepository.countByCourseIdAndDeletedAtIsNull(course.getId());
-    long examCount =
-        assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
-            course.getId(), studyweb.cus.enums.AssessmentType.EXAM);
+    long examCount = assessmentRepository.countByCourseIdAndAssessmentTypeAndDeletedAtIsNull(
+        course.getId(), studyweb.cus.enums.AssessmentType.EXAM);
 
     return courseMapper.toCourseSummary(course, subjectCount, examCount);
   }
@@ -233,13 +241,12 @@ public class CourseServiceImpl implements CourseService {
   @Transactional
   public SubjectSummaryResponse createSubject(UUID courseId, SubjectRequest request) {
     Course course = requireCourse(courseId);
-    Subject subject =
-        Subject.builder()
-            .course(course)
-            .title(request.title())
-            .maxScores(request.maxScores())
-            .durationHour(defaultOr(request.durationHour(), BigDecimal.ZERO))
-            .build();
+    Subject subject = Subject.builder()
+        .course(course)
+        .title(request.title())
+        .maxScores(request.maxScores())
+        .durationHour(defaultOr(request.durationHour(), BigDecimal.ZERO))
+        .build();
     Subject saved = subjectRepository.save(subject);
     log.info("Created subject {} for course {}", saved.getId(), courseId);
     updateCourseProgressWhenSubjectsChanged(courseId);
@@ -278,28 +285,24 @@ public class CourseServiceImpl implements CourseService {
     requireCourse(courseId);
     requireSubject(courseId, subjectId);
 
-    Page<Lesson> page =
-        lessonRepository.findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable);
+    Page<Lesson> page = lessonRepository.findBySubjectIdAndDeletedAtIsNullOrderByOrderNumAsc(subjectId, pageable);
 
-    java.util.Set<UUID> clickedLessonIds = java.util.Collections.emptySet();
+    Set<UUID> clickedLessonIds = Collections.emptySet();
     if (email != null) {
       User user = userRepository.findByGmail(email).orElse(null);
       if (user != null) {
         List<UUID> lessonIds = page.getContent().stream().map(Lesson::getId).toList();
-        clickedLessonIds =
-            userLessonProgressRepository.findByUserIdAndLessonIdIn(user.getId(), lessonIds).stream()
-                .filter(p -> Boolean.TRUE.equals(p.getIsClicked()))
-                .map(p -> p.getLesson().getId())
-                .collect(java.util.stream.Collectors.toSet());
+        clickedLessonIds = userLessonProgressRepository.findByUserIdAndLessonIdIn(user.getId(), lessonIds).stream()
+            .filter(p -> Boolean.TRUE.equals(p.getIsClicked()))
+            .map(p -> p.getLesson().getId())
+            .collect(Collectors.toSet());
       }
     }
 
-    final java.util.Set<UUID> finalClickedLessonIds = clickedLessonIds;
-    Page<LessonSummaryResponse.LessonCardResponse> lessons =
-        page.map(
-            lesson ->
-                courseMapper.toLessonCardResponse(
-                    lesson, finalClickedLessonIds.contains(lesson.getId())));
+    final Set<UUID> finalClickedLessonIds = clickedLessonIds;
+    Page<LessonSummaryResponse.LessonCardResponse> lessons = page.map(
+        lesson -> courseMapper.toLessonCardResponse(
+            lesson, finalClickedLessonIds.contains(lesson.getId())));
 
     log.info(
         "Listed {} lessons for subject {} (user: {}, page {}, size {})",
@@ -318,21 +321,24 @@ public class CourseServiceImpl implements CourseService {
     Course course = requireCourse(courseId);
     Subject subject = requireSubject(courseId, subjectId);
 
-    Lesson lesson =
-        Lesson.builder()
-            .subject(subject)
-            .orderNum(defaultOr(request.orderNum(), nextLessonOrder(subjectId)))
-            .title(request.title())
-            .youtubeUrl(request.youtubeUrl())
-            .durationMin(request.durationMin())
-            .access(defaultOr(request.access(), AccessTier.PUBLIC))
-            .build();
+    Lesson lesson = Lesson.builder()
+        .subject(subject)
+        .orderNum(defaultOr(request.orderNum(), nextLessonOrder(subjectId)))
+        .title(request.title())
+        .youtubeUrl(request.youtubeUrl())
+        .durationMin(request.durationMin())
+        .access(defaultOr(request.access(), AccessTier.PUBLIC))
+        .build();
     Lesson saved = lessonRepository.save(lesson);
 
     subject.setNumLessons(
         Math.toIntExact(lessonRepository.countBySubjectIdAndDeletedAtIsNull(subjectId)));
     recomputeProgressForSubject(course.getId(), subject.getId());
     log.info("Created lesson {} for subject {}", saved.getId(), subjectId);
+    if (course.getStatus() == CourseCreateStatus.PUBLISH) {
+      eventPublisher.publishEvent(
+          NewLessonAddedEvent.of(saved.getTitle(), course.getTitle(), saved.getAccess()));
+    }
     return courseMapper.toLessonCardResponse(saved);
   }
 
@@ -410,10 +416,9 @@ public class CourseServiceImpl implements CourseService {
     return userRepository
         .findByGmail(email)
         .map(
-            user ->
-                user.getTier() == UserTier.VIP
-                    ? List.of(AccessTier.PUBLIC, AccessTier.VIP)
-                    : List.of(AccessTier.PUBLIC))
+            user -> user.getTier() == UserTier.VIP
+                ? List.of(AccessTier.PUBLIC, AccessTier.VIP)
+                : List.of(AccessTier.PUBLIC))
         .orElse(List.of(AccessTier.PUBLIC));
   }
 
@@ -433,16 +438,14 @@ public class CourseServiceImpl implements CourseService {
     Subject subject = requireSubject(courseId, subjectId);
     Lesson lesson = requireLesson(subjectId, lessonId);
 
-    UserLessonProgress lessonProgress =
-        userLessonProgressRepository
-            .findByUserIdAndLessonId(user.getId(), lessonId)
-            .orElseGet(
-                () ->
-                    UserLessonProgress.builder()
-                        .user(user)
-                        .lesson(lesson)
-                        .isClicked(false)
-                        .build());
+    UserLessonProgress lessonProgress = userLessonProgressRepository
+        .findByUserIdAndLessonId(user.getId(), lessonId)
+        .orElseGet(
+            () -> UserLessonProgress.builder()
+                .user(user)
+                .lesson(lesson)
+                .isClicked(false)
+                .build());
     lessonProgress.setIsClicked(true);
     userLessonProgressRepository.save(lessonProgress);
 
@@ -517,8 +520,8 @@ public class CourseServiceImpl implements CourseService {
   private void submitProgressTask(Runnable task, String description) {
     try {
       CompletableFuture.runAsync(
-              () -> transactionTemplate.executeWithoutResult(tx -> task.run()),
-              updateProgressExecutor)
+          () -> transactionTemplate.executeWithoutResult(tx -> task.run()),
+          updateProgressExecutor)
           .exceptionally(
               ex -> {
                 log.error("Failed async update of {}", description, ex);
@@ -544,8 +547,7 @@ public class CourseServiceImpl implements CourseService {
 
   private void updateProgressForLearners(List<UUID> userIds, UUID courseId, UUID subjectId) {
     Course course = courseRepository.findByIdAndDeletedAtIsNull(courseId).orElse(null);
-    Subject subject =
-        subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId).orElse(null);
+    Subject subject = subjectRepository.findByIdAndCourseIdAndDeletedAtIsNull(subjectId, courseId).orElse(null);
     if (course == null || subject == null) {
       return;
     }
@@ -561,16 +563,14 @@ public class CourseServiceImpl implements CourseService {
 
     int subjectProgressPercent = subjectProgressCalculate(user.getId(), subject.getId());
     // Update subject progress
-    UserSubjectProgress subjectProgress =
-        userSubjectProgressRepository
-            .findByUserIdAndSubjectId(user.getId(), subject.getId())
-            .orElseGet(
-                () ->
-                    UserSubjectProgress.builder()
-                        .user(user)
-                        .subject(subject)
-                        .progressPercent(0)
-                        .build());
+    UserSubjectProgress subjectProgress = userSubjectProgressRepository
+        .findByUserIdAndSubjectId(user.getId(), subject.getId())
+        .orElseGet(
+            () -> UserSubjectProgress.builder()
+                .user(user)
+                .subject(subject)
+                .progressPercent(0)
+                .build());
     subjectProgress.setProgressPercent(subjectProgressPercent);
     userSubjectProgressRepository.save(subjectProgress);
     // Update course progress
@@ -579,26 +579,23 @@ public class CourseServiceImpl implements CourseService {
 
   private void updateCourseProgress(User user, Course course) {
     int courseProgressPercent = courseProgressCalculate(user.getId(), course.getId());
-    UserCourseProgress courseProgress =
-        userCourseProgressRepository
-            .findByUserIdAndCourseId(user.getId(), course.getId())
-            .orElseGet(
-                () ->
-                    UserCourseProgress.builder()
-                        .user(user)
-                        .course(course)
-                        .progressPercent(0)
-                        .build());
+    UserCourseProgress courseProgress = userCourseProgressRepository
+        .findByUserIdAndCourseId(user.getId(), course.getId())
+        .orElseGet(
+            () -> UserCourseProgress.builder()
+                .user(user)
+                .course(course)
+                .progressPercent(0)
+                .build());
     courseProgress.setProgressPercent(courseProgressPercent);
     userCourseProgressRepository.save(courseProgress);
   }
 
   private int subjectProgressCalculate(UUID userId, UUID subjectId) {
     int totalLessons = defaultOr(lessonRepository.countLessonBySubjectId(subjectId), 0);
-    long completedLessons =
-        userLessonProgressRepository
-            .countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(
-                userId, subjectId);
+    long completedLessons = userLessonProgressRepository
+        .countByUserIdAndLesson_Subject_IdAndLesson_DeletedAtIsNullAndIsClickedTrue(
+            userId, subjectId);
     int progressPercent = totalLessons > 0 ? (int) ((completedLessons * 100) / totalLessons) : 0;
     progressPercent = Math.min(100, Math.max(0, progressPercent));
 
@@ -614,13 +611,13 @@ public class CourseServiceImpl implements CourseService {
     // Subjects with no recorded progress count as 0%, so the denominator is
     // always the total number of subjects (not just those with a row in the table).
     List<UUID> subjectIds = subjects.stream().map(Subject::getId).toList();
-    Map<UUID, Integer> progressMap =
-        userSubjectProgressRepository.findByUserIdAndSubjectIdIn(userId, subjectIds).stream()
-            .collect(
-                java.util.stream.Collectors.toMap(
-                    p -> p.getSubject().getId(),
-                    p -> defaultOr(p.getProgressPercent(), 0),
-                    (a, b) -> a));
+    Map<UUID, Integer> progressMap = userSubjectProgressRepository.findByUserIdAndSubjectIdIn(userId, subjectIds)
+        .stream()
+        .collect(
+            Collectors.toMap(
+                p -> p.getSubject().getId(),
+                p -> defaultOr(p.getProgressPercent(), 0),
+                (a, b) -> a));
 
     int sumPercent = subjects.stream().mapToInt(s -> progressMap.getOrDefault(s.getId(), 0)).sum();
 

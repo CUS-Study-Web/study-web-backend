@@ -2,6 +2,8 @@ package studyweb.cus.entity.content;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -13,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractBaseEntity;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.CtaTarget;
 
 @Entity
 @Table(name = "homepage_content")
@@ -38,14 +41,16 @@ public class HomepageContent extends AbstractBaseEntity {
   @Column(name = "cta_btn1_name", length = 100)
   private String ctaBtn1Name;
 
-  @Column(name = "cta_btn1_url", length = 500)
-  private String ctaBtn1Url;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cta_btn1_target", length = 50)
+  private CtaTarget ctaBtn1Target;
 
   @Column(name = "cta_btn2_name", length = 100)
   private String ctaBtn2Name;
 
-  @Column(name = "cta_btn2_url", length = 500)
-  private String ctaBtn2Url;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "cta_btn2_target", length = 50)
+  private CtaTarget ctaBtn2Target;
 
   @Column(name = "main_image_url", length = 500)
   private String mainImageUrl;
@@ -64,6 +69,12 @@ public class HomepageContent extends AbstractBaseEntity {
 
   @Column(name = "student1_avatar", length = 500)
   private String student1Avatar;
+
+  @Column(name = "student2_avatar", length = 500)
+  private String student2Avatar;
+
+  @Column(name = "student3_avatar", length = 500)
+  private String student3Avatar;
 
   @Column(name = "student_stats_desc", columnDefinition = "TEXT")
   private String studentStatsDesc;

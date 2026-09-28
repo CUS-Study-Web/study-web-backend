@@ -1,11 +1,14 @@
 package studyweb.cus.repository.user;
 
+import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import studyweb.cus.entity.user.User;
@@ -14,6 +17,12 @@ import studyweb.cus.enums.UserStatus;
 import studyweb.cus.enums.UserTier;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+  @Modifying
+  @Query(
+      "UPDATE User u SET u.tier = studyweb.cus.enums.UserTier.NORMAL, u.updatedAt = CURRENT_TIMESTAMP "
+          + "WHERE u.tier = studyweb.cus.enums.UserTier.VIP AND u.vipEndDate < :today")
+  int downgradeExpiredVipUsers(@Param("today") LocalDate today);
 
   int countByRoleAndTier(UserRole role, UserTier tier);
 
@@ -71,4 +80,22 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
   @Query("SELECT u.id FROM User u WHERE u.role = :role")
   List<UUID> findIdsByRole(@Param("role") UserRole role);
+
+  @Query("SELECT u.gmail FROM User u WHERE u.role = :role")
+  List<String> findGmailsByRole(@Param("role") UserRole role);
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.status = 'ACTIVE'")
+  List<UUID> findActiveLearnerIds();
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE'")
+  List<UUID> findActiveVipLearnerIds();
+
+  @Query(
+      "SELECT u.id FROM User u WHERE u.role = 'LEARNER' AND u.tier = 'VIP' AND u.status = 'ACTIVE' AND u.vipEndDate = :targetDate")
+  List<UUID> findActiveVipLearnerIdsWithVipEndDate(@Param("targetDate") LocalDate targetDate);
+
+  @Query("SELECT u FROM User u WHERE LOWER(u.gmail) IN :gmails")
+  List<User> findByGmailInIgnoreCase(@Param("gmails") Collection<String> gmails);
 }

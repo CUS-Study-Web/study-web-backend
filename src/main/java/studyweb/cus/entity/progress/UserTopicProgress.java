@@ -41,7 +41,7 @@ public class UserTopicProgress extends AbstractBaseEntity {
   @JoinColumn(name = "topic_id", nullable = false)
   private FlashcardTopic topic;
 
-  @Column(name = "progress_percent", nullable = false)
+  @Column(name = "learned_words", nullable = false)
   @Builder.Default
-  private Integer progressPercent = 0;
+  private Integer learnedWords = 0;
 }

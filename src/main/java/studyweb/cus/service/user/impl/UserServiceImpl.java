@@ -1,32 +1,55 @@
 package studyweb.cus.service.user.impl;
 
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.UpdateProfileRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
+import studyweb.cus.dto.response.user.AvatarResponse;
+import studyweb.cus.dto.response.user.UserProfileResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.VipRequestRepository;
 import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.file.FileService;
 import studyweb.cus.service.user.UserService;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
 
   private static final int MIN_PASSWORD_LENGTH = 8;
 
   private final UserRepository userRepository;
+  private final VipRequestRepository vipRequestRepository;
   private final PasswordEncoder passwordEncoder;
   private final JwtUtils jwtUtils;
   private final UserMapper userMapper;
+  private final FileService fileService;
 
   @Override
   @Transactional
@@ -62,6 +85,89 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public UserProfileResponse getProfile(String email) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    return userMapper.toUserProfileResponse(user);
+  }
+
+  @Override
+  @Transactional
+  public UserProfileResponse updateProfile(String email, UpdateProfileRequest request) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+
+    if (request.name() != null) {
+      String trimmedName = request.name().trim();
+      if (!trimmedName.isEmpty()) {
+        user.setName(trimmedName);
+      }
+    }
+    if (request.phone() != null) {
+      user.setPhone(request.phone().trim());
+    }
+    if (request.birth() != null) {
+      user.setBirth(request.birth());
+    }
+    if (request.gender() != null) {
+      user.setGender(request.gender());
+    }
+    if (request.school() != null) {
+      user.setSchool(request.school().trim());
+    }
+
+    User savedUser = userRepository.save(user);
+    return userMapper.toUserProfileResponse(savedUser);
+  }
+
+  @Override
+  @Transactional
+  public AvatarResponse uploadAvatar(String email, MultipartFile file) {
+    if (file == null || file.isEmpty()) {
+      throw new FileException(FileErrorCode.FILE_EMPTY);
+    }
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+
+    log.info("Uploading avatar image for user {}", email);
+    String oldAvatarUrl = user.getAvatarUrl();
+    UploadDocumentResult uploadResult = fileService.uploadAvatarFile(file);
+    user.setAvatarUrl(uploadResult.fileUrl());
+    userRepository.save(user);
+
+    if (oldAvatarUrl != null && !oldAvatarUrl.isBlank()) {
+      try {
+        fileService.deleteFile(oldAvatarUrl);
+      } catch (Exception e) {
+        log.warn("Failed to delete old avatar file from S3: {}", oldAvatarUrl, e);
+      }
+    }
+
+    return new AvatarResponse(uploadResult.fileUrl());
+  }
+
+  @Override
   @Transactional
   public void changePassword(String email, ChangePasswordRequest request) {
     if (request.newPassword().length() < MIN_PASSWORD_LENGTH) {
@@ -76,5 +182,93 @@ public class UserServiceImpl implements UserService {
     userRepository.save(user);
 
     jwtUtils.revokeAllSessions(email);
+  }
+
+  @Override
+  public void createVipRequest(String email, VipSubscriptionRequest request, boolean isRenewal) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+    if (user.getRole() != UserRole.LEARNER) {
+      throw new UserException(UserErrorCode.ROLE_NOT_ALLOWED);
+    }
+    if (isRenewal && user.getTier() != UserTier.VIP) {
+      throw new UserException(UserErrorCode.NOT_VIP);
+    }
+    if (!isRenewal && user.getTier() == UserTier.VIP) {
+      throw new UserException(UserErrorCode.ALREADY_VIP);
+    }
+    if (vipRequestRepository.existsByUserAndStatus(user, VipRequestStatus.WAITING)) {
+      throw new UserException(UserErrorCode.VIP_REQUEST_PENDING);
+    }
+    if (request == null || request.evidence() == null || request.evidence().isEmpty()) {
+      throw new FileException(FileErrorCode.FILE_EMPTY);
+    }
+
+    UploadDocumentResult uploadResult = fileService.uploadVipEvidenceFile(request.evidence());
+
+    VipRequest vipRequest =
+        VipRequest.builder()
+            .user(user)
+            .status(VipRequestStatus.WAITING)
+            .name(request.name())
+            .email(request.email())
+            .phone(request.phone())
+            .birth(request.birth())
+            .evidenceUrl(uploadResult.fileUrl())
+            .note(request.note())
+            .requestDate(LocalDate.now())
+            .build();
+
+    try {
+      vipRequestRepository.save(vipRequest);
+    } catch (Exception e) {
+      log.error(
+          "Failed to save VIP request for user {}. Cleaning up uploaded evidence file {}",
+          email,
+          uploadResult.fileKey());
+      fileService.deleteFile(uploadResult.fileKey());
+      throw new SystemException(
+          SystemErrorCode.DATABASE_ERROR, "Failed to submit VIP request");
+    }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public VipInfoResponse getVipInfo(String email) {
+    User user =
+        userRepository
+            .findByGmail(email)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+
+    if (user.getStatus() == UserStatus.INACTIVE) {
+      throw new UserException(UserErrorCode.USER_LOCKED);
+    }
+    if (user.getStatus() == UserStatus.BANNED) {
+      throw new UserException(UserErrorCode.USER_BANNED);
+    }
+    if (user.getRole() != UserRole.LEARNER) {
+      throw new UserException(UserErrorCode.ROLE_NOT_ALLOWED);
+    }
+
+    VipRequest latestRequest =
+        vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(user).orElse(null);
+
+    return new VipInfoResponse(
+        user.getTier(),
+        user.getVipStartDate(),
+        user.getVipEndDate(),
+        latestRequest != null ? latestRequest.getStatus() : null,
+        latestRequest != null ? latestRequest.getRequestDate() : null,
+        latestRequest != null ? latestRequest.getNote() : null,
+        latestRequest != null ? latestRequest.getEvidenceUrl() : null);
   }
 }

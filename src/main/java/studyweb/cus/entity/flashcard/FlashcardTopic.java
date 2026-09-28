@@ -2,6 +2,8 @@ package studyweb.cus.entity.flashcard;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -13,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import studyweb.cus.entity.AbstractAuditEntity;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.enums.CourseCreateStatus;
 
 @Entity
 @Table(name = "flashcard_topics")
@@ -32,6 +35,11 @@ public class FlashcardTopic extends AbstractAuditEntity {
 
   @Column(name = "description", columnDefinition = "TEXT")
   private String description;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  @Builder.Default
+  private CourseCreateStatus status = CourseCreateStatus.DRAFT;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "updated_by")

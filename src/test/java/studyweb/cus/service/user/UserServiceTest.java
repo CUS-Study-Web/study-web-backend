@@ -15,18 +15,36 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockMultipartFile;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
 import studyweb.cus.dto.request.auth.RegisterRequest;
+import studyweb.cus.dto.request.user.UpdateProfileRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.AvatarResponse;
+import studyweb.cus.dto.response.user.UserProfileResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.entity.user.User;
+import studyweb.cus.entity.user.VipRequest;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.exception.auth.AuthErrorCode;
 import studyweb.cus.exception.auth.AuthException;
+import studyweb.cus.exception.file.FileErrorCode;
+import studyweb.cus.exception.file.FileException;
+import studyweb.cus.exception.system.SystemErrorCode;
+import studyweb.cus.exception.system.SystemException;
 import studyweb.cus.exception.user.UserErrorCode;
 import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.user.UserMapper;
 import studyweb.cus.repository.user.UserRepository;
+import studyweb.cus.repository.user.VipRequestRepository;
+import studyweb.cus.dto.response.document.UploadDocumentResult;
 import studyweb.cus.security.JwtUtils;
+import studyweb.cus.service.file.FileService;
 import studyweb.cus.service.user.impl.UserServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,11 +54,15 @@ class UserServiceTest {
 
   @Mock private UserRepository userRepository;
 
+  @Mock private VipRequestRepository vipRequestRepository;
+
   @Mock private PasswordEncoder passwordEncoder;
 
   @Mock private JwtUtils jwtUtils;
 
   @Mock private UserMapper userMapper;
+
+  @Mock private FileService fileService;
 
   @InjectMocks private UserServiceImpl userService;
 
@@ -65,6 +87,25 @@ class UserServiceTest {
         .school("StudyWeb")
         .password("encoded-hash")
         .build();
+  }
+
+  private UserProfileResponse sampleProfileResponse() {
+    return new UserProfileResponse(
+        java.util.UUID.randomUUID(),
+        GMAIL,
+        "Tien",
+        "0901234567",
+        LocalDate.of(2000, 1, 1),
+        Gender.MALE,
+        "StudyWeb",
+        "https://cdn.example.com/avatar.png",
+        UserRole.LEARNER,
+        UserTier.NORMAL,
+        UserStatus.ACTIVE,
+        null,
+        null,
+        java.time.LocalDateTime.now(),
+        java.time.LocalDateTime.now());
   }
 
   @Test
@@ -179,5 +220,498 @@ class UserServiceTest {
     verify(userRepository).save(captor.capture());
     assertThat(captor.getValue().getPassword()).isEqualTo("new-hash");
     verify(jwtUtils).revokeAllSessions(GMAIL);
+  }
+
+  @Test
+  void createVipRequest_userNotFound_throwsUserNotFound() {
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_userInactive_throwsUserLocked() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_userBanned_throwsUserBanned() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_nonLearnerRole_throwsRoleNotAllowed() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.ASSISTANT);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ROLE_NOT_ALLOWED.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_renewal_notVip_throwsNotVip() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, true))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode()).isEqualTo(UserErrorCode.NOT_VIP.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_subscription_alreadyVip_throwsAlreadyVip() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.VIP);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ALREADY_VIP.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_waitingRequestExists_throwsVipRequestPending() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(true);
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.VIP_REQUEST_PENDING.code()));
+
+    verify(vipRequestRepository, never()).save(any());
+  }
+
+  @Test
+  void createVipRequest_nullOrEmptyEvidence_throwsFileEmpty() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, null, false))
+        .isInstanceOf(studyweb.cus.exception.file.FileException.class);
+
+    org.springframework.mock.web.MockMultipartFile emptyFile =
+        new org.springframework.mock.web.MockMultipartFile("evidence", new byte[0]);
+    VipSubscriptionRequest req =
+        new VipSubscriptionRequest(
+            "User", "u@mail.com", LocalDate.of(2000, 1, 1), "0901234567", emptyFile, null);
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, req, false))
+        .isInstanceOf(studyweb.cus.exception.file.FileException.class);
+  }
+
+  @Test
+  void createVipRequest_subscription_successUploadsToS3AndSavesRequest() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    when(fileService.uploadVipEvidenceFile(file))
+        .thenReturn(
+            new UploadDocumentResult(
+                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
+
+    LocalDate birth = LocalDate.of(2001, 2, 3);
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Learner Name",
+            "learner@studyweb.edu",
+            birth,
+            "0911223344",
+            file,
+            "Bank transfer done");
+
+    userService.createVipRequest(GMAIL, request, false);
+
+    ArgumentCaptor<VipRequest> captor = ArgumentCaptor.forClass(VipRequest.class);
+    verify(vipRequestRepository).save(captor.capture());
+    VipRequest saved = captor.getValue();
+    assertThat(saved.getUser()).isEqualTo(u);
+    assertThat(saved.getStatus()).isEqualTo(VipRequestStatus.WAITING);
+    assertThat(saved.getName()).isEqualTo("Learner Name");
+    assertThat(saved.getEmail()).isEqualTo("learner@studyweb.edu");
+    assertThat(saved.getPhone()).isEqualTo("0911223344");
+    assertThat(saved.getBirth()).isEqualTo(birth);
+    assertThat(saved.getEvidenceUrl())
+        .isEqualTo("https://s3.example.com/vip-evidence/proof.png");
+    assertThat(saved.getNote()).isEqualTo("Bank transfer done");
+    assertThat(saved.getRequestDate()).isEqualTo(LocalDate.now());
+  }
+
+  @Test
+  void createVipRequest_dbSaveFails_cleansUpS3FileAndThrowsSystemException() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.existsByUserAndStatus(u, VipRequestStatus.WAITING)).thenReturn(false);
+
+    org.springframework.mock.web.MockMultipartFile file =
+        new org.springframework.mock.web.MockMultipartFile(
+            "evidence", "proof.png", "image/png", new byte[] {1, 2, 3});
+    when(fileService.uploadVipEvidenceFile(file))
+        .thenReturn(
+            new UploadDocumentResult(
+                3L, "vip-evidence/proof.png", "https://s3.example.com/vip-evidence/proof.png"));
+
+    RuntimeException dbError = new RuntimeException("Database error");
+    when(vipRequestRepository.save(any(VipRequest.class))).thenThrow(dbError);
+
+    VipSubscriptionRequest request =
+        new VipSubscriptionRequest(
+            "Learner Name",
+            "learner@studyweb.edu",
+            LocalDate.of(2001, 2, 3),
+            "0911223344",
+            file,
+            "Bank transfer done");
+
+    assertThatThrownBy(() -> userService.createVipRequest(GMAIL, request, false))
+        .isInstanceOf(SystemException.class)
+        .satisfies(
+            ex -> {
+              SystemException sysEx = (SystemException) ex;
+              assertThat(sysEx.getCode()).isEqualTo(SystemErrorCode.DATABASE_ERROR.code());
+            });
+
+    verify(fileService).deleteFile("vip-evidence/proof.png");
+  }
+
+  @Test
+  void getVipInfo_userNotFound_throwsUserNotFound() {
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_userInactive_throwsUserLocked() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_userBanned_throwsUserBanned() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_nonLearnerRole_throwsRoleNotAllowed() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.ASSISTANT);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    assertThatThrownBy(() -> userService.getVipInfo(GMAIL))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.ROLE_NOT_ALLOWED.code()));
+
+    verify(vipRequestRepository, never()).findFirstByUserOrderByCreatedAtDesc(any());
+  }
+
+  @Test
+  void getVipInfo_learnerWithNoVipRequest_returnsVipInfoWithNullRequestFields() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.NORMAL);
+    u.setVipStartDate(null);
+    u.setVipEndDate(null);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(u))
+        .thenReturn(java.util.Optional.empty());
+
+    VipInfoResponse response = userService.getVipInfo(GMAIL);
+
+    assertThat(response.tier()).isEqualTo(UserTier.NORMAL);
+    assertThat(response.vipStartDate()).isNull();
+    assertThat(response.vipEndDate()).isNull();
+    assertThat(response.status()).isNull();
+    assertThat(response.requestDate()).isNull();
+    assertThat(response.note()).isNull();
+    assertThat(response.evidenceUrl()).isNull();
+  }
+
+  @Test
+  void getVipInfo_learnerWithVipRequest_returnsFullVipInfo() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    u.setRole(UserRole.LEARNER);
+    u.setTier(UserTier.VIP);
+    LocalDate startDate = LocalDate.of(2026, 1, 1);
+    LocalDate endDate = LocalDate.of(2026, 2, 1);
+    u.setVipStartDate(startDate);
+    u.setVipEndDate(endDate);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    LocalDate reqDate = LocalDate.of(2026, 1, 1);
+    VipRequest vipRequest =
+        VipRequest.builder()
+            .user(u)
+            .status(VipRequestStatus.APPROVED)
+            .requestDate(reqDate)
+            .note("Paid via MB Bank")
+            .evidenceUrl("https://s3.example.com/vip-evidence/proof.png")
+            .build();
+
+    when(vipRequestRepository.findFirstByUserOrderByCreatedAtDesc(u))
+        .thenReturn(java.util.Optional.of(vipRequest));
+
+    VipInfoResponse response = userService.getVipInfo(GMAIL);
+
+    assertThat(response.tier()).isEqualTo(UserTier.VIP);
+    assertThat(response.vipStartDate()).isEqualTo(startDate);
+    assertThat(response.vipEndDate()).isEqualTo(endDate);
+    assertThat(response.status()).isEqualTo(VipRequestStatus.APPROVED);
+    assertThat(response.requestDate()).isEqualTo(reqDate);
+    assertThat(response.note()).isEqualTo("Paid via MB Bank");
+    assertThat(response.evidenceUrl())
+        .isEqualTo("https://s3.example.com/vip-evidence/proof.png");
+  }
+
+  
+
+  @Test
+  void getProfile_returnsMappedProfileResponse() {
+    User u = user();
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userMapper.toUserProfileResponse(u)).thenReturn(sampleProfileResponse());
+
+    UserProfileResponse response = userService.getProfile(GMAIL);
+
+    assertThat(response).isNotNull();
+    assertThat(response.gmail()).isEqualTo(GMAIL);
+    assertThat(response.name()).isEqualTo("Tien");
+  }
+
+  @Test
+  void getProfile_userNotFound_throwsException() {
+    when(userRepository.findByGmail("unknown@studyweb.edu")).thenReturn(java.util.Optional.empty());
+
+    assertThatThrownBy(() -> userService.getProfile("unknown@studyweb.edu"))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_NOT_FOUND.code()));
+  }
+
+  @Test
+  void updateProfile_updatesFieldsSuccessfully() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    UserProfileResponse expected = sampleProfileResponse();
+    when(userMapper.toUserProfileResponse(any(User.class))).thenReturn(expected);
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest(
+            "New Name",
+            "0909999888",
+            LocalDate.of(2001, 2, 2),
+            Gender.FEMALE,
+            "New School");
+
+    UserProfileResponse result = userService.updateProfile(GMAIL, req);
+
+    assertThat(result).isNotNull();
+    assertThat(u.getName()).isEqualTo("New Name");
+    assertThat(u.getPhone()).isEqualTo("0909999888");
+    assertThat(u.getBirth()).isEqualTo(LocalDate.of(2001, 2, 2));
+    assertThat(u.getGender()).isEqualTo(Gender.FEMALE);
+    assertThat(u.getSchool()).isEqualTo("New School");
+    verify(userRepository).save(u);
+  }
+
+  @Test
+  void updateProfile_userLocked_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest("Name", null, null, null, null);
+
+    assertThatThrownBy(() -> userService.updateProfile(GMAIL, req))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
+  }
+
+  @Test
+  void updateProfile_userBanned_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.BANNED);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    UpdateProfileRequest req =
+        new UpdateProfileRequest("Name", null, null, null, null);
+
+    assertThatThrownBy(() -> userService.updateProfile(GMAIL, req))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_BANNED.code()));
+  }
+
+  @Test
+  void uploadAvatar_success() {
+    User u = user();
+    u.setStatus(UserStatus.ACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+    when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+    when(fileService.uploadAvatarFile(avatar))
+        .thenReturn(new UploadDocumentResult(1024L, "avatar-key", "https://cdn.example.com/new-avatar.png"));
+
+    AvatarResponse response = userService.uploadAvatar(GMAIL, avatar);
+
+    assertThat(response).isNotNull();
+    assertThat(response.avatarUrl()).isEqualTo("https://cdn.example.com/new-avatar.png");
+    assertThat(u.getAvatarUrl()).isEqualTo("https://cdn.example.com/new-avatar.png");
+    verify(fileService).uploadAvatarFile(avatar);
+    verify(userRepository).save(u);
+  }
+
+  @Test
+  void uploadAvatar_fileNullOrEmpty_throwsFileException() {
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, null))
+        .isInstanceOf(FileException.class)
+        .satisfies(
+            ex ->
+                assertThat(((FileException) ex).getCode())
+                    .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
+
+    MockMultipartFile emptyFile = new MockMultipartFile("avatar", new byte[0]);
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, emptyFile))
+        .isInstanceOf(FileException.class)
+        .satisfies(
+            ex ->
+                assertThat(((FileException) ex).getCode())
+                    .isEqualTo(FileErrorCode.FILE_EMPTY.code()));
+  }
+
+  @Test
+  void uploadAvatar_userLocked_throwsException() {
+    User u = user();
+    u.setStatus(UserStatus.INACTIVE);
+    when(userRepository.findByGmail(GMAIL)).thenReturn(java.util.Optional.of(u));
+
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+
+    assertThatThrownBy(() -> userService.uploadAvatar(GMAIL, avatar))
+        .isInstanceOf(UserException.class)
+        .satisfies(
+            ex ->
+                assertThat(((UserException) ex).getCode())
+                    .isEqualTo(UserErrorCode.USER_LOCKED.code()));
   }
 }

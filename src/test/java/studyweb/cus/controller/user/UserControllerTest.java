@@ -2,13 +2,19 @@ package studyweb.cus.controller.user;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.springframework.http.HttpMethod;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,13 +35,23 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import studyweb.cus.controller.ResponseFactory;
 import studyweb.cus.dto.request.auth.ChangePasswordRequest;
+import studyweb.cus.dto.request.user.UpdateProfileRequest;
+import studyweb.cus.dto.request.user.VipSubscriptionRequest;
 import studyweb.cus.dto.response.auth.UserResponse;
+import studyweb.cus.dto.response.user.AvatarResponse;
+import studyweb.cus.dto.response.user.UserProfileResponse;
+import studyweb.cus.dto.response.user.VipInfoResponse;
 import studyweb.cus.enums.Gender;
+import studyweb.cus.enums.UserRole;
+import studyweb.cus.enums.UserStatus;
+import studyweb.cus.enums.UserTier;
+import studyweb.cus.enums.VipRequestStatus;
 import studyweb.cus.security.JwtAuthenticationFilter;
 import studyweb.cus.service.user.UserService;
 
@@ -46,6 +62,7 @@ import studyweb.cus.service.user.UserService;
             type = FilterType.ASSIGNABLE_TYPE,
             classes = JwtAuthenticationFilter.class))
 @Import(ResponseFactory.class)
+@TestPropertySource(properties = {"logging.loki.url=http://localhost:3100"})
 class UserControllerTest {
 
   private static final String GMAIL = "learner@studyweb.edu";
@@ -76,6 +93,25 @@ class UserControllerTest {
         LocalDate.of(2000, 1, 1),
         Gender.MALE,
         "StudyWeb");
+  }
+
+  private UserProfileResponse userProfileResponse() {
+    return new UserProfileResponse(
+        UUID.randomUUID(),
+        GMAIL,
+        "Tien",
+        "0901234567",
+        LocalDate.of(2000, 1, 1),
+        Gender.MALE,
+        "StudyWeb",
+        "https://cdn.example.com/avatar.png",
+        UserRole.LEARNER,
+        UserTier.NORMAL,
+        UserStatus.ACTIVE,
+        null,
+        null,
+        java.time.LocalDateTime.of(2026, 1, 1, 10, 0),
+        java.time.LocalDateTime.of(2026, 9, 16, 12, 0));
   }
 
   private static RequestPostProcessor authenticated() {
@@ -145,5 +181,265 @@ class UserControllerTest {
         .perform(get("/api/user/change-password").with(authenticated()))
         .andExpect(status().isMethodNotAllowed())
         .andExpect(jsonPath("$.statusCode").value(405));
+  }
+
+  @Test
+  void subscribeVip_unauthenticatedReturns401() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Need VIP"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void subscribeVip_authenticatedWithValidDataReturns200() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Need VIP")
+                .with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP subscription request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(false));
+  }
+
+  @Test
+  void subscribeVip_missingRequiredFieldReturns400() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-subscription")
+                .file(file)
+                .param("name", "")
+                .param("email", "invalid-email")
+                .param("birth", "2000-01-01")
+                .param("phone", "")
+                .with(authenticated()))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void renewVip_unauthenticatedReturns401() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-renewal")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Renew VIP"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void renewVip_authenticatedWithValidDataReturns200() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "evidence", "proof.png", MediaType.IMAGE_PNG_VALUE, new byte[] {1, 2, 3});
+
+    mockMvc
+        .perform(
+            multipart("/api/user/vip-renewal")
+                .file(file)
+                .param("name", "Nguyen Van A")
+                .param("email", "learner@studyweb.edu")
+                .param("birth", "2000-01-01")
+                .param("phone", "0901234567")
+                .param("note", "Renew VIP")
+                .with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("VIP renewal request submitted successfully!"));
+
+    verify(userService).createVipRequest(eq(GMAIL), any(VipSubscriptionRequest.class), eq(true));
+  }
+
+  @Test
+  void getVipInfo_unauthenticatedReturns401() throws Exception {
+    mockMvc.perform(get("/api/user/vip-info")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getVipInfo_authenticatedReturnsVipInfo() throws Exception {
+    VipInfoResponse vipInfo =
+        new VipInfoResponse(
+            UserTier.VIP,
+            LocalDate.of(2026, 1, 1),
+            LocalDate.of(2026, 2, 1),
+            VipRequestStatus.APPROVED,
+            LocalDate.of(2026, 1, 1),
+            "Payment verified",
+            "https://s3.example.com/vip-evidence/proof.png");
+
+    when(userService.getVipInfo(GMAIL)).thenReturn(vipInfo);
+
+    mockMvc
+        .perform(get("/api/user/vip-info").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.tier").value("VIP"))
+        .andExpect(jsonPath("$.data.vipStartDate").value("2026-01-01"))
+        .andExpect(jsonPath("$.data.vipEndDate").value("2026-02-01"))
+        .andExpect(jsonPath("$.data.status").value("APPROVED"))
+        .andExpect(jsonPath("$.data.requestDate").value("2026-01-01"))
+        .andExpect(jsonPath("$.data.note").value("Payment verified"))
+        .andExpect(jsonPath("$.data.evidenceUrl").value("https://s3.example.com/vip-evidence/proof.png"));
+
+    verify(userService).getVipInfo(GMAIL);
+  }
+
+  @Test
+  void getProfile_unauthenticatedReturns401() throws Exception {
+    mockMvc.perform(get("/api/user/profile")).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getProfile_authenticatedReturnsProfile() throws Exception {
+    when(userService.getProfile(GMAIL)).thenReturn(userProfileResponse());
+
+    mockMvc
+        .perform(get("/api/user/profile").with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.gmail").value(GMAIL))
+        .andExpect(jsonPath("$.data.name").value("Tien"))
+        .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example.com/avatar.png"));
+
+    verify(userService).getProfile(GMAIL);
+  }
+
+  @Test
+  void updateProfile_unauthenticatedReturns401() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/user/profile")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Tien\"}"))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void updateProfile_authenticatedReturnsUpdatedProfile() throws Exception {
+    when(userService.updateProfile(eq(GMAIL), any(UpdateProfileRequest.class)))
+        .thenReturn(userProfileResponse());
+
+    mockMvc
+        .perform(
+            patch("/api/user/profile")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Tien\",\"phone\":\"0901234567\",\"birth\":\"2000-01-01\",\"gender\":\"MALE\",\"school\":\"StudyWeb\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Profile updated successfully!"))
+        .andExpect(jsonPath("$.data.gmail").value(GMAIL));
+
+    verify(userService).updateProfile(eq(GMAIL), any(UpdateProfileRequest.class));
+  }
+
+  @Test
+  void updateProfile_invalidPhoneReturns400() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/user/profile")
+                .with(authenticated())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Tien\",\"phone\":\"invalid-phone\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void uploadAvatar_unauthenticatedReturns401() throws Exception {
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+    mockMvc
+        .perform(multipart("/api/user/avatar").file(avatar))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void uploadAvatar_authenticatedReturns200() throws Exception {
+    MockMultipartFile avatar =
+        new MockMultipartFile(
+            "avatar", "avatar.png", "image/png", "avatar-bytes".getBytes());
+
+    when(userService.uploadAvatar(eq(GMAIL), any(MockMultipartFile.class)))
+        .thenReturn(new AvatarResponse("https://cdn.example.com/avatar.png"));
+
+    mockMvc
+        .perform(
+            multipart("/api/user/avatar")
+                .file(avatar)
+                .with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.message").value("Avatar uploaded successfully!"))
+        .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example.com/avatar.png"));
+
+    verify(userService).uploadAvatar(eq(GMAIL), any(MockMultipartFile.class));
+  }
+
+  @Test
+  void uploadAvatar_withFileParamName_authenticatedReturns200() throws Exception {
+    MockMultipartFile file =
+        new MockMultipartFile(
+            "file", "avatar.png", "image/png", "avatar-bytes".getBytes());
+
+    when(userService.uploadAvatar(eq(GMAIL), any(MockMultipartFile.class)))
+        .thenReturn(new AvatarResponse("https://cdn.example.com/avatar.png"));
+
+    mockMvc
+        .perform(
+            multipart("/api/user/avatar")
+                .file(file)
+                .with(authenticated()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.statusCode").value(200))
+        .andExpect(jsonPath("$.data.avatarUrl").value("https://cdn.example.com/avatar.png"));
+
+    verify(userService).uploadAvatar(eq(GMAIL), any(MockMultipartFile.class));
+  }
+
+  @Test
+  void uploadAvatar_emptyFileReturns400() throws Exception {
+    MockMultipartFile emptyFile =
+        new MockMultipartFile("avatar", "avatar.png", "image/png", new byte[0]);
+
+    mockMvc
+        .perform(
+            multipart("/api/user/avatar")
+                .file(emptyFile)
+                .with(authenticated()))
+        .andExpect(status().isBadRequest());
   }
 }

@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,6 +28,7 @@ import studyweb.cus.enums.AccessTier;
 import studyweb.cus.enums.DocType;
 import studyweb.cus.enums.UserRole;
 import studyweb.cus.enums.UserTier;
+import studyweb.cus.event.notification.NewDocumentAddedEvent;
 import studyweb.cus.exception.document.DocumentErrorCode;
 import studyweb.cus.exception.document.DocumentException;
 import studyweb.cus.exception.user.UserErrorCode;
@@ -34,7 +36,7 @@ import studyweb.cus.exception.user.UserException;
 import studyweb.cus.mapper.document.DocumentMapper;
 import studyweb.cus.repository.badge.BadgeRepository;
 import studyweb.cus.repository.document.DocumentBadgeRepository;
-import studyweb.cus.repository.document.DocumentRepository;
+import studyweb.cus.repository.document.DocumentDataAccessor;
 import studyweb.cus.repository.user.UserRepository;
 import studyweb.cus.service.document.DocumentService;
 import studyweb.cus.service.file.FileService;
@@ -45,12 +47,13 @@ import studyweb.cus.util.FileUtils;
 @Slf4j
 public class DocumentServiceImpl implements DocumentService {
 
-  private final DocumentRepository documentRepository;
+  private final DocumentDataAccessor documentRepository;
   private final DocumentBadgeRepository documentBadgeRepository;
   private final BadgeRepository badgeRepository;
   private final UserRepository userRepository;
   private final FileService fileService;
   private final DocumentMapper documentMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   @Transactional
@@ -88,10 +91,13 @@ public class DocumentServiceImpl implements DocumentService {
                   .toList();
           documentBadgeRepository.saveAll(documentBadges);
           savedDocument.setDocumentBadges(new ArrayList<>(documentBadges));
+          documentRepository.refreshCache(savedDocument);
         }
       }
 
       log.info("Document created successfully with ID {}", savedDocument.getId());
+      eventPublisher.publishEvent(
+          NewDocumentAddedEvent.of(savedDocument.getTitle(), savedDocument.getAccessTier()));
       return documentMapper.toResponse(savedDocument);
     } catch (Exception ex) {
       log.warn(

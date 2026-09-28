@@ -1,5 +1,6 @@
 package studyweb.cus.mapper.admin;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -8,12 +9,10 @@ import org.mapstruct.Mapping;
 import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 import studyweb.cus.constant.admin.SystemManagementConstants;
-import studyweb.cus.dto.response.admin.AssistantActivityResponse;
 import studyweb.cus.dto.response.admin.AssistantSummaryResponse;
 import studyweb.cus.dto.response.admin.LearnerSummaryResponse;
 import studyweb.cus.dto.response.admin.VipRequestResponse;
 import studyweb.cus.entity.progress.UserCourseProgress;
-import studyweb.cus.entity.user.ActivityLog;
 import studyweb.cus.entity.user.User;
 import studyweb.cus.entity.user.VipRequest;
 
@@ -35,8 +34,16 @@ public interface SystemManagementMapper {
   @Mapping(target = "vipStartDate", source = "user.vipStartDate")
   @Mapping(target = "vipEndDate", source = "user.vipEndDate")
   @Mapping(target = "avatarUrl", source = "user.avatarUrl")
+  @Mapping(target = "courseMaxScore", expression = "java(resolveCourseMaxScore(progress))")
   LearnerSummaryResponse toLearnerSummary(
       User user, UserCourseProgress progress, Double averageScore, int numExams);
+
+  default Integer resolveCourseMaxScore(UserCourseProgress progress) {
+    if (progress != null && progress.getCourse() != null) {
+      return progress.getCourse().getMaxScores();
+    }
+    return null;
+  }
 
   default String resolvePrimaryCourse(UserCourseProgress progress) {
     if (progress != null
@@ -49,8 +56,11 @@ public interface SystemManagementMapper {
 
   @Mapping(target = "id", source = "vipRequest.id")
   @Mapping(target = "userId", source = "vipRequest.user.id")
-  @Mapping(target = "name", source = "vipRequest.user.name")
-  @Mapping(target = "gmail", source = "vipRequest.user.gmail")
+  @Mapping(target = "name", expression = "java(resolveVipRequestName(vipRequest))")
+  @Mapping(target = "gmail", expression = "java(resolveVipRequestGmail(vipRequest))")
+  @Mapping(target = "phone", expression = "java(resolveVipRequestPhone(vipRequest))")
+  @Mapping(target = "birth", expression = "java(resolveVipRequestBirth(vipRequest))")
+  @Mapping(target = "evidenceUrl", source = "vipRequest.evidenceUrl")
   @Mapping(target = "avatarUrl", source = "vipRequest.user.avatarUrl")
   @Mapping(target = "note", source = "vipRequest.note")
   @Mapping(target = "requestDate", source = "vipRequest.requestDate")
@@ -65,18 +75,8 @@ public interface SystemManagementMapper {
   @Mapping(target = "status", source = "user.status")
   @Mapping(target = "numExams", source = "numExams")
   @Mapping(target = "lastLogin", source = "user.lastLogin", qualifiedByName = "formatLastLogin")
-  @Mapping(target = "recentActivities", source = "recentActivities")
   @Mapping(target = "avatarUrl", source = "user.avatarUrl")
-  AssistantSummaryResponse toAssistantSummary(
-      User user, int numExams, List<AssistantActivityResponse> recentActivities);
-
-  @Mapping(target = "id", source = "activityLog.id")
-  @Mapping(target = "description", source = "activityLog.description")
-  @Mapping(
-      target = "timestamp",
-      source = "activityLog.createdAt",
-      qualifiedByName = "formatLastLogin")
-  AssistantActivityResponse toAssistantActivity(ActivityLog activityLog);
+  AssistantSummaryResponse toAssistantSummary(User user, int numExams);
 
   @Named("roundGpa")
   default Double roundGpa(Double score) {
@@ -92,5 +92,41 @@ public interface SystemManagementMapper {
       return SystemManagementConstants.textNotLogin;
     }
     return dateTime.format(DATE_FORMATTER);
+  }
+
+  default String resolveVipRequestName(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getName() != null && !vipRequest.getName().isBlank()) {
+      return vipRequest.getName();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getName()
+        : null;
+  }
+
+  default String resolveVipRequestGmail(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getEmail() != null && !vipRequest.getEmail().isBlank()) {
+      return vipRequest.getEmail();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getGmail()
+        : null;
+  }
+
+  default String resolveVipRequestPhone(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getPhone() != null && !vipRequest.getPhone().isBlank()) {
+      return vipRequest.getPhone();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getPhone()
+        : null;
+  }
+
+  default LocalDate resolveVipRequestBirth(VipRequest vipRequest) {
+    if (vipRequest != null && vipRequest.getBirth() != null) {
+      return vipRequest.getBirth();
+    }
+    return (vipRequest != null && vipRequest.getUser() != null)
+        ? vipRequest.getUser().getBirth()
+        : null;
   }
 }
