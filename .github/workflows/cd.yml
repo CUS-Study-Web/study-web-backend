@@ -4,8 +4,6 @@ on:
   workflow_run:
     workflows:
       - "Study Web Backend CI flow"
-    types:
-      - completed
     branches:
       - main
 
