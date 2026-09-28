@@ -1,16 +1,14 @@
 name: Study Web Backend CD flow
 
 on:
-  workflow_run:
-    workflows:
-      - "Study Web Backend CI flow"
+  push:
     branches:
       - main
 
 concurrency:
   group: be-deploy
   cancel-in-progress: false
- 
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/backend
@@ -21,7 +19,6 @@ jobs:
 
   build-and-push-ghcr:
     name: Build and Push Docker Image to GitHub Container Registry
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     permissions:
@@ -31,8 +28,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -68,13 +63,11 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.event.workflow_run.head_sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ github.sha }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
-
 
   deploy:
     name: Deploy Backend
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     needs: build-and-push-ghcr
     runs-on: self-hosted
 
@@ -123,13 +116,15 @@ jobs:
         working-directory: gitops-manifests
         run: |
           sleep 5s
+
           echo "===== CONTAINERS ====="
           podman ps -a
 
-          echo "===== BACKEND LOGS ====="
+          echo "===== BACKEND STATUS ====="
           podman inspect studyweb-backend \
             --format 'Status={{.State.Status}} ExitCode={{.State.ExitCode}}'
 
+          echo "===== BACKEND LOGS ====="
           podman logs --tail 100 studyweb-backend
 
           echo "===== PORT ====="
