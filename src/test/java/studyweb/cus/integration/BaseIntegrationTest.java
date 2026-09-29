@@ -82,7 +82,7 @@ public abstract class BaseIntegrationTest {
     POSTGRES.start();
 
     minio =
-        new GenericContainer<>("minio/minio:RELEASE.2024-01-18T22-51-28Z")
+        new GenericContainer<>("cgr.dev/chainguard/minio:latest")
             .withEnv("MINIO_ROOT_USER", "minioadmin")
             .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
             .withCommand("server /data")
